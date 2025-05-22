@@ -1,0 +1,5 @@
+run_main:
+  poetry run main
+
+type_check:
+  poetry run mypy .
