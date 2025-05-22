@@ -5,8 +5,9 @@ from archaeo_super_prompt.signature import ExtractionArcheoData
 MagohData = TypedDict(
     "MagohData",
     {
-        "scheda_intervento": str,
-        "sigla": str,
+        "scheda_intervento": str, # do not output it
+        "sigla": str, # from Francesco, this is not cool as in most of the case
+        # , this is not written, and every document is relazione di scava 
         "comune": str,
         "ubicazione": str,
         "indirizzo": str,
@@ -69,3 +70,16 @@ def toMagohData(output: ExtractionArcheoData) -> MagohData:
         if output.protocol_date is not None
         else "",
     }
+
+    # additional fields :
+    #    redattore: my incredible AI
+    #    motavioon: the project
+    #    
+    # reamining fields
+    #
+    # esecutore: better to leave it empty if there is a doubt 
+    # one name or a institution name
+    #
+    # all eras
+    #
+    # Fonte informazione: most of the time, has to be inferred with computation
