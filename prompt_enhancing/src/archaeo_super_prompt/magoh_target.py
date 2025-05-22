@@ -5,9 +5,7 @@ from archaeo_super_prompt.signature import ExtractionArcheoData
 MagohData = TypedDict(
     "MagohData",
     {
-        "scheda_intervento": str, # do not output it
-        "sigla": str, # from Francesco, this is not cool as in most of the case
-        # , this is not written, and every document is relazione di scava 
+        "sigla": str, # according to Francesco, analyzing this field is skipable as in most of the case this is not written, and every document is relazione di scava
         "comune": str,
         "ubicazione": str,
         "indirizzo": str,
@@ -42,7 +40,6 @@ def dID_objects_processing(raw: List[str]):
 
 def toMagohData(output: ExtractionArcheoData) -> MagohData:
     return {
-        "scheda_intervento": "",  # TODO: fill with filenmae
         "sigla": "",  # TODO: figure it out
         "comune": output.municipality,
         "ubicazione": output.location,
