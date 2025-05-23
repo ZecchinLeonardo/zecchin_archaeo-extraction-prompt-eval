@@ -1,6 +1,6 @@
 from typing import List, TypedDict
 
-from archaeo_super_prompt.signature import ExtractionArcheoData
+from .signature.arch_extract_type import ArchaeologicalInterventionData
 
 MagohData = TypedDict(
     "MagohData",
@@ -38,7 +38,7 @@ def dID_objects_processing(raw: List[str]):
         return f"Sì ({', '.join(raw)})"
 
 
-def toMagohData(output: ExtractionArcheoData) -> MagohData:
+def toMagohData(output: ArchaeologicalInterventionData) -> MagohData:
     return {
         "sigla": "",  # TODO: figure it out
         "comune": output.municipality,
@@ -63,9 +63,7 @@ def toMagohData(output: ExtractionArcheoData) -> MagohData:
         "Funzionario competente": ", ".join(output.on_site_qualified_official),
         "Tipo di documento": output.document_type,
         "protocollo": output.protocol if output.protocol is not None else "",
-        "data protocollo": output.protocol_date
-        if output.protocol_date is not None
-        else "",
+        "data protocollo": output.protocol_date if output.protocol_date is not None else "",
     }
 
     # additional fields :
