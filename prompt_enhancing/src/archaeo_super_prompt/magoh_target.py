@@ -52,11 +52,11 @@ def toMagohData(output: ArchaeologicalInterventionData) -> MagohData:
         "direzione scientifica": output.scientific_direction,
         "estensione": ", ".join(output.extension),
         "numero di saggi": str(output.test_number),
-        "profondità massima": str(output.max_depth),
+        "profondità massima": f"-{str(output.max_depth)}",
         "geologico": output.geology,
         "Oggetti da Disegno OGD": dID_objects_processing(output.diD_stuff),
         "Oggetti da museo OGM": ", ".join(output.ogm_museum_stuff),
-        "profondità di falda": output.falda_depth
+        "profondità di falda": f"-{str(output.groundwater_depth)}"
         if output.falda_depth is not None
         else "",
         "Istituzione": output.institution if output.institution is not None else "",
