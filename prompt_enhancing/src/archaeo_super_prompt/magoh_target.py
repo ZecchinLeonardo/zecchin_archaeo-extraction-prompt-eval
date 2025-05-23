@@ -1,5 +1,8 @@
 from typing import List, TypedDict
 
+from archaeo_super_prompt.signature.date_estimation import format_moment_italian
+from archaeo_super_prompt.signature.name import toMappaNaming
+
 from .signature.arch_extract_type import ArchaeologicalInterventionData
 
 MagohData = TypedDict(
@@ -45,22 +48,20 @@ def toMagohData(output: ArchaeologicalInterventionData) -> MagohData:
         "ubicazione": output.location,
         "indirizzo": output.address if output.address is not None else "",
         "località": output.place,
-        "data intervento": ", ".join(output.intervention_date),
+        "data intervento": format_moment_italian(output.intervention_date),
         "tipo di intervento": output.intervention_type,
         "durata": f"{str(output.duration)} days" if output.duration is not None else "",
-        "eseguito da": output.done_since,
-        "direzione scientifica": output.scientific_direction,
+        "eseguito da": output.executor if isinstance(output.executor, str) else toMappaNaming(output.executor),
+        "direzione scientifica": toMappaNaming(output.principal_investigator),
         "estensione": ", ".join(output.extension),
-        "numero di saggi": str(output.test_number),
-        "profondità massima": f"-{str(output.max_depth)}",
-        "geologico": output.geology,
-        "Oggetti da Disegno OGD": dID_objects_processing(output.diD_stuff),
-        "Oggetti da museo OGM": ", ".join(output.ogm_museum_stuff),
-        "profondità di falda": f"-{str(output.groundwater_depth)}"
-        if output.falda_depth is not None
-        else "",
+        "numero di saggi": str(output.sample_number),
+        "profondità massima": f"-{str(abs(output.max_depth))}",
+        "geologico": "" if output.geology is None else ("Sì" if output.geology else "No"),
+        "Oggetti da Disegno OGD": output.purpose_of_ogd_draw,
+        "Oggetti da museo OGM": output.purpose_of_ogm_museum,
+        "profondità di falda": "" if output.groundwater_depth is None else f"-{str(abs(output.groundwater_depth))}",
         "Istituzione": output.institution if output.institution is not None else "",
-        "Funzionario competente": ", ".join(output.on_site_qualified_official),
+        "Funzionario competente": ", ".join(map(toMappaNaming, output.on_site_qualified_official)),
         "Tipo di documento": output.document_type,
         "protocollo": output.protocol if output.protocol is not None else "",
         "data protocollo": output.protocol_date if output.protocol_date is not None else "",

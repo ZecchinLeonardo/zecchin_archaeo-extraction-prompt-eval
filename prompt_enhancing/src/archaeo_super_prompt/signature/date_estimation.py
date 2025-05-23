@@ -33,3 +33,22 @@ class LatestEstimatedPastMoment(pydantic.BaseModel):
     precision: Literal["Before", "During"]
     date: Optional[Union[DayInAYear, Month]]
     year: int
+
+
+ITALIAN_MONTHS = [
+    "Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno",
+    "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"
+]
+
+def format_moment_italian(moment: LatestEstimatedPastMoment) -> str:
+    prefix = "Prima del " if moment.precision == "Before" else ""
+
+    if isinstance(moment.date, tuple):
+        day, month = moment.date
+        month_str = ITALIAN_MONTHS[month - 1]
+        return f"{prefix}{day} {month_str} {moment.year}"
+    elif isinstance(moment.date, int):
+        month_str = ITALIAN_MONTHS[moment.date - 1]
+        return f"{prefix}{month_str} {moment.year}"
+    else:
+        return f"{prefix}il {moment.year}"

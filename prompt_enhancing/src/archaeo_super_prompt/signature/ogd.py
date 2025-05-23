@@ -1,5 +1,10 @@
 from typing import Literal
 
+"""
+In most of the case, the sample in the training dataset will have the value
+"sito pluristradificato"
+"""
+
 ItalianOGD = Literal[
     "area a uso funerario",
     "area di materiale mobile",
