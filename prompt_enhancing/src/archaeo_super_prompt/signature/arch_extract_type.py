@@ -68,7 +68,7 @@ class ArchaeologicalInterventionData(dspy.Signature):
     on_site_qualified_official: List[Name] = dspy.OutputField(desc="List of the archaeologists on site. Generally, there is just one person and this is the principal investigator")
     executor: Union[Name, str] = dspy.OutputField(desc="""The name of the person, team, company or institution who/which materially performed the intervention.""")
 
-    extension: List[str] = dspy.OutputField(
+    extension: Optional[List[str]] = dspy.OutputField(
         desc="If there are more than one excavation, list them here. This information is generally empty"
     )
 

@@ -53,7 +53,7 @@ def toMagohData(output: ArchaeologicalInterventionData) -> MagohData:
         "durata": f"{str(output.duration)} days" if output.duration is not None else "",
         "eseguito da": output.executor if isinstance(output.executor, str) else toMappaNaming(output.executor),
         "direzione scientifica": toMappaNaming(output.principal_investigator),
-        "estensione": ", ".join(output.extension),
+        "estensione": ", ".join(output.extension) if output.extension is not None else "",
         "numero di saggi": str(output.sample_number),
         "profondità massima": f"-{str(abs(output.max_depth))}",
         "geologico": "" if output.geology is None else ("Sì" if output.geology else "No"),
