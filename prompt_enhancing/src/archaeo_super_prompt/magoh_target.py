@@ -1,9 +1,8 @@
 from typing import List, TypedDict
 
-from archaeo_super_prompt.signature.date_estimation import format_moment_italian
-from archaeo_super_prompt.signature.name import toMappaNaming
-
-from .signature.arch_extract_type import ArchaeologicalInterventionData
+from .signatures.date_estimation import format_moment_italian
+from .signatures.name import toMappaNaming
+from .signatures.arch_extract_type import ArchaeologicalInterventionData
 
 MagohData = TypedDict(
     "MagohData",

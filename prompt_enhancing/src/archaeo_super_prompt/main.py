@@ -7,7 +7,7 @@ from .debug_log import set_debug_mode, print_log
 from .language_model import load_model
 from .magoh_target import toMagohData
 from .open_with_ocr import pdf_to_text
-from .signature.arch_extract_type import ArchaeologicalInterventionData
+from .signatures.arch_extract_type import ArchaeologicalInterventionData
 
 def load_file_input_path_from_arg():
     parser = argparse.ArgumentParser(description="The relative path of the \"relazione di scava\" document you want to analyze.")
@@ -31,6 +31,14 @@ def main():
     print_log("LLM ready to be used!")
 
     print_log("Instanciating the DSPy module...")
+    """For now, this simple module with such a complex signature is not
+    suitable for the llm and the randomness of its outputs, which make the
+    pipeline and the sending of others dspy automatic prompts fail.
+    We do need to create a more complex module which better target the
+    predicition of the fields to be sure they are type-safe.
+
+    Typesafety must be guaranteed by the model
+    """
     module = dspy.ChainOfThought(ArchaeologicalInterventionData)
     print_log("DSPy module ready!")
 
