@@ -36,6 +36,9 @@ Specify an input file in the CLI argument:
 poetry run main --report ../sample_docs/Scheda_Intervento_35012.pdf
 ```
 
+The OCR results and the prompts results are saved in files in the `outpus/`
+directory (please be careful to copy them before a next other run).
+
 File `../sample_docs/Scheda_Intervento_35012` is automatically input in the
 `justfile`. Then, you can also test with this shorter command:
 

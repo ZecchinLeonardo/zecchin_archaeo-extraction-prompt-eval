@@ -5,9 +5,8 @@ from typing import cast
 
 from .debug_log import set_debug_mode, print_log
 from .language_model import load_model
-from .magoh_target import toMagohData
-from .open_with_ocr import pdf_to_text
-from .signatures.arch_extract_type import ArchaeologicalInterventionData
+from .open_with_ocr import pdf_to_text, save_log_in_file
+from .models.main_pipeline import ExtractDataFromInterventionReport
 
 def load_file_input_path_from_arg():
     parser = argparse.ArgumentParser(description="The relative path of the \"relazione di scava\" document you want to analyze.")
@@ -18,7 +17,6 @@ def load_file_input_path_from_arg():
     )
     args = parser.parse_args()
     return cast(str, args.report)
-
 
 def main():
     set_debug_mode(True)
@@ -39,19 +37,23 @@ def main():
 
     Typesafety must be guaranteed by the model
     """
-    module = dspy.ChainOfThought(ArchaeologicalInterventionData)
+    module = ExtractDataFromInterventionReport()
     print_log("DSPy module ready!")
 
     print_log("Loading sample document...")
     text = pdf_to_text(input_file_path)
+    save_log_in_file("./outputs/ocr.txt", text)
     print_log("Document converted into text!")
 
     print_log("Prompting and awaiting the parsed answer...")
-    CONTEXT = """You are analysing an Italian official document about an archaeological intervention and you are going to extract in Italian some information as the archivists in archeology do.
-Some information are optional as a document can forget to mention it, then try to think if you can figure it out or if you have to answer nothing for these field."""
-    response: ArchaeologicalInterventionData = module(context=CONTEXT, italian_archaeological_document=text)
+    response = module(document_ocr_scan=text)
     print_log("Answer ready:")
     print(response)
+    save_log_in_file("./outputs/prediction.txt", str(response))
 
-    print_log("Transforming into structured data for Magoh...")
-    print(toMagohData(response))
+    # TODO: use MLflow instead
+    dspy.inspect_history(n=10)
+
+    # TODO:
+    # print_log("Transforming into structured data for Magoh...")
+    # print(toMagohData(response))
