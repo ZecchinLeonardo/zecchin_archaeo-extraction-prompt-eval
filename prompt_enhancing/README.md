@@ -22,7 +22,7 @@ You must set in a `.env` file located in the same directory as this README the
 following secret environment variable
 
 ```sh
-OPENROUTER_API_KEY='<your-secret-api-key>'
+OPENAI_API_KEY='<your-secret-api-key>'
 ```
 
 The sample documents must also be loaded in the [dedicated sample documents
