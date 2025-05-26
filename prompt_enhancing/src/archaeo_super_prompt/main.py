@@ -24,8 +24,7 @@ def main():
     input_file_path = load_file_input_path_from_arg()
 
     print_log("Initialising the LLM...")
-    lm = load_model()
-    dspy.configure(lm=lm)
+    load_model()
     print_log("LLM ready to be used!")
 
     print_log("Instanciating the DSPy module...")
