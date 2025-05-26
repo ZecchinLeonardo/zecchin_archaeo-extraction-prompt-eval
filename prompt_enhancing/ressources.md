@@ -4,7 +4,9 @@
 
 - why dspy ?
   - declarative signature and typing => automating prompting optimization
-  - [this page](https://dspy.ai/faqs/#is-dspy-right-for-me-dspy-vs-other-frameworks) cite comparisons
+  - [this
+  page](https://dspy.ai/faqs/#is-dspy-right-for-me-dspy-vs-other-frameworks)
+  cite comparisons
 - dspy use case :
   - [Documentation](https://s1m0n38.github.io/dspy-arxiv/)
   - [Code](https://github.com/S1M0N38/dspy-arxiv)
@@ -12,6 +14,7 @@
   - [prompt optimization](https://haystack.deepset.ai/cookbook/prompt_optimization_with_dspy)
 - Translation layer for more accurate document analysis:
   - [Lara Translate MCP Server](https://github.com/translated/lara-mcp)
+  - [Integrate MCP into a DSPy Agent](https://dspy.ai/tutorials/mcp/)
 
 ## Low-cost LLM usage for prompt-engineering dev
 
