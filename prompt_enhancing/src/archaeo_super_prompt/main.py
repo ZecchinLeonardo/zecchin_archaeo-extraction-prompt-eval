@@ -1,7 +1,8 @@
 import argparse
 import dotenv
-import dspy
 from typing import cast
+
+from archaeo_super_prompt.inspection.cost import inspect_cost
 
 from .debug_log import set_debug_mode, print_log
 from .language_model import load_model
@@ -24,18 +25,11 @@ def main():
     input_file_path = load_file_input_path_from_arg()
 
     print_log("Initialising the LLM...")
-    load_model()
+    llm = load_model()
     print_log("LLM ready to be used!")
 
     print_log("Instanciating the DSPy module...")
-    """For now, this simple module with such a complex signature is not
-    suitable for the llm and the randomness of its outputs, which make the
-    pipeline and the sending of others dspy automatic prompts fail.
-    We do need to create a more complex module which better target the
-    predicition of the fields to be sure they are type-safe.
 
-    Typesafety must be guaranteed by the model
-    """
     module = ExtractDataFromInterventionReport()
     print_log("DSPy module ready!")
 
@@ -50,8 +44,8 @@ def main():
     print(response)
     save_log_in_file("./outputs/prediction.txt", str(response))
 
-    # TODO: use MLflow instead
-    dspy.inspect_history(n=10)
+    print_log(f"This analyze has approximately cost US${inspect_cost(llm)}")
+    # TODO: use MLflow to inspect the conversation
 
     # TODO:
     # print_log("Transforming into structured data for Magoh...")

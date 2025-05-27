@@ -17,3 +17,4 @@ def load_model():
         api_key=api_key,
     )
     dspy.configure(lm=analysing_model)
+    return analysing_model
