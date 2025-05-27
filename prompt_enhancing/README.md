@@ -6,9 +6,7 @@
 
 - `poetry` (>=2.1)
 - `just` if you are lazy with the commands
-- an API key in [OpenRouter](https://openrouter.ai) (50 prompts per day with
-the free offer over a set of large language models, 1000 per day with a single
-bill of 10$)
+- an API key in the OpenAI platform
 
 ### Install dependencies
 
@@ -16,7 +14,7 @@ bill of 10$)
 poetry install
 ```
 
-### Setup the environment
+### Set up the environment
 
 You must set in a `.env` file located in the same directory as this README the
 following secret environment variable
@@ -36,7 +34,7 @@ Specify an input file in the CLI argument:
 poetry run main --report ../sample_docs/Scheda_Intervento_35012.pdf
 ```
 
-The OCR results and the prompts results are saved in files in the `outpus/`
+The OCR results and the prompts results are saved in files in the `output/`
 directory (please be careful to copy them before a next other run).
 
 File `../sample_docs/Scheda_Intervento_35012` is automatically input in the
@@ -45,3 +43,18 @@ File `../sample_docs/Scheda_Intervento_35012` is automatically input in the
 ```sh
 just run_main
 ```
+
+### Inspect the experiments with MLflow
+
+The traces of the exchanges with the LLM can be viewed in a user-friendly
+interface thanks to the Mlflow tracing. These traces are located in a `mlruns/`
+untracked directory.
+
+To view them in the local interface, run
+
+```sh
+just trace
+```
+
+Next, inspect them on `http://localhost:5000`, in the `DSPy > Traces`
+tab.

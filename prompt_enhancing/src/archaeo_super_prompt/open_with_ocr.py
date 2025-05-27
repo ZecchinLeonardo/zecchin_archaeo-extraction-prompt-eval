@@ -17,4 +17,4 @@ def save_log_in_file(fp: str, content: str):
     path = Path(fp).resolve()
     with path.open("w") as f:
         f.write(content)
-    print_log(f"Content saved in {fp}")
+    print_log(f"Content saved in {fp}\n")

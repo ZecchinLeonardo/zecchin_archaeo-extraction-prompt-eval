@@ -1,5 +1,6 @@
 import argparse
 import dotenv
+import mlflow
 from typing import cast
 
 from archaeo_super_prompt.inspection.cost import inspect_cost
@@ -26,22 +27,26 @@ def main():
 
     print_log("Initialising the LLM...")
     llm = load_model()
-    print_log("LLM ready to be used!")
+    print_log("LLM ready to be used!\n")
 
     print_log("Instanciating the DSPy module...")
-
     module = ExtractDataFromInterventionReport()
-    print_log("DSPy module ready!")
+    print_log("DSPy module ready!\n")
 
     print_log("Loading sample document...")
     text = pdf_to_text(input_file_path)
     save_log_in_file("./outputs/ocr.txt", text)
-    print_log("Document converted into text!")
+    print_log("Document converted into text!\n")
+
+    print_log("Instanciating mlflow tracing...")
+    mlflow.dspy.autolog()
+    mlflow.set_experiment("DSPy")
+    print_log("Instance created!\n")
 
     print_log("Prompting and awaiting the parsed answer...")
     response = module(document_ocr_scan=text)
     print_log("Answer ready:")
-    print(response)
+    print(response, "\n")
     save_log_in_file("./outputs/prediction.txt", str(response))
 
     print_log(f"This analyze has approximately cost US${inspect_cost(llm)}")
