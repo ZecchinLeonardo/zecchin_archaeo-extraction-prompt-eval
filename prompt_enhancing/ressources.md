@@ -7,11 +7,14 @@
   - [this
   page](https://dspy.ai/faqs/#is-dspy-right-for-me-dspy-vs-other-frameworks)
   cite comparisons
+- alternative to overcome typing issue with small models:
+  - [BAML](https://docs.boundaryml.com/home)
 - dspy use case :
   - [Documentation](https://s1m0n38.github.io/dspy-arxiv/)
   - [Code](https://github.com/S1M0N38/dspy-arxiv)
   - [json extraction](https://pub.towardsai.net/structured-data-extraction-from-llms-using-dspy-assertions-and-qdrant-bf65632f02b0)
   - [prompt optimization](https://haystack.deepset.ai/cookbook/prompt_optimization_with_dspy)
+  - [deepWiki](https://deepwiki.com/stanfordnlp/dspy/)
 - Translation layer for more accurate document analysis:
   - [Lara Translate MCP Server](https://github.com/translated/lara-mcp)
   - [Integrate MCP into a DSPy Agent](https://dspy.ai/tutorials/mcp/)
