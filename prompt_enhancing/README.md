@@ -31,7 +31,7 @@ directory](../sample_docs/).
 Specify an input file in the CLI argument:
 
 ```sh
-poetry run main --report ../sample_docs/Scheda_Intervento_35012.pdf
+poetry run main --report-dir ../sample_docs/
 ```
 
 The OCR results and the prompts results are saved in files in the `output/`
