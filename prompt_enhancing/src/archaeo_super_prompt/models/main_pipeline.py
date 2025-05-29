@@ -1,4 +1,4 @@
-from typing import cast
+from typing import Optional, TypedDict, cast
 import dspy
 
 from archaeo_super_prompt.debug_log import print_debug_log
@@ -10,6 +10,13 @@ from ..signatures.arch_extract_type import (
     TechnicalInformation,
     ArchivalInformation,
 )
+
+
+class ExtractedInterventionData(TypedDict):
+    source: SourceOfInformationInReport
+    context: ArchaeologicalInterventionContext
+    technical_achievements: TechnicalInformation
+    archival_metadata: Optional[ArchivalInformation]
 
 
 class ExtractDataFromInterventionReport(dspy.Module):
@@ -38,13 +45,15 @@ class ExtractDataFromInterventionReport(dspy.Module):
         print_debug_log("Requesting document sources...")
         document_source_data = cast(
             SourceOfInformationInReport,
-            self.extract_report_sources(context=CONTEXT+ASSURANCE_CONTEXT, report_incipit=cuts.incipit),
+            self.extract_report_sources(
+                context=CONTEXT + ASSURANCE_CONTEXT, report_incipit=cuts.incipit
+            ),
         )
         print_debug_log("Requesting archaeological intervention context...")
         intervention_context = cast(
             ArchaeologicalInterventionContext,
             self.extract_intervention_context_data(
-                context=CONTEXT+ASSURANCE_CONTEXT,
+                context=CONTEXT + ASSURANCE_CONTEXT,
                 archaeological_report_incipit=cuts.incipit,
                 archaeological_report_body=cuts.body,
             ),
@@ -53,7 +62,8 @@ class ExtractDataFromInterventionReport(dspy.Module):
         techinal_achievements = cast(
             TechnicalInformation,
             self.extract_intervention_technical_achievements(
-                context=CONTEXT+ASSURANCE_CONTEXT, archaeological_report_body=cuts.body
+                context=CONTEXT + ASSURANCE_CONTEXT,
+                archaeological_report_body=cuts.body,
             ),
         )
         print_debug_log("Requesting document archival metadata...")
@@ -61,16 +71,24 @@ class ExtractDataFromInterventionReport(dspy.Module):
             cast(
                 ArchivalInformation,
                 self.extract_archival_metadata(
-                    context=CONTEXT+ASSURANCE_CONTEXT, report_archive_office_stamp=cuts.archival_stamp
+                    context=CONTEXT + ASSURANCE_CONTEXT,
+                    report_archive_office_stamp=cuts.archival_stamp,
                 ),
             )
             if cuts.archival_stamp is not None
             else None
         )
 
-        return dspy.Prediction(
-            source=document_source_data,
-            context=intervention_context,
-            technical_achievements=techinal_achievements,
-            archival_metadata=report_archival_metadata,
+        final_prediction: ExtractedInterventionData = {
+            "source": document_source_data,
+            "context": intervention_context,
+            "technical_achievements": techinal_achievements,
+            "archival_metadata": report_archival_metadata,
+        }
+        return dspy.Prediction(**final_prediction)
+
+    def forward_and_type(self, document_ocr_scan: str):
+        return cast(
+            ExtractedInterventionData,
+            cast(dspy.Prediction, self(document_ocr_scan=document_ocr_scan)).toDict(),
         )

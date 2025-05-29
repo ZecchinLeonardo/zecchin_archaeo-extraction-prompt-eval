@@ -1,38 +1,63 @@
-from typing import List, TypedDict
+from typing import List, Optional, TypedDict
 
-# from .signatures.date_estimation import format_moment_italian
-# from .signatures.name import toMappaNaming
-# TODO:
-# from .signatures.arch_extract_type import ArchaeologicalInterventionData
+from .signatures.date_estimation import format_moment_italian
+from .signatures.name import toMappaNaming
+from .models.main_pipeline import ExtractedInterventionData
 
-MagohData = TypedDict(
-    "MagohData",
+MagohUniversityData = TypedDict("MagohUniversityData", {
+    "Sigla": Optional[str],
+    "Comune": str,
+    "Ubicazione": str,
+    "Indirizzo": Optional[str],
+    "Località": Optional[str],
+    "Data intervento": str,
+    "Tipo di intervento": str,
+    "Durata": Optional[int],
+    "Eseguito da": Optional[str],
+    "Direzione scientifica": Optional[str],
+    "Estensione": Optional[str],
+    "Numero di saggi": int,
+    "Profondità massima": float,
+    "Geologico": Optional[bool],
+    "OGD":str,
+    "OGM": str,
+    "Profondità falda": Optional[float]
+})
+
+# TODO: MagohCheckedEras
+
+MagohDocumentBuildingData = TypedDict("MagohDocumentBuildingData", {
+    "Istituzione": str,
+    "Funzionario competente": str,
+    "Tipo di documento": str,
+    "Protocollo": str,
+    "Data Protocollo": str
+})
+
+MagohFindingScheme = TypedDict(
+    "MagohFindingScheme",
     {
-        "sigla": str, # according to Francesco, analyzing this field is skipable as in most of the case this is not written, and every document is relazione di scava
-        "comune": str,
-        "ubicazione": str,
-        "indirizzo": str,
-        "località": str,
-        "data intervento": str,
-        "tipo di intervento": str,
-        "durata": str,
-        "eseguito da": str,
-        "direzione scientifica": str,
-        "estensione": str,
-        "numero di saggi": str,
-        "profondità massima": str,
-        "geologico": str,
-        "Oggetti da Disegno OGD": str,
-        "Oggetti da museo OGM": str,
-        "profondità di falda": str,
-        "Istituzione": str,
-        "Funzionario competente": str,
-        "Tipo di documento": str,
-        "protocollo": str,
-        "data protocollo": str,
+        "I Livello": Optional[str],
+        "II Livello": Optional[str],
+        "III Livello": Optional[str],
+        "Datazione": Optional[int],
+        "Datazione Finale": Optional[int],
     },
 )
 
+# TODO: add findings to MagohData
+MagohData = TypedDict(
+    "MagohData",
+    {
+        "university": MagohUniversityData,
+        "building": MagohDocumentBuildingData
+    }
+)
+
+def process_extensions(ext: Optional[List[str]]):
+    if ext is None:
+        return ""
+    return ", ".join(ext)
 
 def dID_objects_processing(raw: List[str]):
     if len(raw) == 0:
@@ -40,10 +65,43 @@ def dID_objects_processing(raw: List[str]):
     else:
         return f"Sì ({', '.join(raw)})"
 
+def toMagohData(output: ExtractedInterventionData) -> MagohData:
+    context = output["context"]
+    details = output["technical_achievements"]
+    doc_build_data = output["source"]
+    return {
+        "university": {
+            "Sigla": None, # TODO: figure this out
+            "Comune": context.municipality,
+            "Ubicazione": context.location,
+            "Indirizzo": context.address,
+            "Località": context.place,
+            "Data intervento": format_moment_italian(context.intervention_date),
+            "Tipo di intervento": context.intervention_type,
+            "Durata": context.duration,
+            "Eseguito da": context.executor if isinstance(context.executor, str) else toMappaNaming(context.executor),
+            "Direzione scientifica": toMappaNaming(context.principal_investigator),
+            "Estensione": process_extensions(context.extension),
+            "Numero di saggi": details.sample_number,
+            "Profondità massima": details.max_depth,
+            "Geologico": details.geology,
+            "OGD": details.historical_information_class,
+            "OGM": doc_build_data.document_source_type,
+            "Profondità falda": details.groundwater_depth
+        },
+        "building": {
+            "Istituzione": "",
+            "Funzionario competente": "",
+            "Tipo di documento": "",
+            "Protocollo": "",
+            "Data Protocollo": ""
+        }
+    }
 
 # def toMagohData(output: ArchaeologicalInterventionData) -> MagohData:
 #     return {
-#         "sigla": "",  # TODO: figure it out
+#         # TODO: figure it out
+#         "sigla": "",
 #         "comune": output.municipality,
 #         "ubicazione": output.location,
 #         "indirizzo": output.address if output.address is not None else "",

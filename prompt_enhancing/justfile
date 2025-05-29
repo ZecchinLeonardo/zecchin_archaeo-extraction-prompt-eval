@@ -1,5 +1,5 @@
 run_main:
-  poetry run main --report ../sample_docs/Scheda_Intervento_35012.pdf
+  poetry run main --report-dir ../sample_docs/
 
 trace:
   poetry run mlflow ui --port 5000
