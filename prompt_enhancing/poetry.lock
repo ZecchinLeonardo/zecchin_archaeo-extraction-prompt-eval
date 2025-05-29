@@ -2898,6 +2898,21 @@ files = [
 ]
 
 [[package]]
+name = "pymupdf4llm"
+version = "0.0.24"
+description = "PyMuPDF Utilities for LLM/RAG"
+optional = false
+python-versions = "*"
+groups = ["main"]
+files = [
+    {file = "pymupdf4llm-0.0.24-py3-none-any.whl", hash = "sha256:98cb424e28acfd1a371d6c9880c774510f1eb5bae5bd48dbea4e7ecb4eec04f3"},
+    {file = "pymupdf4llm-0.0.24.tar.gz", hash = "sha256:56a9100f920ea5e02d2eee34f9aa2b6f7c8ed7dc9fa535fc9236a47e386632ab"},
+]
+
+[package.dependencies]
+pymupdf = ">=1.25.5"
+
+[[package]]
 name = "pyparsing"
 version = "3.2.3"
 description = "pyparsing module - Classes and methods to define and execute parsing grammars"
@@ -4364,4 +4379,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12,<3.13"
-content-hash = "3433dc2b2bae346a98177b53b9420288c2ef01042d592240148622942f44d449"
+content-hash = "b76baca3c54ea782342b41752f15d029c02a93f70bb14b906f2cef99f29fa00e"

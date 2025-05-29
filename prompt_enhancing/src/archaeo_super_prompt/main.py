@@ -10,7 +10,7 @@ from archaeo_super_prompt.magoh_target import toMagohData
 
 from .debug_log import set_debug_mode, print_log
 from .language_model import load_model
-from .open_with_ocr import get_all_samples_files, pdf_to_text, save_log_in_file
+from .open_with_ocr import get_all_samples_files, init_ocr_setup, pdf_to_text, save_log_in_file
 from .models.main_pipeline import ExtractDataFromInterventionReport
 
 def load_file_input_path_from_arg():
@@ -23,9 +23,14 @@ def load_file_input_path_from_arg():
     args = parser.parse_args()
     return Path(cast(str, args.report_dir))
 
-def main() -> None:
+def setup() -> None:
     set_debug_mode(True)
     dotenv.load_dotenv()
+    init_ocr_setup()
+
+def main() -> None:
+    setup()
+
     input_file_dir_path = load_file_input_path_from_arg()
 
     print_log("Initialising the LLM...")
@@ -37,18 +42,18 @@ def main() -> None:
     print_log("DSPy module ready!\n")
 
     print_log("Instanciating mlflow tracing...")
-    mlflow.dspy.autolog()
+    mlflow.dspy.autolog() #type: ignore
     mlflow.set_experiment("First prompts")
     print_log("Instance created!\n")
 
     costs: List[float] = [] # TODO: check if it is not the cost evolution
     
-    print_log("Loading sample document...")
     for input_file_path in get_all_samples_files(input_file_dir_path):
+        print_log("Loading sample document...")
         text = pdf_to_text(input_file_path)
         assert(text != ""), "OCR result is empty ??"
-        save_log_in_file(f"./outputs/{input_file_path.name}.ocr.txt", text)
         print_log("Document converted into text!\n")
+        save_log_in_file(f"./outputs/{input_file_path.name}.ocr.txt", text)
         # print_log("Prompting and awaiting the parsed answer...")
         # response = module.forward_and_type(document_ocr_scan=text)
         # print_log("Answer ready:")
