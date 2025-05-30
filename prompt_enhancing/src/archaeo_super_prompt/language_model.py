@@ -19,7 +19,7 @@ def _get_ollama_model():
     if ollama_localhost_port is None:
         raise EnvironmentError("Environment variable \'LOCAL_LLM_PORT\' not set up in the .env file")
     return dspy.LM(
-        "ollama_chat/gemma3",
+        "ollama_chat/gemma3:27b",
         api_base=f"http://localhost:{ollama_localhost_port}",
         api_key='',
     )
