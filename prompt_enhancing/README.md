@@ -16,15 +16,43 @@ poetry install
 
 ### Set up the environment
 
+#### Using your own remote OLlama model
+
+To use a remote cluster, the `justfile` coupled with the `.env` enable to
+connect to an ollama server within a ssh tunnel
+
+1. Fill in a `.env` file with the credentials of your cluster, as in the
+   part 2 of the `.env.example` file
+
+2. Start the server remotely
+
+   ```sh
+   just start-ollama
+   ```
+
+3. Launch the tunnel :
+
+   ```sh
+   just connect_remote_llm
+   ```
+
+   Then you can run your prompts by following the instructions in the next section.
+
+4. When you have finished, stop the tunnel and stop the ollama server with
+   running this command
+
+   ```sh
+   just stop-ollama
+   ```
+
+#### Using an OpenAPI remote model
+
 You must set in a `.env` file located in the same directory as this README the
 following secret environment variable
 
 ```sh
 OPENAI_API_KEY='<your-secret-api-key>'
 ```
-
-The sample documents must also be loaded in the [dedicated sample documents
-directory](../sample_docs/).
 
 ### Test some prompting
 

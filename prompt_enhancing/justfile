@@ -1,3 +1,5 @@
+set dotenv-load
+
 run_main:
   poetry run main --report-dir ../sample_docs/
 
@@ -6,3 +8,16 @@ trace:
 
 type_check:
   poetry run mypy .
+
+
+start-ollama:
+  ssh -f $REMOTE_SERVER_SSH_LOGIN "tmux new-session -d -s ollama_main '$OLLAMA_ENV_VARS OLLAMA_HOST=127.0.0.1:$REMOTE_OLLAMA_PORT $OLLAMA_PATH_IN_REMOTE_SERVER serve'; tmux new-session -d -s ollama_llm '$OLLAMA_PATH_IN_REMOTE_SERVER run gemma3:27b'"
+  @echo "Requested to start the ollama server"
+
+stop-ollama:
+  ssh -f $REMOTE_SERVER_SSH_LOGIN "tmux send-keys -t ollama_llm '\/bye' C-m && tmux send-keys -t ollama_main C-c;"
+  @echo "Requested to stop the ollama server"
+
+connect_remote_llm:
+  @echo "You can now fetch your llm from http://localhost:$LOCAL_LLM_PORT"
+  ssh -N $REMOTE_SERVER_SSH_LOGIN -L $LOCAL_LLM_PORT:localhost:$REMOTE_OLLAMA_PORT
