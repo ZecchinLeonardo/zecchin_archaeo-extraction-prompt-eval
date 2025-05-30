@@ -1,7 +1,10 @@
 set dotenv-load
 
 run_main:
-  poetry run main --report-dir ../sample_docs/
+  poetry run main --report-dir ../sample_docs/readable_ocrs/
+
+test:
+  poetry run python tests/magoh_transform.py
 
 trace:
   poetry run mlflow ui --port 5000

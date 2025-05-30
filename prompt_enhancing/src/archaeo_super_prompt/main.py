@@ -10,7 +10,7 @@ from archaeo_super_prompt.magoh_target import toMagohData
 
 from .debug_log import set_debug_mode, print_log
 from .language_model import load_model
-from .open_with_ocr import get_all_samples_files, init_ocr_setup, pdf_to_text, save_log_in_file
+from .open_with_ocr import get_all_samples_files, init_ocr_setup, normalize_alpha_words, pdf_to_text, save_log_in_file
 from .models.main_pipeline import ExtractDataFromInterventionReport
 
 def load_file_input_path_from_arg():
@@ -52,19 +52,18 @@ def main() -> None:
         print_log("Loading sample document...")
         text = pdf_to_text(input_file_path)
         assert(text != ""), "OCR result is empty ??"
+        print(len(normalize_alpha_words(text)))
         print_log("Document converted into text!\n")
-        save_log_in_file(f"./outputs/{input_file_path.name}.ocr.txt", text)
-        # print_log("Prompting and awaiting the parsed answer...")
-        # response = module.forward_and_type(document_ocr_scan=text)
-        # print_log("Answer ready:")
-        # print(response, "\n")
-        # with Path(f"./outputs/{input_file_path.name}.prediction.json").resolve().open("w") as json_f:
-        #     json.dump(toMagohData(response), json_f)
+        # save_log_in_file(f"./outputs/{input_file_path.name}.ocr.txt", text)
+        print_log("Prompting and awaiting the parsed answer...")
+        response = module.forward_and_type(document_ocr_scan=text)
+        print_log("Answer ready:")
+        print(response, "\n")
 
-        # cost = inspect_cost(llm)
-        # print_log(f"This analyze has approximately cost US${cost}")
-        # costs.append(cost)
+        cost = inspect_cost(llm)
+        print_log(f"This analyze has approximately cost US${cost}")
+        costs.append(cost)
 
-        # TODO:
-        # print_log("Transforming into structured data for Magoh...")
-        # print(toMagohData(response))
+        print_log("Transforming into structured data for Magoh...")
+        with Path(f"./outputs/{input_file_path.name}.prediction.json").resolve().open("w") as json_f:
+            json.dump(toMagohData(response), json_f)
