@@ -1,0 +1,10 @@
+DOCKER_CONTAINER_NAME := "ocrmypdf"
+TESSERACT-OPTIONS := "-l ita+eng" # we keep english in the case of reports in english
+
+build:
+  docker build -t {{DOCKER_CONTAINER_NAME}} .
+
+ocr INPUT OUTPUT:
+  sudo docker run --rm -i --user "$(id -u):$(id -g)" --workdir /data \
+      -v "$PWD:/data" {{DOCKER_CONTAINER_NAME}} \
+      {{TESSERACT-OPTIONS}} {{INPUT}} {{OUTPUT}}
