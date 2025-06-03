@@ -1,10 +1,50 @@
-DOCKER_CONTAINER_NAME := "ocrmypdf"
+OCR_DOCKER_CONTAINER_NAME := "ocrmypdf"
+OCR_DOCKERFILE := "./ocrmypdf.Dockerfile"
 TESSERACT-OPTIONS := "-l ita+eng" # we keep english in the case of reports in english
 
-build:
-  docker build -t {{DOCKER_CONTAINER_NAME}} .
+# We limit the resource usage of ocrmypdf
+# for usage in the cluster
+GPUS:="device=0"
+CPUS:="16"
+MEMORY:="32g"
+DOCKER_RUN_FLAGS := ""
+# TODO: make this work
+CLUSTER_PARAMS := ("--memory={{MEMORY}}" + "--cpus=" + '"' + "{{CPUS}}" + '"' + "--gpus=" + "'" + '"' + "{{GPUS}}" + '"' + "'")
 
-ocr INPUT OUTPUT:
+LAYOUTPDFREADER_CONTAINER_NAME := "ghcr.io/nlmatics/nlm-ingestor:latest"
+LAYOUTPDFREADER_DOCKER_IMAGE := "ghcr.io/nlmatics/nlm-ingestor:latest"
+
+default:
+  @just --list
+
+get-filename FILEPATH:
+  @echo -n "{{file_name(FILEPATH)}} "
+
+get-files-in-dir DIR:
+  for file in $(ls {{clean(DIR / "*.pdf")}}); do \
+    just get-filename $file; \
+  done
+
+
+ocr-build:
+  sudo docker build -t {{OCR_DOCKER_CONTAINER_NAME}} -f {{OCR_DOCKERFILE}} .
+
+ocr INPUT_DIR OUTPUT_DIR:
   sudo docker run --rm -i --user "$(id -u):$(id -g)" --workdir /data \
-      -v "$PWD:/data" {{DOCKER_CONTAINER_NAME}} \
-      {{TESSERACT-OPTIONS}} {{INPUT}} {{OUTPUT}}
+      -v "{{absolute_path(INPUT_DIR)}}:/data" -v "{{absolute_path(OUTPUT_DIR)}}:/data/output" \
+      {{OCR_DOCKER_CONTAINER_NAME}} \
+      --tag -j {{num_cpus()}} ocrmypdf {{TESSERACT-OPTIONS}} '{}' './output/{}' ::: `just get-files-in-dir {{INPUT_DIR}}`
+
+layoutpdfreader-build:
+  # docker pull {{LAYOUTPDFREADER_DOCKER_IMAGE}}
+
+PDFTOTEXT_FLAGS := ""
+
+layoutpdfreader INPUT OUTPUT_DIR:
+  # docker run -p 5010:5001 {{LAYOUTPDFREADER_DOCKER_IMAGE}}
+  pdftotext {{PDFTOTEXT_FLAGS}} {{INPUT}} {{clean(OUTPUT_DIR / file_stem(INPUT) + ".txt")}}
+
+batch_layoutpdfreader INPUT_DIR OUTPUT_DIR:
+  for file in `ls {{clean(INPUT_DIR / "*.pdf")}}`; do \
+     just layoutpdfreader ${file} {{OUTPUT_DIR}}; \
+  done

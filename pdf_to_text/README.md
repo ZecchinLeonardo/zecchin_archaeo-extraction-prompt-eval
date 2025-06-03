@@ -24,10 +24,12 @@ just ocr my_file.pdf my_output.pdf
 
 ## Layout chunking
 
+Temporary solution : `pdftotext` of Poppler
+
 We use the
 [LayoutPDFReader](https://github.com/nlmatics/llmsherpa?tab=readme-ov-file#layoutpdfreader)
 AI-powered tool for chunking in an optimized way the extractable text of a
 document, with keeping the text information stored in list and tables
-in a format cleanly structured for AI understanding. 
+in a format cleanly structured for AI understanding.
 
 We will show here also how to self-host the llmsherpa server required to do so.

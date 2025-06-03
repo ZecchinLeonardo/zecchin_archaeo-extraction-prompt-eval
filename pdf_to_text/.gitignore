@@ -1,0 +1,4 @@
+cached_ocrs/*
+!cached_ocrs/.gitkeep
+extracted_texts/*
+!extracted_texts/.gitkeep
