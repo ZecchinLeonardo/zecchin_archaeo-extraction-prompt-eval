@@ -1,7 +1,9 @@
 set dotenv-load
 
-run_main:
-  poetry run main --report-dir ../sample_docs/readable_ocrs/
+DEFAULT_INPUT_DIR := "../pdf_to_text/extracted_texts/"
+
+run_main INPUT_DIR=DEFAULT_INPUT_DIR:
+  poetry run main --report-dir {{INPUT_DIR}}
 
 test:
   poetry run python tests/magoh_transform.py
@@ -12,6 +14,8 @@ trace:
 type_check:
   poetry run mypy .
 
+
+# TODO: move the ollama server setup in another directory
 
 start-ollama:
   ssh -f $REMOTE_SERVER_SSH_LOGIN "tmux new-session -d -s ollama_main '$OLLAMA_ENV_VARS OLLAMA_HOST=127.0.0.1:$REMOTE_OLLAMA_PORT $OLLAMA_PATH_IN_REMOTE_SERVER serve'; tmux new-session -d -s ollama_llm '$OLLAMA_PATH_IN_REMOTE_SERVER run gemma3:27b'"

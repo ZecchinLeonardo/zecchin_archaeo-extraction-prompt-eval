@@ -1,7 +1,7 @@
 from typing import Optional, TypedDict, cast
 import dspy
 
-from archaeo_super_prompt.debug_log import print_debug_log
+from archaeo_super_prompt.debug_log import forward_warning, print_debug_log
 
 from ..signatures.arch_extract_type import (
     ArchaeologicalReportCutting,
@@ -88,7 +88,13 @@ class ExtractDataFromInterventionReport(dspy.Module):
         return dspy.Prediction(**final_prediction)
 
     def forward_and_type(self, document_ocr_scan: str):
+        result: dspy.Prediction
+        try:
+            result = cast(dspy.Prediction, self(document_ocr_scan=document_ocr_scan))
+        except Exception as e:
+            forward_warning(e)
+            return None
         return cast(
             ExtractedInterventionData,
-            cast(dspy.Prediction, self(document_ocr_scan=document_ocr_scan)).toDict(),
+            result.toDict(),
         )
