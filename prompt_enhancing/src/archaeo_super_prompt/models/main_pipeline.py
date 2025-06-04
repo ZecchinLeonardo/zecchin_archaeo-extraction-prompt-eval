@@ -13,10 +13,10 @@ from ..signatures.arch_extract_type import (
 
 
 class ExtractedInterventionData(TypedDict):
-    source: SourceOfInformationInReport
-    context: ArchaeologicalInterventionContext
-    technical_achievements: TechnicalInformation
-    archival_metadata: Optional[ArchivalInformation]
+    source: dict
+    context: dict
+    technical_achievements: dict
+    archival_metadata: Optional[dict]
 
 
 class ExtractDataFromInterventionReport(dspy.Module):
@@ -43,38 +43,27 @@ class ExtractDataFromInterventionReport(dspy.Module):
             ),
         )
         print_debug_log("Requesting document sources...")
-        document_source_data = cast(
-            SourceOfInformationInReport,
-            self.extract_report_sources(
+        document_source_data = self.extract_report_sources(
                 context=CONTEXT + ASSURANCE_CONTEXT, report_incipit=cuts.incipit
-            ),
-        )
+            ).toDict()
         print_debug_log("Requesting archaeological intervention context...")
-        intervention_context = cast(
-            ArchaeologicalInterventionContext,
-            self.extract_intervention_context_data(
-                context=CONTEXT + ASSURANCE_CONTEXT,
-                archaeological_report_incipit=cuts.incipit,
-                archaeological_report_body=cuts.body,
-            ),
-        )
+        intervention_context = self.extract_intervention_context_data(
+            context=CONTEXT + ASSURANCE_CONTEXT,
+            archaeological_report_incipit=cuts.incipit,
+            archaeological_report_body=cuts.body,
+        ).toDict()
         print_debug_log("Requesting archaeological intervention details...")
-        techinal_achievements = cast(
-            TechnicalInformation,
-            self.extract_intervention_technical_achievements(
-                context=CONTEXT + ASSURANCE_CONTEXT,
-                archaeological_report_body=cuts.body,
-            ),
-        )
+        techinal_achievements = self.extract_intervention_technical_achievements(
+            context=CONTEXT + ASSURANCE_CONTEXT,
+            archaeological_report_body=cuts.body,
+        ).toDict()
+
         print_debug_log("Requesting document archival metadata...")
         report_archival_metadata = (
-            cast(
-                ArchivalInformation,
-                self.extract_archival_metadata(
-                    context=CONTEXT + ASSURANCE_CONTEXT,
-                    report_archive_office_stamp=cuts.archival_stamp,
-                ),
-            )
+            self.extract_archival_metadata(
+                context=CONTEXT + ASSURANCE_CONTEXT,
+                report_archive_office_stamp=cuts.archival_stamp,
+            ).toDict()
             if cuts.archival_stamp is not None
             else None
         )

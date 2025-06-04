@@ -69,25 +69,26 @@ def toMagohData(output: ExtractedInterventionData) -> MagohData:
     context = output["context"]
     details = output["technical_achievements"]
     doc_build_data = output["source"]
+    # TODO: type check this (at runtime, it seems to work)
     return {
         "university": {
             "Sigla": None, # TODO: figure this out
-            "Comune": context.municipality,
-            "Ubicazione": context.location,
-            "Indirizzo": context.address,
-            "Località": context.place,
-            "Data intervento": format_moment_italian(context.intervention_date),
-            "Tipo di intervento": context.intervention_type,
-            "Durata": context.duration,
-            "Eseguito da": context.executor if isinstance(context.executor, str) else toMappaNaming(context.executor),
-            "Direzione scientifica": toMappaNaming(context.principal_investigator),
-            "Estensione": process_extensions(context.extension),
-            "Numero di saggi": details.sample_number,
-            "Profondità massima": details.max_depth,
-            "Geologico": details.geology,
-            "OGD": details.historical_information_class,
-            "OGM": doc_build_data.document_source_type,
-            "Profondità falda": details.groundwater_depth
+            "Comune": context["municipality"],
+            "Ubicazione": context["location"],
+            "Indirizzo": context["address"],
+            "Località": context["place"],
+            "Data intervento": format_moment_italian(context["intervention_date"]),
+            "Tipo di intervento": context["intervention_type"],
+            "Durata": context["duration"],
+            "Eseguito da": context["executor"] if isinstance(context["executor"], str) else toMappaNaming(context["executor"]),
+            "Direzione scientifica": toMappaNaming(context["principal_investigator"]),
+            "Estensione": process_extensions(context["extension"]),
+            "Numero di saggi": details["sample_number"],
+            "Profondità massima": details["max_depth"],
+            "Geologico": details["geology"],
+            "OGD": details["historical_information_class"],
+            "OGM": doc_build_data["document_source_type"],
+            "Profondità falda": details["groundwater_depth"]
         },
         "building": {
             "Istituzione": "",
