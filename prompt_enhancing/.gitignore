@@ -2,4 +2,6 @@ __pycache__
 .env
 outputs/*
 !outputs/.gitkeep
+inputs/*
+!inputs/.gitkeep
 mlruns

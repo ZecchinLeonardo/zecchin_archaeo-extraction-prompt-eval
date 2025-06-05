@@ -1,7 +1,8 @@
-from typing import Optional, TypedDict, cast
+from typing import Dict, Optional, TypedDict, cast
 import dspy
 
 from archaeo_super_prompt.debug_log import forward_warning, print_debug_log
+from archaeo_super_prompt.signatures.input import ExtractedPDFContent
 
 from ..signatures.arch_extract_type import (
     ArchaeologicalReportCutting,
@@ -31,8 +32,8 @@ class ExtractDataFromInterventionReport(dspy.Module):
         )
         self.extract_archival_metadata = dspy.ChainOfThought(ArchivalInformation)
 
-    def forward(self, document_ocr_scan: str):
-        CONTEXT = """You are analysing an Italian official document about an archaeological intervention and you are going to extract in Italian some information as the archivists in archaeology do."""
+    def forward(self, document_ocr_scan: Dict[str, ExtractedPDFContent]):
+        CONTEXT = """You are analysing a Italian official documents about an archaeological intervention and you are going to extract in Italian some information as the archivists in archaeology do."""
 
         ASSURANCE_CONTEXT = """I have mentionned some information as optional as a document can forget to mention it, then try to think if you can figure it out or if you have to answer nothing for these given fields. For the non optional field, you must answer something as the information is directly written in the content I'll give you."""
         print_debug_log("Requesting document cutting...")

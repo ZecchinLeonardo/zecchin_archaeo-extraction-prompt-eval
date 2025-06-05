@@ -3,9 +3,10 @@ MapPapers 1en-II, 2012, pp.21-38
 doi:10.4456/MAPPA.2012.02
 """
 
-from typing import List, Optional, Union
+from typing import Dict, List, Optional, Union
 import dspy
 
+from ..signatures.input import ExtractedPDFContent
 from .date_estimation import LatestEstimatedPastMoment
 from .document_type import ItalianDocumentType
 from .intervention_type import ItalianInterventionType
@@ -28,14 +29,14 @@ NB: almost everything is used
 class ArchaeologicalReportCutting(dspy.Signature):
     context: str = dspy.InputField(desc="Facts here are assumed to be true and must be taken in account for the analysis to suitably process")
     # The document will be in the format of a text extracted from an OCR operation in a PDF, then 
-    italian_document_ocr_scan: str = dspy.InputField(desc="""This is an Italian offical archive document reporting an archaeological intervention in some Italian place.
-    It is the output of an OCR that has been applied on a PDF file which is generally in a numerical clean format. But, sometimes the original document is a scan of a paper (I let you work with this information unknown). The text is therefore divided into blocks, each carrying different classes of information. The overall set of classes of information is nonetheless the same and enables to identify most of the data that will be requested. This is just the order of the blocks that can differ over the documents in cause of the OCR operation.
+    italian_document_ocr_scan: Dict[str, ExtractedPDFContent] = dspy.InputField(desc="""This is a set of Italian offical archive documents reporting an archaeological intervention in some Italian place. The key is the name of the source and the value is the content.
+    Each content is the output of an OCR that has been applied on a PDF file which is generally in a numerical clean format. But, sometimes the original document is a scan of a paper (I let you work with this information unknown). The text is therefore divided into blocks, each carrying different classes of information. The overall set of classes of information is nonetheless the same and enables to identify most of the data that will be requested. This is just the order of the blocks that can differ over the documents in cause of the OCR operation.
     Please note that among these blocks, there is a small one with an artificial format which represents a stamp. This stamp will allow to directly identify some precise fields.
     """)
 
-    incipit: str = dspy.OutputField(desc="The header and first content part of the document, with all its metadata.")
-    archival_stamp: Optional[str] = dspy.OutputField(desc="A small part of non-natural text with a protocol number and a date")
-    body: str = dspy.OutputField(desc="The remaining content of the document which concretely describes the archaeological intervention.")
+    incipit: str = dspy.OutputField(desc="The header and first content part of the main report document, with all its metadata.")
+    archival_stamp: Optional[str] = dspy.OutputField(desc="A small part of non-natural text with a protocol number and a date, findable in the main report document.")
+    body: str = dspy.OutputField(desc="The remaining content from the documents.")
 
 class ArchaeologicalInterventionContext(dspy.Signature):
     """Extract structured information about an archaeological intervention from an official archive document."""

@@ -1,6 +1,9 @@
 set dotenv-load
 
-DEFAULT_INPUT_DIR := "../pdf_to_text/extracted_texts/"
+DEFAULT_INPUT_DIR := "./inputs"
+
+default:
+  @just --list
 
 run_main INPUT_DIR=DEFAULT_INPUT_DIR:
   poetry run main --report-dir {{INPUT_DIR}}

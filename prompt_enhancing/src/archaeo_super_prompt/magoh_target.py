@@ -45,12 +45,17 @@ MagohFindingScheme = TypedDict(
     },
 )
 
+MagohArtificialRecordData = TypedDict(
+    "MagohArtificialRecordData", { "id": int }
+)
+
 # TODO: add findings to MagohData
 MagohData = TypedDict(
     "MagohData",
     {
         "university": MagohUniversityData,
-        "building": MagohDocumentBuildingData
+        "building": MagohDocumentBuildingData,
+        "scheda-intervento": MagohArtificialRecordData
     }
 )
 
@@ -78,7 +83,7 @@ def toMagohData(output: ExtractedInterventionData) -> MagohData:
     # TODO: type check this (at runtime, it seems to work)
     return {
         "university": {
-            "Sigla": None, # TODO: figure this out
+            "Sigla": None,  # TODO: figure this out
             "Comune": context["municipality"],
             "Ubicazione": context["location"],
             "Indirizzo": context["address"],
@@ -86,7 +91,9 @@ def toMagohData(output: ExtractedInterventionData) -> MagohData:
             "Data intervento": format_moment_italian(context["intervention_date"]),
             "Tipo di intervento": context["intervention_type"],
             "Durata": context["duration"],
-            "Eseguito da": context["executor"] if isinstance(context["executor"], str) else toMappaNaming(context["executor"]),
+            "Eseguito da": context["executor"]
+            if isinstance(context["executor"], str)
+            else toMappaNaming(context["executor"]),
             "Direzione scientifica": toMappaNaming(context["principal_investigator"]),
             "Estensione": process_extensions(context["extension"]),
             "Numero di saggi": details["sample_number"],
@@ -94,15 +101,22 @@ def toMagohData(output: ExtractedInterventionData) -> MagohData:
             "Geologico": details["geology"],
             "OGD": details["historical_information_class"],
             "OGM": doc_build_data["document_source_type"],
-            "Profondità falda": details["groundwater_depth"]
+            "Profondità falda": details["groundwater_depth"],
         },
         "building": {
             "Istituzione": coalesce_str(doc_build_data["institution"]),
-            "Funzionario competente": coalesce_str(context["on_site_qualified_official"]),
-            "Tipo di documento": doc_build_data['document_type'],
+            "Funzionario competente": "".join(
+                [toMappaNaming(name) for name in context["on_site_qualified_official"]]
+            )
+            if context["on_site_qualified_official"] is not None
+            else "",
+            "Tipo di documento": doc_build_data["document_type"],
             "Protocollo": arch_metadata["protocol"],
-            "Data Protocollo": arch_metadata["protocol_date"]
-        }
+            "Data Protocollo": arch_metadata["protocol_date"],
+        },
+        "scheda-intervento": {
+            "id": 0  # TODO: edit this with the correct id, if exists
+        },
     }
 
 # def toMagohData(output: ArchaeologicalInterventionData) -> MagohData:

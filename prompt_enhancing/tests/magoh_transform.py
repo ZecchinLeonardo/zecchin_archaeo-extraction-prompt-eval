@@ -5,7 +5,7 @@ from dspy import Prediction
 from archaeo_super_prompt.magoh_target import toMagohData
 from archaeo_super_prompt.models.main_pipeline import ExtractedInterventionData
 from archaeo_super_prompt.signatures.name import Name
-from archaeo_super_prompt.signatures.date_estimation import YearDayInSmallMonth, LatestEstimatedPastMoment
+from archaeo_super_prompt.signatures.date_estimation import LatestEstimatedPastMoment
 
 answer = {'source': Prediction(
     reasoning='Il documento riporta una breve annotazione relativa a "Prelievo quote" e "Reperti" in Piazza San Michele a Lucca, con una data specifica. Non si tratta di una relazione estesa, ma sembra essere un verbale o una scheda di registrazione di un\'attività puntuale di prelievo di dati o materiali (quote e reperti). Non sono presenti dettagli che permettano di identificare l\'istituzione responsabile. La tipologia più adatta tra quelle ufficiali è "Scheda dati minimi", in quanto si tratta di una registrazione sintetica di dati relativi a un intervento archeologico.',
@@ -18,7 +18,7 @@ answer = {'source': Prediction(
     location='Piazza San Michele',
     address=None,
     place='Piazza pubblica centrale di Lucca, area storica con stratificazioni archeologiche di epoca romana, medievale e moderna, oggetto di carotaggi per indagini stratigrafiche.',
-    intervention_date=LatestEstimatedPastMoment(precision='During', date=YearDayInSmallMonth(year=2023, month=4, day=12)),
+    intervention_date=LatestEstimatedPastMoment(precision='During', date="2023-4-12"),
     intervention_type='Carotaggio',
     duration=None,
     principal_investigator=Name(first_name='', surname=''),

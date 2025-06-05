@@ -56,17 +56,37 @@ OPENAI_API_KEY='<your-secret-api-key>'
 
 ### Test some prompting
 
-Specify an input file in the CLI argument:
+The training set must be a directory with a structure like this:
 
 ```sh
-poetry run main --report-dir ../sample_docs/
+inputs/
+├── 35012 # each id in the sample_answers.json must have its directory
+│   ├── Scheda_Intervento_35012.pdf # pdf for now are not used
+│   └── Scheda_Intervento_35012.txt # extracted text file mandatory
+├── 37084
+│   ├── Relazione_di_scava.pdf # file names are not an issue
+│   ├── Relazione_di_scava__scanned.txt # file names are not an issue
+│   └── Additional_document.txt # several sources can be given
+...
+├── 37822
+│   ├── Scheda_Intervento_37822.pdf
+│   └── Scheda_Intervento_37822.txt
+└── sample_answers.json
 ```
 
-The OCR results and the prompts results are saved in files in the `output/`
-directory (please be careful to copy them before a next other run).
+Specify the directory containing the training set in the CLI argument:
 
-File `../sample_docs/Scheda_Intervento_35012` is automatically input in the
-`justfile`. Then, you can also test with this shorter command:
+```sh
+poetry run main --report-dir ./inputs/
+# or
+just run_main ./inputs/
+```
+
+The prompts results are saved in json files in the `output/` directory (please
+be careful to copy them before a next other run, if you want to save them).
+
+The directory `./inputs/` is by default given in arguments in the `justfile`.
+Then, you can also test with this shorter command:
 
 ```sh
 just run_main
