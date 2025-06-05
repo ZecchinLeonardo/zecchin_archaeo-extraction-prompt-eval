@@ -16,8 +16,8 @@ MagohUniversityData = TypedDict("MagohUniversityData", {
     "Eseguito da": Optional[str],
     "Direzione scientifica": Optional[str],
     "Estensione": Optional[str],
-    "Numero di saggi": int,
-    "Profondità massima": float,
+    "Numero di saggi": int, # unsigned
+    "Profondità massima": Optional[float], # absolute value but negative
     "Geologico": Optional[bool],
     "OGD":str,
     "OGM": str,
@@ -54,6 +54,9 @@ MagohData = TypedDict(
     }
 )
 
+def coalesce_str(elt: Optional[str]):
+    return "" if elt is None else elt
+
 def process_extensions(ext: Optional[List[str]]):
     if ext is None:
         return ""
@@ -69,6 +72,9 @@ def toMagohData(output: ExtractedInterventionData) -> MagohData:
     context = output["context"]
     details = output["technical_achievements"]
     doc_build_data = output["source"]
+    arch_metadata = output["archival_metadata"]
+    if arch_metadata is None:
+        arch_metadata = { "protocol": "", "protocol_date": "" }
     # TODO: type check this (at runtime, it seems to work)
     return {
         "university": {
@@ -91,11 +97,11 @@ def toMagohData(output: ExtractedInterventionData) -> MagohData:
             "Profondità falda": details["groundwater_depth"]
         },
         "building": {
-            "Istituzione": "",
-            "Funzionario competente": "",
-            "Tipo di documento": "",
-            "Protocollo": "",
-            "Data Protocollo": ""
+            "Istituzione": coalesce_str(doc_build_data["institution"]),
+            "Funzionario competente": coalesce_str(context["on_site_qualified_official"]),
+            "Tipo di documento": doc_build_data['document_type'],
+            "Protocollo": arch_metadata["protocol"],
+            "Data Protocollo": arch_metadata["protocol_date"]
         }
     }
 

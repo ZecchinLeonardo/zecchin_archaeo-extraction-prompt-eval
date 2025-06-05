@@ -82,7 +82,7 @@ class TechnicalInformation(dspy.Signature):
 
     sample_number: int = dspy.OutputField(desc="(mandatory) The number of samples recovered on site during this intervention")
     field_size: Optional[float] = dspy.OutputField(desc="The sample area of the excavation in square metres.")
-    max_depth: float = dspy.OutputField(desc="(mandatory) The absolute value of the maximum depth (in metres) reached during the excavation")
+    max_depth: Optional[float] = dspy.OutputField(desc="The absolute value of the maximum depth (in metres) reached during the excavation")
     # this field is not filled most of the time, while this is though useful information
     # if water is reacht, then generally profondita_equal ~= max_depth
     groundwater_depth: Optional[float] = dspy.OutputField(desc="""The absolute value of the depth (in metres) at which groundwater was met. This value is very approximate. Documents reveal that the point of groundwater surfacing is not systematically calculated. Since probably not considered an important issue, it is available only when water surfacing compromises activities, making stratigraphic readings difficult or forcing excavations to be suspended. There are only few documents that report this value and, of these, many are approximate""")
