@@ -53,9 +53,10 @@ ITALIAN_MONTHS = [
     "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"
 ]
 
-def format_moment_italian(moment: LatestEstimatedPastMoment) -> str:
+def format_moment_italian(moment: Union[LatestEstimatedPastMoment, str]) -> str:
+    if isinstance(moment, str):
+        return moment
     prefix = "Prima del " if moment.precision == "Before" else ""
-
     return f"{prefix}{moment.date}"
     if isinstance(moment.date, Year):
         return f"{prefix}{moment.date.year}"

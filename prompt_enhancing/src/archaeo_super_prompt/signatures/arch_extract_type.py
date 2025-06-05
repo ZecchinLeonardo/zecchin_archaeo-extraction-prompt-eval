@@ -59,7 +59,7 @@ class ArchaeologicalInterventionContext(dspy.Signature):
     place: str = dspy.OutputField(
         desc="(mandatory) More informal/natural description of the place and what there was there at the moment of the intervention."
     )
-    intervention_date: LatestEstimatedPastMoment = dspy.OutputField(date="(mandatory) Moment of the intervention with at least the year when it started. You can also precise the month or even precise date if enough information is provided. The document may not mention the intervention date, therefore, if it is the case, you have to answer that this is before the date of archiving you have figured out (then, you must precise this date)")
+    intervention_date: Union[LatestEstimatedPastMoment, str] = dspy.OutputField(date="(mandatory) Moment of the intervention with at least the year when it started. You can also precise the month or even precise date if enough information is provided. The document may not mention the intervention date, therefore, if it is the case, you have to answer that this is before the date of archiving you have figured out (then, you must precise this date)")
     intervention_type: ItalianInterventionType = dspy.OutputField(desc="(mandatory) You do not have to invent it. It must be among the given set of values (they are official types of intervention in the academical institutions)")
     duration: Optional[int] = dspy.OutputField(desc="The duration of the intervention, expressed in working days")
 
