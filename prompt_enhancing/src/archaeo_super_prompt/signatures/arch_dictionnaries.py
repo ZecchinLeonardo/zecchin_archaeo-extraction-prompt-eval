@@ -14,8 +14,8 @@ from ..target_types import MagohDocumentBuildingData, MagohUniversityData
 
 
 def process_extensions(ext: Optional[List[str]]):
-    if ext is None:
-        return ""
+    if ext is None or len(ext) == 0:
+        return None
     return ", ".join(ext)
 
 

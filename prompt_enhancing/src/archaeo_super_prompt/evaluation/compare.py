@@ -6,7 +6,7 @@ from dspy.evaluate.metrics import answer_exact_match
 import mlflow
 
 from .display_fields import add_to_arrays
-from .smart_match_checking import check_with_LLM
+from .smart_match_checking import check_date_with_LLM, check_with_LLM
 
 from ..magoh_target import MagohData, toMagohData
 
@@ -71,14 +71,14 @@ def validate_magoh_data(answer: MagohData, pred: ExtractedInterventionData, trac
     def neutral(e: str, p: str):
         e = e
         p = p
-        return True
+        return False
 
     @validate_type
     def date_compare(e: str, p: str):
-        # TODO:
-        return answer_exact_match(
-            dspy.Example(answer=e), dspy.Prediction(answer=p), trace
-        )
+        # TODO: avoid LLM when the typing will be better
+        return check_date_with_LLM(
+            e, p, trace
+        ) == 1
 
     pred_to_compare = toMagohData(pred)
     metrics: Dict[str, Dict[str, Callable[[Any, Any], bool]]] = {
@@ -93,7 +93,7 @@ def validate_magoh_data(answer: MagohData, pred: ExtractedInterventionData, trac
             "Durata": perfect_match,
             "Eseguito da": perfect_match,
             "Direzione scientifica": perfect_match,
-            "Estensione": neutral,
+            "Estensione": complex_match,
             "Numero di saggi": perfect_match,
             "Profondità massima": perfect_match,
             "Geologico": perfect_match,
