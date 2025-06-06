@@ -63,7 +63,9 @@ def validate_magoh_data(answer: MagohData, pred: ExtractedInterventionData, trac
 
     @validate_type
     def complex_match(e: str, p: str):
-        return check_with_LLM(e, p, trace) == 1
+        TRESHOLD = 0.8
+        llm_check = check_with_LLM(TRESHOLD)
+        return llm_check(e, p, trace) == 1
 
     @validate_type
     def neutral(e: str, p: str):

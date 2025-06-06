@@ -1,8 +1,13 @@
-from typing import Dict, Optional, TypedDict, cast
+from typing import Dict, TypedDict, cast
 import dspy
 
-from archaeo_super_prompt.debug_log import forward_warning, print_debug_log
-from archaeo_super_prompt.signatures.input import ExtractedPDFContent
+from ..debug_log import forward_warning, print_debug_log
+from ..target_types import MagohDocumentBuildingData, MagohUniversityData
+from ..signatures.arch_dictionnaries import (
+    to_magoh_build_data,
+    to_magoh_university_data,
+)
+from ..signatures.input import ExtractedPDFContent
 
 from ..signatures.arch_extract_type import (
     ArchaeologicalReportCutting,
@@ -14,10 +19,8 @@ from ..signatures.arch_extract_type import (
 
 
 class ExtractedInterventionData(TypedDict):
-    source: dict
-    context: dict
-    technical_achievements: dict
-    archival_metadata: Optional[dict]
+    university: MagohUniversityData
+    build: MagohDocumentBuildingData
 
 
 class ExtractDataFromInterventionReport(dspy.Module):
@@ -44,36 +47,50 @@ class ExtractDataFromInterventionReport(dspy.Module):
             ),
         )
         print_debug_log("Requesting document sources...")
-        document_source_data = self.extract_report_sources(
+        document_source_data = cast(
+            SourceOfInformationInReport,
+            self.extract_report_sources(
                 context=CONTEXT + ASSURANCE_CONTEXT, report_incipit=cuts.incipit
-            ).toDict()
+            ),
+        )
         print_debug_log("Requesting archaeological intervention context...")
-        intervention_context = self.extract_intervention_context_data(
-            context=CONTEXT + ASSURANCE_CONTEXT,
-            archaeological_report_incipit=cuts.incipit,
-            archaeological_report_body=cuts.body,
-        ).toDict()
+        intervention_context = cast(
+            ArchaeologicalInterventionContext,
+            self.extract_intervention_context_data(
+                context=CONTEXT + ASSURANCE_CONTEXT,
+                archaeological_report_incipit=cuts.incipit,
+                archaeological_report_body=cuts.body,
+            ),
+        )
         print_debug_log("Requesting archaeological intervention details...")
-        techinal_achievements = self.extract_intervention_technical_achievements(
-            context=CONTEXT + ASSURANCE_CONTEXT,
-            archaeological_report_body=cuts.body,
-        ).toDict()
+        techinal_achievements = cast(
+            TechnicalInformation,
+            self.extract_intervention_technical_achievements(
+                context=CONTEXT + ASSURANCE_CONTEXT,
+                archaeological_report_body=cuts.body,
+            ),
+        )
 
         print_debug_log("Requesting document archival metadata...")
         report_archival_metadata = (
-            self.extract_archival_metadata(
-                context=CONTEXT + ASSURANCE_CONTEXT,
-                report_archive_office_stamp=cuts.archival_stamp,
-            ).toDict()
+            cast(
+                ArchivalInformation,
+                self.extract_archival_metadata(
+                    context=CONTEXT + ASSURANCE_CONTEXT,
+                    report_archive_office_stamp=cuts.archival_stamp,
+                ),
+            )
             if cuts.archival_stamp is not None
             else None
         )
 
         final_prediction: ExtractedInterventionData = {
-            "source": document_source_data,
-            "context": intervention_context,
-            "technical_achievements": techinal_achievements,
-            "archival_metadata": report_archival_metadata,
+            "university": to_magoh_university_data(
+                intervention_context, techinal_achievements, document_source_data
+            ),
+            "build": to_magoh_build_data(
+                intervention_context, document_source_data, report_archival_metadata
+            ),
         }
         return dspy.Prediction(**final_prediction)
 
