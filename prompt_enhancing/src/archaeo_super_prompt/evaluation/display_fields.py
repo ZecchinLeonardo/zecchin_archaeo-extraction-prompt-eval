@@ -8,19 +8,32 @@ from ..models.main_pipeline import ExtractedInterventionData
 
 dfs: List[Tuple[int, Dict[str, pd.DataFrame]]] = []
 
+Color = Tuple[int, int, int]
 
-def highlight_row(row):
-    color = "green" if row["validated"] else "red"
-    return [f"background-color: {color}"] * (len(row) - 1) + [
-        ""
-    ]  # skip styling the flag column
+# (Column key, worst color, target color)
+DataFrameDisplayData = Tuple[str, Color, Color]
+
+_RED: Color = (248, 130, 130)
+_GREEN: Color = (76, 179, 145)
+_FADED_GREEN: Color = (246, 252, 250)
 
 
-def add_dataframes_to_artififact(pack: Dict[str, pd.DataFrame], html_output_path: Path, run_id: str):
+def apply_row_gradient(column_key: str, worst_color: Color, target_color: Color):
+    def style_to_apply(row):
+        factor = float(row[column_key]) # value between 0 and 1
+
+        r = int(worst_color[0] + (target_color[0] - worst_color[0]) * factor)
+        g = int(worst_color[1] + (target_color[1] - worst_color[1]) * factor)
+        b = int(worst_color[2] + (target_color[2] - worst_color[2]) * factor)
+        style = f'background-color: rgb({r},{g},{b})'
+        return [style for _ in row]
+    return style_to_apply
+
+def add_dataframes_to_artififact(pack: Dict[str, pd.DataFrame], df_disp_data: DataFrameDisplayData, html_output_path: Path, run_id: str):
     html_parts = []
     for title in pack:
         df = pack[title]
-        styled = df.style.apply(highlight_row, axis=1)
+        styled = df.style.apply(apply_row_gradient(*df_disp_data), axis=1)
         html_parts.append(styled.to_html(caption=title))
     with html_output_path.open("w") as fp:
         full_html = (
@@ -58,7 +71,7 @@ def add_to_arrays(
     dfs.append((scheda_id, pack))
 
     # add the dataframe in the artifacts
-    add_dataframes_to_artififact(pack, Path(f"./outputs/array_{scheda_id}.html"), run.info.run_id)
+    add_dataframes_to_artififact(pack, ("validated", _RED, _GREEN), Path(f"./outputs/array_{scheda_id}.html"), run.info.run_id)
 
 
 def score_fields(run: mlflow.ActiveRun):
@@ -78,7 +91,8 @@ def score_fields(run: mlflow.ActiveRun):
         for field_name, validated in cast(pd.Series, (scores[k]["validated"])).items():
             mlflow.log_metric(str(field_name), validated,
                               run_id=run.info.run_id)
-    add_dataframes_to_artififact(scores, Path("./outputs/field_scores.html"),
+
+    add_dataframes_to_artififact(scores, ("validated", _FADED_GREEN, _GREEN), Path("./outputs/field_scores.html"),
                                  run.info.run_id)
 
 
