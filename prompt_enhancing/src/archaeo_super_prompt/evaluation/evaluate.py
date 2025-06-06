@@ -1,13 +1,15 @@
 import dspy
 from pathlib import Path
 
+import mlflow
+
 from archaeo_super_prompt.evaluation.compare import validated_json
 
 from .load_examples import load_examples
 
-def get_evaluator(input_file_dir_path: Path, return_outputs=False):
+def get_evaluator(input_file_dir_path: Path, run: mlflow.ActiveRun, return_outputs=False):
     devset = load_examples(input_file_dir_path)
-    metric = validated_json
+    metric = validated_json(run)
     # TODO: parametrize some settings
     evaluator = dspy.Evaluate(
         devset=devset,

@@ -5,7 +5,7 @@ from dspy import Example, Prediction
 import mlflow
 from typing import List, Tuple, cast
 
-from archaeo_super_prompt.evaluation.display_fields import export_array
+from archaeo_super_prompt.evaluation.display_fields import export_array, score_fields
 from archaeo_super_prompt.evaluation.evaluate import get_evaluator
 from archaeo_super_prompt.inspection.cost import inspect_cost
 from archaeo_super_prompt.output import save_outputs
@@ -43,21 +43,23 @@ def main() -> None:
     print_log("DSPy module ready!\n")
 
     print_log("Instanciating mlflow tracing...")
+    mlflow.set_experiment("My wonderful experiment !")
     mlflow.dspy.autolog(log_evals=True) #type: ignore
-    mlflow.set_experiment("Pretty pretty Pandas")
-    print_log("Tracing ready!\n")
-    
-    evaluate = get_evaluator(input_file_dir_path, return_outputs=True)
-    results = cast(Tuple[float, List[Tuple[Example, Prediction, float]]], evaluate(module))
+    with mlflow.start_run() as run:
+        print_log("Tracing ready!\n")
+        
+        evaluate = get_evaluator(input_file_dir_path, run, return_outputs=True)
+        results = cast(Tuple[float, List[Tuple[Example, Prediction, float]]], evaluate(module))
 
-    cost = inspect_cost(llm)
-    print_log(f"Cost of this evaluation (in US$): {cost}")
+        cost = inspect_cost(llm)
+        print_log(f"Cost of this evaluation (in US$): {cost}")
 
-    save_outputs(((ex.answer, cast(ExtractedInterventionData, pred.toDict()), score) for ex, pred, score in filter(lambda t: t[1].toDict(), results[1])))
+        score_fields(run)
+        save_outputs(((ex.answer, cast(ExtractedInterventionData, pred.toDict()), score) for ex, pred, score in filter(lambda t: t[1].toDict(), results[1])))
 
-    for scheda_id, d in export_array():
-        print("-"*5, scheda_id, "-"*5)
-        for t in d:
-            print(t)
-            print(d[t], "\n")
-        print("-"*5, scheda_id, "-"*5, "\n")
+        for scheda_id, d in export_array():
+            print("-"*5, scheda_id, "-"*5)
+            for t in d:
+                print(t)
+                print(d[t], "\n")
+            print("-"*5, scheda_id, "-"*5, "\n")

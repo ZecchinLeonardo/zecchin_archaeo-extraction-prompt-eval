@@ -2,10 +2,11 @@ from functools import reduce
 from typing import Any, Callable, Dict, List, Tuple, TypeVar, Union, cast
 from dspy import Example, Prediction
 import dspy
-from dspy.evaluate import answer_passage_match
 from dspy.evaluate.metrics import answer_exact_match
+import mlflow
 
-from archaeo_super_prompt.evaluation.display_fields import add_to_arrays
+from .display_fields import add_to_arrays
+from .smart_match_checking import check_with_LLM
 
 from ..magoh_target import MagohData, toMagohData
 
@@ -17,9 +18,7 @@ MAX_VALUE = 1
 U, V = TypeVar("U"), TypeVar("V")
 
 
-def validate_magoh_data(
-    answer: MagohData, pred: ExtractedInterventionData, trace=None
-):
+def validate_magoh_data(answer: MagohData, pred: ExtractedInterventionData, trace=None):
     def check_null[U, V](func: Callable[[U, V], bool]):
         def inner(e: Union[U, None], p: Union[V, None]):
             if (e is None) == (p is None):
@@ -51,19 +50,20 @@ def validate_magoh_data(
                 return all(inner(e_list[i], p_list[i]) for i in range(len(e)))
             else:
                 return func(e, cast(U, p))
+
         return inner
 
     @iterate_if_needed
     def perfect_match[U](e: U, p: U):
         # if e and p perfectly match with other types than str,
         # then their stringified version will perfectly match
-        return answer_exact_match(dspy.Example(answer=str(e)),
-                                  dspy.Prediction(answer=str(p)), trace)
+        return answer_exact_match(
+            dspy.Example(answer=str(e)), dspy.Prediction(answer=str(p)), trace
+        )
 
     @validate_type
-    def partial_match(e: str, p: str):
-        return answer_passage_match(dspy.Example(answer=e),
-                                    dspy.Prediction(context=p), trace)
+    def complex_match(e: str, p: str):
+        return check_with_LLM(e, p, trace) == 1
 
     @validate_type
     def neutral(e: str, p: str):
@@ -74,17 +74,18 @@ def validate_magoh_data(
     @validate_type
     def date_compare(e: str, p: str):
         # TODO:
-        return answer_exact_match(dspy.Example(answer=e),
-                                  dspy.Prediction(answer=p), trace)
+        return answer_exact_match(
+            dspy.Example(answer=e), dspy.Prediction(answer=p), trace
+        )
 
     pred_to_compare = toMagohData(pred)
     metrics: Dict[str, Dict[str, Callable[[Any, Any], bool]]] = {
         "university": {
             "Sigla": perfect_match,  # TODO: figure this out
-            "Comune": partial_match,
-            "Ubicazione": partial_match,
-            "Indirizzo": partial_match,
-            "Località": partial_match,
+            "Comune": complex_match,
+            "Ubicazione": complex_match,
+            "Indirizzo": complex_match,
+            "Località": complex_match,
             "Data intervento": date_compare,
             "Tipo di intervento": perfect_match,
             "Durata": perfect_match,
@@ -99,7 +100,7 @@ def validate_magoh_data(
             "Profondità falda": perfect_match,
         },
         "building": {
-            "Istituzione": partial_match,
+            "Istituzione": complex_match,
             "Funzionario competente": perfect_match,
             "Tipo di documento": perfect_match,
             "Protocollo": perfect_match,
@@ -119,17 +120,25 @@ def validate_magoh_data(
     }
     return metric_values
 
+
 def _validated_json(
-    answer: MagohData, pred: ExtractedInterventionData, trace=None
+    answer: MagohData,
+    pred: ExtractedInterventionData,
+    run: mlflow.ActiveRun,
+    trace=None,
 ) -> Union[float, bool]:
     metric_values = validate_magoh_data(answer, pred, trace)
-    add_to_arrays(answer, pred, metric_values)
+    add_to_arrays(answer, pred, metric_values, run)
 
     if trace is None:
         # for now, compute the fraction of the number of valid fields over all
         # the fields
-        summed_metrics, property_nb = reduce(lambda t, dico: (t[0] + sum(dico.values()), t[1] + len(dico)), metric_values.values(), (0, 0))
-        return summed_metrics/property_nb
+        summed_metrics, property_nb = reduce(
+            lambda t, dico: (t[0] + sum(dico.values()), t[1] + len(dico)),
+            metric_values.values(),
+            (0, 0),
+        )
+        return summed_metrics / property_nb
     return all(
         reduce(
             lambda flat, vals: flat + list(vals.values()), metric_values.values(), []
@@ -137,15 +146,17 @@ def _validated_json(
     )
 
 
-
-def validated_json(
-    example: Example, pred: Prediction, trace=None
-) -> Union[float, bool]:
-    pred_dict = pred.toDict()
-    if not pred_dict:
-        return MIN_VALUE if trace is None else False
-    return _validated_json(
-        cast(MagohData, example.answer),
-        cast(ExtractedInterventionData, pred_dict),
-        trace,
-    )
+def validated_json(run: mlflow.ActiveRun):
+    def validated_json(
+        example: Example, pred: Prediction, trace=None
+    ) -> Union[float, bool]:
+        pred_dict = pred.toDict()
+        if not pred_dict:
+            return MIN_VALUE if trace is None else False
+        return _validated_json(
+            cast(MagohData, example.answer),
+            cast(ExtractedInterventionData, pred_dict),
+            run,
+            trace,
+        )
+    return validated_json
