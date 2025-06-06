@@ -43,7 +43,7 @@ def main() -> None:
     print_log("DSPy module ready!\n")
 
     print_log("Instanciating mlflow tracing...")
-    mlflow.set_experiment("First really clean metrics")
+    mlflow.set_experiment("Meeting (prediction for chunking)")
     mlflow.dspy.autolog(log_evals=True) #type: ignore
     with mlflow.start_run() as run:
         print_log("Tracing ready!\n")

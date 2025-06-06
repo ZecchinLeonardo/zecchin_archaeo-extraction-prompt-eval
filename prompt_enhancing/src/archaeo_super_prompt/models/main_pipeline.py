@@ -25,7 +25,7 @@ class ExtractedInterventionData(TypedDict):
 
 class ExtractDataFromInterventionReport(dspy.Module):
     def __init__(self):
-        self.cut_report = dspy.ChainOfThought(ArchaeologicalReportCutting)
+        self.cut_report = dspy.Predict(ArchaeologicalReportCutting)
         self.extract_intervention_context_data = dspy.ChainOfThought(
             ArchaeologicalInterventionContext
         )
