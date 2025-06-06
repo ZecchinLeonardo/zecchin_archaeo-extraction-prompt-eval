@@ -59,19 +59,19 @@ class ArchaeologicalInterventionContext(dspy.Signature):
     place: str = dspy.OutputField(
         desc="(mandatory) More informal/natural description of the place and what there was there at the moment of the intervention."
     )
-    intervention_date: Union[LatestEstimatedPastMoment, str] = dspy.OutputField(date="(mandatory) Moment of the intervention with at least the year when it started. You can also precise the month or even precise date if enough information is provided. The document may not mention the intervention date, therefore, if it is the case, you have to answer that this is before the date of archiving you have figured out (then, you must precise this date)")
+    intervention_date: Optional[Union[LatestEstimatedPastMoment, str]] = dspy.OutputField(date="(mandatory) Date of the intervention with at least the year when it started. You can also precise the month or even precise date if enough information is provided. The document may not mention the intervention date, therefore, if it is the case, you have to answer that this is before the date of archiving you have figured out (then, you must precise this date)")
     intervention_type: ItalianInterventionType = dspy.OutputField(desc="(mandatory) You do not have to invent it. It must be among the given set of values (they are official types of intervention in the academical institutions)")
     duration: Optional[int] = dspy.OutputField(desc="The duration of the intervention, expressed in working days")
 
     # generally, scientific direction and qualified people are the same
     # in documents, there is always full name (nome e cognome)
     # TODO: remove the Union and force the name
-    principal_investigator: Name = dspy.OutputField(
+    principal_investigator: Optional[Union[Name, str]] = dspy.OutputField(
         desc="(mandatory) Name of the scientific supervisor of the intervention. This is the qualified professional arcaheologist or academician that has worked on site. His or her name is always written somewhere so you must find him/her."
     )
     # one people or a list: generally one people
-    on_site_qualified_official: List[Name] = dspy.OutputField(desc="(at least the prinicpal inverstigator in the list) List of the archaeologists on site. Generally, there is just one person and this is the principal investigator")
-    executor: Union[Name, str] = dspy.OutputField(desc="""(mandatory) The name of the person, team, company or institution who/which materially performed the intervention.""")
+    on_site_qualified_official: List[Union[Name, str]] = dspy.OutputField(desc="(at least the prinicpal inverstigator in the list) List of the archaeologists on site. Generally, there is just one person and this is the principal investigator")
+    executor: Optional[Union[Name, str]] = dspy.OutputField(desc="""(mandatory) The name of the person, team, company or institution who/which materially performed the intervention.""")
 
     extension: Optional[List[str]] = dspy.OutputField(
         desc="If there are more than one excavation, list them here. This information is generally empty"

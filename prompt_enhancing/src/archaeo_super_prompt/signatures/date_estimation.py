@@ -1,5 +1,5 @@
 import pydantic
-from typing import Literal, Union
+from typing import Literal, Union, override
 
 FebruaryDay = Literal[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29]
 BigMonthDay = Literal[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31]
@@ -33,6 +33,11 @@ Date = Union[
     Year, YearAndMonth, YearDayInBigMonth, YearDayInSmallMonth, YearDayInFebruary
 ]
 
+ITALIAN_MONTHS = [
+    "Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno",
+    "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"
+]
+
 
 class LatestEstimatedPastMoment(pydantic.BaseModel):
     """Estimate of the latest moment when an event could have happened. This
@@ -47,22 +52,17 @@ class LatestEstimatedPastMoment(pydantic.BaseModel):
     date: str
     # TODO: refine the type when the engine enable that
     # date: Date
+    
+    @override
+    def __str__(self):
+        prefix = "Prima del " if self.precision == "Before" else ""
+        return f"{prefix}{self.date}"
+        if isinstance(self.date, Year):
+            return f"{prefix}{self.date.year}"
+        if isinstance(self.date, YearAndMonth):
+            month_str = ITALIAN_MONTHS[self.date.month - 1]
+            return f"{prefix}{month_str} {self.date.year}"
+        else:
+            month_str = ITALIAN_MONTHS[self.date.month - 1]
+            return f"{prefix}{self.date.day} {month_str} {self.date.year}"
 
-ITALIAN_MONTHS = [
-    "Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno",
-    "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"
-]
-
-def format_moment_italian(moment: Union[LatestEstimatedPastMoment, str]) -> str:
-    if isinstance(moment, str):
-        return moment
-    prefix = "Prima del " if moment.precision == "Before" else ""
-    return f"{prefix}{moment.date}"
-    if isinstance(moment.date, Year):
-        return f"{prefix}{moment.date.year}"
-    if isinstance(moment.date, YearAndMonth):
-        month_str = ITALIAN_MONTHS[moment.date.month - 1]
-        return f"{prefix}{month_str} {moment.date.year}"
-    else:
-        month_str = ITALIAN_MONTHS[moment.date.month - 1]
-        return f"{prefix}{moment.date.day} {month_str} {moment.date.year}"

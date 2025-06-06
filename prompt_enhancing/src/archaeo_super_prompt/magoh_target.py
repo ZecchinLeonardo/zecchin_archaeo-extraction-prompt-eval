@@ -1,7 +1,5 @@
 from typing import List, Optional, TypedDict
 
-from .signatures.date_estimation import format_moment_italian
-from .signatures.name import toMappaNaming
 from .models.main_pipeline import ExtractedInterventionData
 
 MagohUniversityData = TypedDict("MagohUniversityData", {
@@ -88,13 +86,11 @@ def toMagohData(output: ExtractedInterventionData) -> MagohData:
             "Ubicazione": context["location"],
             "Indirizzo": context["address"],
             "Località": context["place"],
-            "Data intervento": format_moment_italian(context["intervention_date"]),
+            "Data intervento": str(context["intervention_date"]),
             "Tipo di intervento": context["intervention_type"],
             "Durata": context["duration"],
-            "Eseguito da": context["executor"]
-            if isinstance(context["executor"], str)
-            else toMappaNaming(context["executor"]),
-            "Direzione scientifica": toMappaNaming(context["principal_investigator"]),
+            "Eseguito da": str(context["executor"]),
+            "Direzione scientifica": str(context["principal_investigator"]),
             "Estensione": process_extensions(context["extension"]),
             "Numero di saggi": details["sample_number"],
             "Profondità massima": details["max_depth"],
@@ -106,7 +102,7 @@ def toMagohData(output: ExtractedInterventionData) -> MagohData:
         "building": {
             "Istituzione": coalesce_str(doc_build_data["institution"]),
             "Funzionario competente": "".join(
-                [toMappaNaming(name) for name in context["on_site_qualified_official"]]
+                [str(name) for name in context["on_site_qualified_official"]]
             )
             if context["on_site_qualified_official"] is not None
             else "",

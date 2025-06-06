@@ -1,3 +1,4 @@
+from typing import override
 import pydantic
 
 
@@ -7,6 +8,7 @@ class Name(pydantic.BaseModel):
     first_name: str
     surname: str
 
+    @override
+    def __str__(self):
+        return f"{self.first_name[0].upper() if len(self.first_name) >= 1 else ''}. {self.surname}"
 
-def toMappaNaming(name: Name) -> str:
-    return f"{name.first_name[0].upper() if len(name.first_name) >= 1 else ''}. {name.surname}"

@@ -13,7 +13,8 @@ def get_evaluator(input_file_dir_path: Path, return_outputs=False):
         devset=devset,
         metric=metric,
         return_outputs=return_outputs,
-        num_threads=4,
+        provide_traceback=True, # TODO: remove it for traceback
+        num_threads=1,
         display_progress=True,
         display_table=5,
     )

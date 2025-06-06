@@ -5,6 +5,7 @@ from dspy import Example, Prediction
 import mlflow
 from typing import List, Tuple, cast
 
+from archaeo_super_prompt.evaluation.display_fields import export_array
 from archaeo_super_prompt.evaluation.evaluate import get_evaluator
 from archaeo_super_prompt.inspection.cost import inspect_cost
 from archaeo_super_prompt.output import save_outputs
@@ -25,7 +26,7 @@ def load_file_input_path_from_arg():
     return Path(cast(str, args.report_dir))
 
 def setup() -> None:
-    set_debug_mode(True)
+    set_debug_mode(False)
     dotenv.load_dotenv()
 
 def main() -> None:
@@ -43,7 +44,7 @@ def main() -> None:
 
     print_log("Instanciating mlflow tracing...")
     mlflow.dspy.autolog(log_evals=True) #type: ignore
-    mlflow.set_experiment("Proto evaluation - better")
+    mlflow.set_experiment("Pretty pretty Pandas")
     print_log("Tracing ready!\n")
     
     evaluate = get_evaluator(input_file_dir_path, return_outputs=True)
@@ -53,3 +54,10 @@ def main() -> None:
     print_log(f"Cost of this evaluation (in US$): {cost}")
 
     save_outputs(((ex.answer, cast(ExtractedInterventionData, pred.toDict()), score) for ex, pred, score in filter(lambda t: t[1].toDict(), results[1])))
+
+    for scheda_id, d in export_array():
+        print("-"*5, scheda_id, "-"*5)
+        for t in d:
+            print(t)
+            print(d[t], "\n")
+        print("-"*5, scheda_id, "-"*5, "\n")
