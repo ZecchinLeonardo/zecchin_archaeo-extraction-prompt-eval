@@ -3,9 +3,7 @@ from typing import Any, Callable, Dict, List, Tuple, TypeVar, Union, cast
 from dspy import Example, Prediction
 import dspy
 from dspy.evaluate.metrics import answer_exact_match
-import mlflow
 
-from .display_fields import add_to_arrays
 from .smart_match_checking import check_date_with_LLM, check_with_LLM
 
 from ..magoh_target import MagohData, toMagohData
@@ -18,7 +16,7 @@ MAX_VALUE = 1
 U, V = TypeVar("U"), TypeVar("V")
 
 
-def validate_magoh_data(answer: MagohData, pred: ExtractedInterventionData, trace=None):
+def _validate_magoh_data(answer: MagohData, pred: ExtractedInterventionData, trace=None):
     def check_null[U, V](func: Callable[[U, V], bool]):
         def inner(e: Union[U, None], p: Union[V, None]):
             if (e is None) == (p is None):
@@ -113,8 +111,8 @@ def validate_magoh_data(answer: MagohData, pred: ExtractedInterventionData, trac
     metric_values: Dict[str, Dict[str, bool]] = {
         first_depth_key: {
             second_detph_key: metrics[first_depth_key][second_detph_key](
-                answer[first_depth_key][second_detph_key],
-                pred_to_compare[first_depth_key][second_detph_key],
+                answer[first_depth_key][second_detph_key],                # type: ignore
+                pred_to_compare[first_depth_key][second_detph_key],       # type: ignore
             )
             for second_detph_key in metrics[first_depth_key]
         }
@@ -123,15 +121,10 @@ def validate_magoh_data(answer: MagohData, pred: ExtractedInterventionData, trac
     return metric_values
 
 
-def _validated_json(
-    answer: MagohData,
-    pred: ExtractedInterventionData,
-    run: mlflow.ActiveRun,
+def reduce_magoh_data_eval(
+    metric_values: Dict[str, Dict[str, bool]],
     trace=None,
 ) -> Union[float, bool]:
-    metric_values = validate_magoh_data(answer, pred, trace)
-    add_to_arrays(answer, pred, metric_values, run)
-
     if trace is None:
         # for now, compute the fraction of the number of valid fields over all
         # the fields
@@ -147,18 +140,26 @@ def _validated_json(
         )
     )
 
+def is_prediction_valid(
+    pred: Prediction, trace=None
+    ):
+    """
+    Reutrn None if the prediction is valid, else a metric with the worst
+    value.
+    """
+    pred_dict = pred.toDict()
+    if not pred_dict:
+        return MIN_VALUE if trace is None else False
+    return None
 
-def validated_json(run: mlflow.ActiveRun):
-    def validated_json(
-        example: Example, pred: Prediction, trace=None
-    ) -> Union[float, bool]:
-        pred_dict = pred.toDict()
-        if not pred_dict:
-            return MIN_VALUE if trace is None else False
-        return _validated_json(
-            cast(MagohData, example.answer),
-            cast(ExtractedInterventionData, pred_dict),
-            run,
-            trace,
-        )
-    return validated_json
+def validate_magoh_data(
+    example: Example, pred: Prediction, trace=None
+):
+    """
+    Assume the given prediction is valid (check it with is_prediction_valid)
+    """
+    return _validate_magoh_data(
+        cast(MagohData, example.answer),
+        cast(ExtractedInterventionData, pred),
+        trace,
+    )

@@ -10,9 +10,9 @@ def save_outputs(outputs: Iterable[Tuple[MagohData, ExtractedInterventionData, f
     def toDict(ex: MagohData, pred: ExtractedInterventionData, score: float):
         answer = toMagohData(pred)
         answer["scheda-intervento"]["id"] = ex["scheda-intervento"]["id"]
-        answer = cast(dict, answer)
-        answer["score"] = score
-        return answer
+        dict_answer = cast(dict, answer)
+        dict_answer["score"] = score
+        return dict_answer
 
     toBeSaved = list(map(lambda t: (t[0], toDict(*t)), outputs))
     with Path("./outputs/predicted_answers.json").open("w") as f:

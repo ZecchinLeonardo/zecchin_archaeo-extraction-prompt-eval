@@ -1,12 +1,13 @@
 set dotenv-load
 
 DEFAULT_INPUT_DIR := "./inputs"
+DEFAULT_EXP_NAME := "main"
 
 default:
   @just --list
 
-run_main INPUT_DIR=DEFAULT_INPUT_DIR:
-  poetry run main --report-dir {{INPUT_DIR}}
+run_main EXP_NAME=DEFAULT_EXP_NAME INPUT_DIR=DEFAULT_INPUT_DIR:
+  poetry run main --experiment-name {{EXP_NAME}} --report-dir {{INPUT_DIR}}
 
 test:
   poetry run python tests/magoh_transform.py
