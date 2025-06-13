@@ -72,7 +72,7 @@ def to_magoh_university_data(
         "Località": context.place,
         "Data intervento": coalesce_date(stringify_if_known(context.intervention_date)),
         "Tipo di intervento": context.intervention_type,
-        "Durata": context.duration,
+        "Durata": stringify_if_known(context.duration),
         "Eseguito da": stringify_if_known(context.executor),
         "Direzione scientifica": stringify_if_known(context.principal_investigator),
         "Estensione": process_extensions(context.extension),

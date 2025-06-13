@@ -8,7 +8,7 @@ MagohUniversityData = TypedDict("MagohUniversityData", {
     "Località": Optional[str],
     "Data intervento": str,
     "Tipo di intervento": str,
-    "Durata": Optional[int],
+    "Durata": Optional[str],
     "Eseguito da": Optional[str],
     "Direzione scientifica": Optional[str],
     "Estensione": Optional[str],

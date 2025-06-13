@@ -16,7 +16,9 @@ dependencies = [
     "mlflow (>=2.22.0,<3.0.0)",
     "pymupdf (>=1.26.0,<2.0.0)",
     "pymupdf4llm (>=0.0.24,<0.0.25)",
-    "pandas-stubs (>=2.2.3.250527,<3.0.0.0)"
+    "pandas-stubs (>=2.2.3.250527,<3.0.0.0)",
+    "sqlalchemy (>=2.0.41,<3.0.0)",
+    "psycopg2-binary (>=2.9.10,<3.0.0)"
 ]
 
 [project.scripts]
