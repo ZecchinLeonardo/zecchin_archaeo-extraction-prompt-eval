@@ -9,6 +9,9 @@ default:
 run_main EXP_NAME=DEFAULT_EXP_NAME INPUT_DIR=DEFAULT_INPUT_DIR:
   poetry run main --experiment-name {{EXP_NAME}} --report-dir {{INPUT_DIR}}
 
+try_pipeline:
+  poetry run python ./src/try_dataload.py
+
 test:
   poetry run python tests/magoh_transform.py
 

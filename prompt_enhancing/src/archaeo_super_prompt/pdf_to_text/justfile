@@ -42,7 +42,7 @@ layoutpdfreader-build:
 # OCR all given INPUT_FILES inside INPUT_DIR and return them in OUTPUT_DIR
 [group("OCR")]
 ocr INPUT_DIR OUTPUT_DIR +INPUT_FILES:
-  podman run --name {{OCR_DOCKER_CONTAINER_NAME}} -i --replace \
+  podman run --name {{OCR_DOCKER_CONTAINER_NAME}} -it --replace \
     --userns=keep-id \
     --workdir /data \
     -v "{{absolute_path(INPUT_DIR)}}:/data:ro" \
