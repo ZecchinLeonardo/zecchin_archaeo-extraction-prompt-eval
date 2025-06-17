@@ -10,10 +10,11 @@ def add_ocr_layer(input_files: List[Path]):
     # Normally, "./cache/pdfs"
     common_input_directory = input_files[0].parent.parent.resolve()
     assert common_input_directory == Path("./.cache/pdfs").resolve()
+    file_stems = [Path(p.parent.name) / p.name for p in input_files]
     missing_files = list(
         filter(
             lambda path: not (OUTPUT_DIR / path).exists(),
-            (Path(p.parent.name) / p.name for p in input_files),
+            file_stems,
         )
     )
     for missing_file in missing_files:
@@ -34,3 +35,4 @@ def add_ocr_layer(input_files: List[Path]):
         )
         print("Out:", result.stdout)
         print("Error:", result.stderr)
+    return [OUTPUT_DIR / file_stem for file_stem in file_stems]

@@ -2731,6 +2731,17 @@ qa = ["flake8 (==5.0.4)", "mypy (==0.971)", "types-setuptools (==67.2.0.1)"]
 testing = ["docopt", "pytest"]
 
 [[package]]
+name = "pdftotext"
+version = "3.0.0"
+description = "Simple PDF text extraction"
+optional = false
+python-versions = "*"
+groups = ["main"]
+files = [
+    {file = "pdftotext-3.0.0.tar.gz", hash = "sha256:c3652b19154e145515a8bfa953fc6136338ed92337bdccbb53fe0d88013b1aaa"},
+]
+
+[[package]]
 name = "pexpect"
 version = "4.9.0"
 description = "Pexpect allows easy control of interactive console applications."
@@ -4948,4 +4959,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12,<3.13"
-content-hash = "44f47bc82c9d5bd82964e1dede8c22148c82d9bc63bc0d646cb2c2dbeb054d2d"
+content-hash = "67a9c1c81a066fb89e4f7ed7d5783b1778c99a5ff7b881ff9e726caffa4b366d"

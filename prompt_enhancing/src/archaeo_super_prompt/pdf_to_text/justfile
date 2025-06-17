@@ -63,8 +63,8 @@ layoutpdfreader INPUT OUTPUT_DIR:
   pdftotext {{PDFTOTEXT_FLAGS}} {{INPUT}} {{clean(OUTPUT_DIR / file_stem(INPUT) + ".txt")}}
 
 [group("Text extractor")]
-batch_layoutpdfreader INPUT_DIR OUTPUT_DIR:
-  for file in `ls {{clean(INPUT_DIR / "*.pdf")}}`; do \
+batch_layoutpdfreader OUTPUT_DIR +FILES:
+  for file in "{{FILES}}"; do \
      just layoutpdfreader ${file} {{OUTPUT_DIR}}; \
   done
 
@@ -74,22 +74,9 @@ batch_layoutpdfreader INPUT_DIR OUTPUT_DIR:
 [group("main")]
 build: ocr-build layoutpdfreader-build
 
-[group("utils")]
-clean_outputs DIR:
-  @rm -f {{clean(DIR / "*.pdf")}}
-  @rm -f {{clean(DIR / "*.txt")}}
-
-DEFAULT_OCR_CACHE_DIR := "./cached_ocrs/"
-DEFAULT_PDF_INPUT_DIR := "./inputs/"
-DEFAULT_TEXT_OUTPUT_DIR := "./extracted_texts/"
-
-[group("main")]
-clean: (clean_outputs DEFAULT_OCR_CACHE_DIR) \
-    (clean_outputs DEFAULT_PDF_INPUT_DIR) \
-    (clean_outputs DEFAULT_TEXT_OUTPUT_DIR)
 
 [group("main")]
 extract_text INPUT_DIR OUTPUT_DIR OCR_CACHE_DIR +FILES:
-    (clean_outputs OCR_CACHE_DIR) (ocr INPUT_DIR OCR_CACHE_DIR FILES) \
-    (batch_layoutpdfreader OCR_CACHE_DIR OUTPUT_DIR)
+    (ocr INPUT_DIR OCR_CACHE_DIR FILES) \
+    (batch_layoutpdfreader OCR_CACHE_DIR OUTPUT_DIR FILES)
 
