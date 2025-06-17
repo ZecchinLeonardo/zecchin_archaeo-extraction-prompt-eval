@@ -33,8 +33,10 @@ def _import_sql(sql_path: Path):
         return sql_file.read()
 
 
-__sampling_request = _import_sql(Path("./sql/sampling.sql"))
-__get_sample_findings_request = _import_sql(Path("./sql/sample_findings.sql")).replace(
+__module_dir = Path(__file__).parent
+
+__sampling_request = _import_sql(__module_dir / Path("sql/sampling.sql"))
+__get_sample_findings_request = _import_sql(__module_dir / Path("sql/sample_findings.sql")).replace(
     "-- sampling-placeholder", __sampling_request
 )
 

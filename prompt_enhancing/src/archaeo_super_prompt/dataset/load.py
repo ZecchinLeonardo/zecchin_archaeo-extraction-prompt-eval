@@ -6,7 +6,7 @@ from ..cache import memory
 
 
 @memory.cache
-def __init_with_cache(size: int, seed: int):
+def _init_with_cache(size: int, seed: int):
     intervention_data, findings = get_entries(size, seed)
     files = pd.concat(
         [
@@ -26,7 +26,7 @@ def __init_with_cache(size: int, seed: int):
 class MagohDataset:
     def __init__(self, size: int, seed: int):
         """Fetch a maximum of `size` samples from the Magoh training database"""
-        self._intervention_data, self._findings, self._files = __init_with_cache(
+        self._intervention_data, self._findings, self._files = _init_with_cache(
             size, seed
         )
 

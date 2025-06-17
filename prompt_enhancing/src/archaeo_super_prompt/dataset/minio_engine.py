@@ -24,13 +24,14 @@ def download_files(intervention_id: int) -> List[Path]:
     if not pdf_store_dir.exists():
         pdf_store_dir.mkdir(parents=True, exist_ok=True)
 
-    dirpath = Path(str(intervention_id))
+    dirpath = Path("./" + str(intervention_id))
 
     output_pathdir = pdf_store_dir / dirpath
     if output_pathdir.exists():
         return [f for f in output_pathdir.iterdir()]
 
-    files = __client.list_objects(BUCKET_NAME, str(dirpath))
+    files = __client.list_objects(BUCKET_NAME, prefix=str(dirpath),
+                                  recursive=True)
 
     def download_and_return():
         for file in files:
@@ -38,6 +39,7 @@ def download_files(intervention_id: int) -> List[Path]:
             if object_name is None:
                 continue
 
+            print(object_name)
             output_path = pdf_store_dir / object_name
             _ = (__client.fget_object(BUCKET_NAME, object_name, str(output_path)),)
             yield output_path
