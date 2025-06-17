@@ -2,12 +2,11 @@
 """
 
 import dspy
-import os
+
+from .env import getenv_or_throw
 
 def _get_openai_model():
-    api_key = os.getenv("OPENAI_API_KEY")
-    if api_key is None:
-        raise EnvironmentError("Environment variable \'OPENAI_API_KEY\' not set up in the .env file")
+    api_key = getenv_or_throw("OPENAI_API_KEY")
 
     return dspy.LM(
         "openai/gpt-4.1",
@@ -15,9 +14,7 @@ def _get_openai_model():
     )
 
 def _get_ollama_model(temperature=0.0):
-    ollama_localhost_port = os.getenv("LOCAL_LLM_PORT")
-    if ollama_localhost_port is None:
-        raise EnvironmentError("Environment variable \'LOCAL_LLM_PORT\' not set up in the .env file")
+    ollama_localhost_port = getenv_or_throw("LOCAL_LLM_PORT")
     return dspy.LM(
         "ollama_chat/gemma3:27b",
         api_base=f"http://localhost:{ollama_localhost_port}",

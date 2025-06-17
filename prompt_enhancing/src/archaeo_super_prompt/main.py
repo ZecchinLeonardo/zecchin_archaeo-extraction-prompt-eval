@@ -1,6 +1,5 @@
 import argparse
 from pathlib import Path
-import dotenv
 from dspy import Example, Prediction
 import dspy
 import mlflow
@@ -32,7 +31,6 @@ def load_file_input_path_from_arg():
 
 def setup() -> None:
     set_debug_mode(False)
-    dotenv.load_dotenv()
 
 def main() -> None:
     setup()
