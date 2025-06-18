@@ -35,18 +35,19 @@ def _import_sql(sql_path: Path):
 
 __module_dir = Path(__file__).parent
 
+__seed_setting_request = _import_sql(__module_dir / Path("sql/setseed.sql"))
 __sampling_request = _import_sql(__module_dir / Path("sql/sampling.sql"))
 __get_sample_findings_request = _import_sql(__module_dir / Path("sql/sample_findings.sql")).replace(
     "-- sampling-placeholder", __sampling_request
 )
 
 
-def get_entries(max_number: int, seed: int):
+def get_entries(max_number: int, seed: float):
     deterministic_params = {"seed": seed, "max_number": max_number}
     intervention_data = pd.read_sql(
-        __sampling_request, __engine, params=deterministic_params
+        __seed_setting_request + "\n" + __sampling_request, __engine, params=deterministic_params
     )
     findings = pd.read_sql(
-        __get_sample_findings_request, __engine, params=deterministic_params
+        __seed_setting_request + "\n" + __get_sample_findings_request, __engine, params=deterministic_params
     )
     return intervention_data, findings
