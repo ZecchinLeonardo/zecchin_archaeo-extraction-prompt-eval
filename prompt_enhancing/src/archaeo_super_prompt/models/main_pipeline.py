@@ -1,4 +1,4 @@
-from typing import Dict, TypedDict, cast
+from typing import TypedDict, cast
 import dspy
 
 from ..debug_log import forward_warning, print_debug_log
@@ -7,7 +7,7 @@ from ..signatures.arch_dictionnaries import (
     to_magoh_build_data,
     to_magoh_university_data,
 )
-from ..signatures.input import ExtractedPDFContent
+from ..signatures.input import PDFSources
 
 from ..signatures.arch_extract_type import (
     ArchaeologicalReportCutting,
@@ -35,11 +35,12 @@ class ExtractDataFromInterventionReport(dspy.Module):
         )
         self.extract_archival_metadata = dspy.ChainOfThought(ArchivalInformation)
 
-    def forward(self, document_ocr_scan: Dict[str, ExtractedPDFContent]):
+    def forward(self, document_ocr_scan: PDFSources):
         CONTEXT = """You are analysing a Italian official documents about an archaeological intervention and you are going to extract in Italian some information as the archivists in archaeology do."""
 
         ASSURANCE_CONTEXT = """I have mentionned some information as optional as a document can forget to mention it, then try to think if you can figure it out or if you have to answer nothing for these given fields. For the non optional field, you must answer something as the information is directly written in the content I'll give you."""
         print_debug_log("Requesting document cutting...")
+        cuts = document_ocr_scan
         cuts = cast(
             ArchaeologicalReportCutting,
             self.cut_report(
@@ -94,7 +95,7 @@ class ExtractDataFromInterventionReport(dspy.Module):
         }
         return dspy.Prediction(**final_prediction)
 
-    def forward_and_type(self, document_ocr_scan: str):
+    def forward_and_type(self, document_ocr_scan: PDFSources):
         result: dspy.Prediction
         try:
             result = cast(dspy.Prediction, self(document_ocr_scan=document_ocr_scan))
