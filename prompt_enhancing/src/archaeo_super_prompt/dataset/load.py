@@ -1,5 +1,7 @@
 import pandas as pd
 
+from ..target_types import MagohData
+
 from .postgresql_engine import get_entries
 from .minio_engine import download_files
 from ..cache import memory
@@ -18,7 +20,7 @@ def _init_with_cache(size: int, seed: int):
             )
             for id_ in intervention_data["scheda_intervento.id"]
         ],
-        ignore_index=True
+        ignore_index=True,
     )
     return intervention_data, findings, files
 
@@ -34,6 +36,24 @@ class MagohDataset:
     def intervention_data(self):
         return self._intervention_data
 
+    def get_answer(self, id_: int) -> MagohData:
+        record = self._intervention_data[
+            self._intervention_data["scheda_intervento.id"] == id_
+        ]
+        if len(record) == 0:
+            raise Exception(f"Unable to get record with id {id_}")
+        record = record.iloc[0]
+        dict_record = { }
+        for k in record.keys():
+            chunks = k.split(".")
+            if len(chunks) != 2:
+                continue
+            prefix, suffix = chunks
+            if prefix not in dict_record:
+                dict_record[prefix] = {}
+            dict_record[prefix][suffix] = record[k]
+        return MagohData(dict_record) #type: ignore
+
     @property
     def findings(self):
         return self._findings
@@ -41,4 +61,3 @@ class MagohDataset:
     @property
     def files(self):
         return self._files
-
