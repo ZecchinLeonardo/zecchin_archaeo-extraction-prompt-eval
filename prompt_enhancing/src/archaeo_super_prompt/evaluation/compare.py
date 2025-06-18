@@ -4,6 +4,8 @@ from dspy import Example, Prediction
 import dspy
 from dspy.evaluate.metrics import answer_exact_match
 
+from .similarity_match import soft_accuracy
+
 from .smart_match_checking import check_date_with_LLM, check_with_LLM
 
 from ..magoh_target import MagohData, toMagohData
@@ -16,7 +18,9 @@ MAX_VALUE = 1
 U, V = TypeVar("U"), TypeVar("V")
 
 
-def _validate_magoh_data(answer: MagohData, pred: ExtractedInterventionData, trace=None):
+def _validate_magoh_data(
+    answer: MagohData, pred: ExtractedInterventionData, trace=None
+):
     def check_null[U, V](func: Callable[[U, V], bool]):
         def inner(e: Union[U, None], p: Union[V, None]):
             if (e is None) == (p is None):
@@ -61,8 +65,10 @@ def _validate_magoh_data(answer: MagohData, pred: ExtractedInterventionData, tra
 
     @validate_type
     def complex_match(e: str, p: str):
-        TRESHOLD = 0.8
+        TRESHOLD = 0.75
         llm_check = check_with_LLM(TRESHOLD)
+        similarity_check = soft_accuracy([e], [p], TRESHOLD)["matches"].item()
+        return similarity_check
         return llm_check(e, p, trace) == 1
 
     @validate_type
@@ -74,9 +80,7 @@ def _validate_magoh_data(answer: MagohData, pred: ExtractedInterventionData, tra
     @validate_type
     def date_compare(e: str, p: str):
         # TODO: avoid LLM when the typing will be better
-        return check_date_with_LLM(
-            e, p, trace
-        ) == 1
+        return check_date_with_LLM(e, p, trace) == 1
 
     pred_to_compare = toMagohData(pred)
     metrics: Dict[str, Dict[str, Callable[[Any, Any], bool]]] = {
@@ -111,8 +115,8 @@ def _validate_magoh_data(answer: MagohData, pred: ExtractedInterventionData, tra
     metric_values: Dict[str, Dict[str, bool]] = {
         first_depth_key: {
             second_detph_key: metrics[first_depth_key][second_detph_key](
-                answer[first_depth_key][second_detph_key],                # type: ignore
-                pred_to_compare[first_depth_key][second_detph_key],       # type: ignore
+                answer[first_depth_key][second_detph_key],  # type: ignore
+                pred_to_compare[first_depth_key][second_detph_key],  # type: ignore
             )
             for second_detph_key in metrics[first_depth_key]
         }
@@ -140,9 +144,8 @@ def reduce_magoh_data_eval(
         )
     )
 
-def is_prediction_valid(
-    pred: Prediction, trace=None
-    ):
+
+def is_prediction_valid(pred: Prediction, trace=None):
     """
     Reutrn None if the prediction is valid, else a metric with the worst
     value.
@@ -152,9 +155,8 @@ def is_prediction_valid(
         return MIN_VALUE if trace is None else False
     return None
 
-def validate_magoh_data(
-    example: Example, pred: Prediction, trace=None
-):
+
+def validate_magoh_data(example: Example, pred: Prediction, trace=None):
     """
     Assume the given prediction is valid (check it with is_prediction_valid)
     """
