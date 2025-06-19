@@ -29,9 +29,9 @@ def add_ocr_layer(input_files: List[Path]):
                 OUTPUT_DIR,
                 *[str(f) for f in missing_files],
             ],
+            capture_output=True,
+            text=True,
             cwd=str(Path(__file__).parent),
-            stdout=sys.stdout,
-            stderr=sys.stderr
         )
         print("Out:", result.stdout)
         print("Error:", result.stderr)

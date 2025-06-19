@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 
 from ..target_types import MagohData
 
@@ -51,7 +52,14 @@ class MagohDataset:
             prefix, suffix = chunks
             if prefix not in dict_record:
                 dict_record[prefix] = {}
-            dict_record[prefix][suffix] = record[k]
+            value = record[k]
+            if isinstance(value, np.bool):
+                value = bool(value)
+            if isinstance(value, np.int64):
+                value = int(value)
+            if isinstance(value, np.float64):
+                value = float(value)
+            dict_record[prefix][suffix] = value
         return MagohData(dict_record) #type: ignore
 
     @property

@@ -62,7 +62,7 @@ def save_visual_score_table(
     run: Optional[mlflow.ActiveRun],
 ) -> VisualScoreForMagohRecord:
     pred_mg = toMagohData(pred)
-    scheda_id = answer["scheda-intervento"]["id"]
+    scheda_id = answer["scheda_intervento"]["id"]
     df_titles = metric_values.keys()
     pack = {
         k: pd.DataFrame(

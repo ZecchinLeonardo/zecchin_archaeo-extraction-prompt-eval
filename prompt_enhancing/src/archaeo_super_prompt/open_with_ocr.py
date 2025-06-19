@@ -26,7 +26,7 @@ def get_all_samples(dir: Path):
     with answer_fp.open("r") as answer_file:
         samples = json.load(answer_file)
     for sample in samples:
-        id_ = sample["scheda-intervento"]["id"]
+        id_ = sample["scheda_intervento"]["id"]
         sample_dir = dir.joinpath(str(id_))
         if sample_dir.exists() and sample_dir.is_dir():
             extracted_sources: Dict[str, ExtractedPDFContent] = {

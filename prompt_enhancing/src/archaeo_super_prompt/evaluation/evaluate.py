@@ -10,7 +10,7 @@ from archaeo_super_prompt.models.main_pipeline import ExtractedInterventionData
 from .compare import is_prediction_valid, validate_magoh_data, reduce_magoh_data_eval
 from .display_fields import save_visual_score_table, score_fields
 
-from .load_examples import load_examples
+from .load_examples import DevSet
 
 
 class MyRun:
@@ -49,8 +49,7 @@ def measure_and_plot(active_run: Optional[mlflow.ActiveRun]):
     return metric, run
 
 
-def get_evaluator(input_file_dir_path: Path, return_outputs=False):
-    devset = load_examples(input_file_dir_path)
+def get_evaluator(devset: DevSet, return_outputs=False):
     # TODO: parametrize some settings
     evaluator = dspy.Evaluate(
         devset=devset,

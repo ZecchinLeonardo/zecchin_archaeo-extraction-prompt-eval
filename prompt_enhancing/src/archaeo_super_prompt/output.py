@@ -9,7 +9,7 @@ from .models.main_pipeline import ExtractedInterventionData
 def save_outputs(outputs: Iterable[Tuple[MagohData, ExtractedInterventionData, float]]):
     def toDict(ex: MagohData, pred: ExtractedInterventionData, score: float):
         answer = toMagohData(pred)
-        answer["scheda-intervento"]["id"] = ex["scheda-intervento"]["id"]
+        answer["scheda_intervento"]["id"] = ex["scheda_intervento"]["id"]
         dict_answer = cast(dict, answer)
         dict_answer["score"] = score
         return dict_answer

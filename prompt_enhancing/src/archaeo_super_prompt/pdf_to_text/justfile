@@ -58,15 +58,13 @@ ocr INPUT_DIR OUTPUT_DIR +INPUT_FILES:
 PDFTOTEXT_FLAGS := ""
 
 [group("Text extractor")]
-layoutpdfreader INPUT OUTPUT_DIR:
-  # docker run -p 5010:5001 {{LAYOUTPDFREADER_DOCKER_IMAGE}}
-  pdftotext {{PDFTOTEXT_FLAGS}} {{INPUT}} {{clean(OUTPUT_DIR / file_stem(INPUT) + ".txt")}}
+start-layoutpdfreader:
+  podman run --name pdflayoutreader-server \
+    -p 5010:5001 \
+    -d ghcr.io/nlmatics/nlm-ingestor:latest
 
-[group("Text extractor")]
-batch_layoutpdfreader OUTPUT_DIR +FILES:
-  for file in "{{FILES}}"; do \
-     just layoutpdfreader ${file} {{OUTPUT_DIR}}; \
-  done
+restart-layoutpdfreader:
+  podman start pdflayoutreader-server
 
 # FINAL RULES
 

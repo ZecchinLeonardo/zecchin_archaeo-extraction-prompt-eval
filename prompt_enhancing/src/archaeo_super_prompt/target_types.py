@@ -51,6 +51,6 @@ MagohData = TypedDict(
     {
         "university": MagohUniversityData,
         "building": MagohDocumentBuildingData,
-        "scheda-intervento": MagohArtificialRecordData
+        "scheda_intervento": MagohArtificialRecordData
     }
 )
