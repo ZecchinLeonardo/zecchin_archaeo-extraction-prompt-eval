@@ -33,6 +33,10 @@ main = "archaeo_super_prompt.main:main"
 [tool.poetry.group.dev.dependencies]
 mypy = "^1.15.0"
 ipython = "^9.3.0"
+ipykernel = "^6.29.5"
+ipywidgets = "^8.1.7"
+nbstripout = "^0.8.1"
+nbdime = "^4.0.2"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]

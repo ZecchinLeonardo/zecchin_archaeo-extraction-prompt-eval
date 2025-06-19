@@ -6,6 +6,21 @@ DEFAULT_EXP_NAME := "main"
 default:
   @just --list
 
+[group("install")]
+[group("notebook")]
+install-notebookenv:
+  poetry install --all-extras
+  poetry run python -m ipykernel install --user --name="mg-train-kernel" --display-name "Python (Magoh training)"
+  poetry run nbstripout --install
+
+[group("notebook")]
+run-notebooks:
+  jupyter notebook notebooks/
+
+[group("notebook")]
+run-lab:
+  jupyter lab notebooks/
+
 run_main EXP_NAME=DEFAULT_EXP_NAME INPUT_DIR=DEFAULT_INPUT_DIR:
   poetry run main --experiment-name {{EXP_NAME}} --report-dir {{INPUT_DIR}}
 
