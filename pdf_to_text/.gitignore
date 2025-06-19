@@ -1,6 +1,0 @@
-cached_ocrs/*
-!cached_ocrs/.gitkeep
-inputs/*
-!inputs/.gitkeep
-extracted_texts/*
-!extracted_texts/.gitkeep

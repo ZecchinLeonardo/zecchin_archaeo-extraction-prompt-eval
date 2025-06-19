@@ -1,2 +1,0 @@
-- Limit the CPU and GPU usage of the docker image on the shared cluster: (https://docs.docker.com/engine/containers/resource_constraints/)
-- 
