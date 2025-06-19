@@ -1,19 +1,49 @@
-# To run notebooks with this project
+# 📂 Notebooks experiments 🔬
 
-Install on your user space `poetry-kernel`
+## 📦 Requirements
+
+To run the notebooks, it is expected that you have already the **Jupyter
+stack** in an *external environment*. Indeed, the dev-dependencies of this
+Poetry project do not provide this stack, but a way to get a kernel which can
+import the project's Python modules in the notebooks for running the
+experiments.
+
+### Mandatory requirements
+
+- The following requirements in this Jupyter stack are mandatory :
+  - **(jupyter) notebook** or **jupyterlab**
+  - the python package [**`poetry-kernel`**](https://github.com/pathbird/poetry-kernel)
+- In this project, the development dependencies must also be installed:
+  
+  ```sh
+  poetry install --all-extras
+  ```
+
+### Advised dependencies for development
+
+- The following requirements are also recommended (but optional) during the
+developments of these notebooks for the versioning to be better:
+  - `nbdime`
+  - `nbstripout`
+
+You can then run once inside the project
 
 ```sh
-pipx install poetry-kernel --include-deps
+# source the environment of your jupyter stack, then run the command below
+just init-nb-git-workspace
 ```
 
-Then, run inside this project this
+## ⚡ Run the notebooks
 
-```sh
-just install-notebookenv
-```
+1. Serve the `notebooks/` directory inside a `jupyter notebook` or `jupyter lab`
+run inside your Jupyter stack environment.
 
-Finally, you can run your jupyter instance (installed wherever you want)
+  ```sh
+  # run one of the commands below
+  just run-notebook
+  just run-lab
+  ```
 
-```sh
-jupyter notebook .
-```
+2. Select the ***Poetry*** kernel when you want to run a notebook. This kernel
+is initiated by the `poetry-kernel` module and automatically load the
+environment of this Poetry project, including its source modules.

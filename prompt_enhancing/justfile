@@ -6,47 +6,69 @@ DEFAULT_EXP_NAME := "main"
 default:
   @just --list
 
+# poetry must be installed
+[group("install")]
+install:
+  poetry install
+
+# suppose this shell is in the environment of your jupyter stack
 [group("install")]
 [group("notebook")]
-install-notebookenv:
+init-nb-git-workspace:
+  # Install the required dependencies for running notebooks
   poetry install --all-extras
-  poetry run python -m ipykernel install --user --name="mg-train-kernel" --display-name "Python (Magoh training)"
-  poetry run nbstripout --install
+  # Install a hook in the git repo so you only track notebooks source content
+  # without the cells' outputs
+  cd .. && nbstripout --install && \
+    nbdime config-git --enable
 
+# suppose this shell is in the environment of your jupyter stack
 [group("notebook")]
 run-notebooks:
   jupyter notebook notebooks/
 
+# suppose this shell is in the environment of your jupyter stack
 [group("notebook")]
 run-lab:
   jupyter lab notebooks/
 
+[group("main")]
 run_main EXP_NAME=DEFAULT_EXP_NAME INPUT_DIR=DEFAULT_INPUT_DIR:
   poetry run main --experiment-name {{EXP_NAME}} --report-dir {{INPUT_DIR}}
 
+[group("monitor")]
 try_pipeline:
   poetry run python ./src/try_dataload.py
 
+[group("test")]
 test:
   poetry run python tests/magoh_transform.py
 
+[group("monitor")]
 trace:
   poetry run mlflow ui --port 5000
 
+[group("test")]
 type_check:
   poetry run mypy .
 
 
 # TODO: move the ollama server setup in another directory
 
+# Start the ollma server in the cluster
+[group("ollama")]
 start-ollama:
   ssh -f $REMOTE_SERVER_SSH_LOGIN "tmux new-session -d -s ollama_main '$OLLAMA_ENV_VARS OLLAMA_HOST=127.0.0.1:$REMOTE_OLLAMA_PORT $OLLAMA_PATH_IN_REMOTE_SERVER serve'; tmux new-session -d -s ollama_llm '$OLLAMA_PATH_IN_REMOTE_SERVER run gemma3:27b'"
   @echo "Requested to start the ollama server"
 
+# Stop the ollma server in the cluster
+[group("ollama")]
 stop-ollama:
   ssh -f $REMOTE_SERVER_SSH_LOGIN "tmux send-keys -t ollama_llm '\/bye' C-m && tmux send-keys -t ollama_main C-c;"
   @echo "Requested to stop the ollama server"
 
+# Connect to the ollam server through a ssh tunnel toward the cluster
+[group("ollama")]
 connect_remote_llm:
   @echo "You can now fetch your llm from http://localhost:$LOCAL_LLM_PORT"
   ssh -N $REMOTE_SERVER_SSH_LOGIN -L $LOCAL_LLM_PORT:localhost:$REMOTE_OLLAMA_PORT

@@ -7,7 +7,7 @@ authors = [
 ]
 license = {text = "UNLICENSED"}
 readme = "README.md"
-requires-python = ">=3.12,<3.13"
+requires-python = ">=3.13,<3.14"
 dependencies = [
     "dspy (>=2.6.24,<3.0.0)",
     "pypdf2 (>=3.0.1,<4.0.0)",

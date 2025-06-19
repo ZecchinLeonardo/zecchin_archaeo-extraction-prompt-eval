@@ -6,7 +6,7 @@
 
 - `poetry` (>=2.1)
 - `just` if you are lazy with the commands
-- an API key in the OpenAI platform
+- a connection with an OLlama server
 
 ### Install dependencies
 
@@ -56,37 +56,19 @@ OPENAI_API_KEY='<your-secret-api-key>'
 
 ### Test some prompting
 
-The training set must be a directory with a structure like this:
+> For using the notebooks, read [this README](./notebooks/README.md).
 
-```sh
-inputs/
-├── 35012 # each id in the sample_answers.json must have its directory
-│   ├── Scheda_Intervento_35012.pdf # pdf for now are not used
-│   └── Scheda_Intervento_35012.txt # extracted text file mandatory
-├── 37084
-│   ├── Relazione_di_scava.pdf # file names are not an issue
-│   ├── Relazione_di_scava__scanned.txt # file names are not an issue
-│   └── Additional_document.txt # several sources can be given
-...
-├── 37822
-│   ├── Scheda_Intervento_37822.pdf
-│   └── Scheda_Intervento_37822.txt
-└── sample_answers.json
-```
+The training must be fetchable from these two endpoints:
+- a postgresql database with the following tables:
+  - `intervention_data`
+  - `findings`
+- a minio file storage in which there is the pdf documents related to each
+intervention record in the postgresql database
 
-Specify the directory containing the training set in the CLI argument:
+You need to fill in a `.env` file to write their credentials, as in the
+`.env.example`.
 
-```sh
-poetry run main --report-dir ./inputs/
-# or
-just run_main ./inputs/
-```
-
-The prompts results are saved in json files in the `output/` directory (please
-be careful to copy them before a next other run, if you want to save them).
-
-The directory `./inputs/` is by default given in arguments in the `justfile`.
-Then, you can also test with this shorter command:
+The results in each pipeline's layer are cached in the `.cache/` directory.
 
 ```sh
 just run_main
