@@ -134,11 +134,3 @@ pipeline = Pipeline(
         # ("extractor", MagohDataExtractor()),
     ]
 )
-
-print("Loading the dataset...")
-myDataset = MagohDataset(20, 0.8)
-print("Got the dataset!")
-inputs = inputs_from_dataset(myDataset)
-chunks = pipeline.fit_transform(inputs)
-
-MagohDataExtractor().score(chunks, myDataset)

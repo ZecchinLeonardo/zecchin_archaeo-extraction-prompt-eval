@@ -1,7 +1,7 @@
-from typing import Dict, List
+from typing import Dict
 
 
-Chunks = List[str]
+Chunks = str
 Filename = str
 ExtractedPDFContent = Dict[str, Chunks]
 PDFSources = Dict[Filename, ExtractedPDFContent]
