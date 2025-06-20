@@ -9,8 +9,8 @@ from ..cache import memory
 
 
 @memory.cache
-def _init_with_cache(size: int, seed: float):
-    intervention_data, findings = get_entries(size, seed)
+def _init_with_cache(size: int, seed: float, only_recent_entries=False):
+    intervention_data, findings = get_entries(size, seed, only_recent_entries)
     files = pd.concat(
         [
             pd.DataFrame(
@@ -27,10 +27,10 @@ def _init_with_cache(size: int, seed: float):
 
 
 class MagohDataset:
-    def __init__(self, size: int, seed: float):
+    def __init__(self, size: int, seed: float, only_recent_entries=False):
         """Fetch a maximum of `size` samples from the Magoh training database"""
         self._intervention_data, self._findings, self._files = _init_with_cache(
-            size, seed
+            size, seed, only_recent_entries
         )
 
     @property
