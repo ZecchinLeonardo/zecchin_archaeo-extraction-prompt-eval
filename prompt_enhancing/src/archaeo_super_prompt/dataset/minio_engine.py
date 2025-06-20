@@ -39,7 +39,6 @@ def download_files(intervention_id: int) -> List[Path]:
             if object_name is None:
                 continue
 
-            print(object_name)
             output_path = pdf_store_dir / object_name
             _ = (__client.fget_object(BUCKET_NAME, object_name, str(output_path)),)
             yield output_path
