@@ -1,7 +1,8 @@
-from typing import Dict
+from typing import Dict, NewType
 
 
-Chunks = str
-Filename = str
-ExtractedPDFContent = Dict[str, Chunks]
+Chunk = NewType("Chunk", str)
+ChunkHumanDescription = NewType("ChunkHumanDescription", str)
+Filename = NewType("Filename", str)
+ExtractedPDFContent = Dict[ChunkHumanDescription, Chunk]
 PDFSources = Dict[Filename, ExtractedPDFContent]
