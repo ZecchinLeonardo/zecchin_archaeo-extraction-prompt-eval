@@ -1,8 +1,5 @@
-from pandas import DataFrame
 from pathlib import Path
 from typing import Tuple, cast
-
-from sklearn.base import BaseEstimator, TransformerMixin
 
 from archaeo_super_prompt.types.intervention_id import InterventionId
 
@@ -17,7 +14,7 @@ from ..dataset.load import MagohDataset
 from .add_ocr import add_ocr_layer
 from .smart_reading import extract_smart_chunks_from_pdf
 
-class OCR_Transformer(BaseEstimator, TransformerMixin):
+class OCR_Transformer:
     def fit(self, X: PDFPathDataset, y=None):
         X = X
         y = y

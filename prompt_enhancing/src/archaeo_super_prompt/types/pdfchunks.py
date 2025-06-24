@@ -1,7 +1,9 @@
 """Abstract data type for handling a dataset of read pdfs"""
 
 from functools import reduce
-from pandas import DataFrame, Series, concat
+from pandas import concat
+from pandera.pandas import DataFrameModel
+from pandera.typing import DataFrame, Series
 from typing import Generator, Iterable, List, NewType, TypedDict, Union, cast
 
 from archaeo_super_prompt.signatures.input import (
@@ -14,8 +16,20 @@ from archaeo_super_prompt.signatures.input import (
 from .intervention_id import InterventionId
 
 
+# TODO: type check
+
+
+class PDFChunkDatasetSchema(DataFrameModel):
+    id: Series[InterventionId]
+    filename: Series[Filename]
+    chunk_type: Series[str]
+    chunk_page_position: Series[str]  # fraction: page number over total page number
+    chunk_index: Series[int]
+    chunk_content: Series[Chunk]
+
+
 # TODO: add filename
-PDFChunkDataset = NewType("PDFChunkDataset", DataFrame)
+PDFChunkDataset = NewType("PDFChunkDataset", DataFrame[PDFChunkDatasetSchema])
 
 """NB: this type of row is unnormalized for a memory-efficient processing but
 this might not be an issue in our pipeline, as the datasets are not huge and
@@ -53,12 +67,21 @@ def getExtractedPdfContent(
     dataset: PDFChunkDataset, intervention_id: InterventionId
 ) -> PDFSources:
     def add_to_dict(acc_d: PDFSources, row_: Series):
+        TAG_TO_STRING = {
+            "para": "Paragraph",
+            "list_item": "List item",
+            "table": "Table",
+            "header": "Header",
+        }
+        DEFAULT_ITEM = "Unknown pdf item"
+
         row = PDFChunk(cast(PDFChunk, row_.to_dict()))
         filename = Filename(row["filename"])
         if filename not in acc_d:
             acc_d[filename] = {}
+        tag_description = TAG_TO_STRING.get(row['chunk_type'], DEFAULT_ITEM)
         description = ChunkHumanDescription(
-            f"Chunk {row['chunk_index']} ({row['chunk_type']} page {row['chunk_page_position']})"
+            f"Chunk {row['chunk_index']} ({tag_description} page {row['chunk_page_position']})"
         )
         acc_d[filename][description] = row["chunk_content"]
         return acc_d

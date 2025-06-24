@@ -5,9 +5,9 @@ import dspy
 import mlflow
 from typing import List, Tuple, cast
 
-from archaeo_super_prompt.evaluation.evaluate import get_evaluator
-from archaeo_super_prompt.inspection.cost import inspect_cost
-from archaeo_super_prompt.output import save_outputs
+from .evaluation.evaluate import get_evaluator
+from .inspection.cost import inspect_cost
+from .output import save_outputs
 
 from .debug_log import set_debug_mode, print_log
 from .language_model import load_model

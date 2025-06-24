@@ -1,12 +1,16 @@
+import pandera.pandas as pa
 from pathlib import Path
-from typing import Iterable, List, NewType, Tuple, cast
+from typing import Iterable, List, Tuple, cast
 
-from pandas import DataFrame, Series
+from pandera.typing import DataFrame, Series
 
 from archaeo_super_prompt.types.intervention_id import InterventionId
 
+class PDFPathSchema(pa.DataFrameModel):
+    id: Series[int]
+    filepath: Series[str]
 
-PDFPathDataset = NewType("PDFPathDataset", DataFrame)
+PDFPathDataset = DataFrame[PDFPathSchema]
 
 
 def buildPdfPathDataset(items: Iterable[Tuple[InterventionId, Path]]):
