@@ -5,10 +5,11 @@ from pandera.pandas import DataFrameModel
 from pandera.typing import DataFrame, Series
 from typing import Generator, Iterable, List, NewType, TypedDict, Union, cast
 
-from archaeo_super_prompt.signatures.input import (
+from ..signatures.input import (
     Chunk,
     ChunkHumanDescription,
     Filename,
+    PDFChunkEnumeration,
     PDFSources,
 )
 
@@ -77,13 +78,16 @@ class PDFChunkPerInterventionDataset:
             for filename, fileChunks in self.data.groupby("filename")
         }
 
-    def __str__(self) -> str:
-        msg = ""
+    def to_readable_context_string(self) -> PDFChunkEnumeration:
+        msg: str = ""
         for _, chunk in self.data.iterrows():
             msg += f"`%% {chunk['filename']} | Page {chunk['chunk_page_position']} ({PDFChunkPerInterventionDataset.TAG_TO_STRING.get(chunk['chunk_type'], PDFChunkPerInterventionDataset.DEFAULT_ITEM)}) %%`\n\n"
             msg += chunk["chunk_content"] + "\n" * 2
             msg += "`" + "-" * 60 + "`\n\n"
-        return msg
+        return PDFChunkEnumeration(msg)
+
+    def __str__(self) -> str:
+        return self.to_readable_context_string()
 
 
 PDFChunk = TypedDict(
