@@ -3,10 +3,10 @@ MapPapers 1en-II, 2012, pp.21-38
 doi:10.4456/MAPPA.2012.02
 """
 
-from typing import Dict, List, Optional, Union
+from typing import List, Optional, Union
 import dspy
 
-from ..signatures.input import ExtractedPDFContent
+from ..signatures.input import PDFSources
 from .date_estimation import LatestEstimatedPastMoment
 from .document_type import ItalianDocumentType
 from .intervention_type import ItalianInterventionType
@@ -25,25 +25,16 @@ code elements that are used to compute the prompt:
 NB: almost everything is used
 """
 
-# TODO: give examples in descriptions
-class ArchaeologicalReportCutting(dspy.Signature):
-    context: str = dspy.InputField(desc="Facts here are assumed to be true and must be taken in account for the analysis to suitably process")
-    # The document will be in the format of a text extracted from an OCR operation in a PDF, then 
-    italian_document_ocr_scan: Dict[str, ExtractedPDFContent] = dspy.InputField(desc="""This is a set of Italian offical archive documents reporting an archaeological intervention in some Italian place. The key is the name of the source and the value is its content, divided into layout-labeled chunks. There is always one document which contains the main report of the intervention. From it you can extract most of the information.
+SCAN_DESCRIPTION = """This is a set of Italian offical archive documents reporting an archaeological intervention in some Italian place. The key is the name of the source and the value is its content, divided into layout-labeled chunks. There is always one document which contains the main report of the intervention. From it you can extract most of the information.
     The content is extracted from the output of an OCR that has been applied on a PDF file which is generally in a numerical clean format. But, sometimes the original document is a scan of a paper (even hand-writtent papers) (I let you work with this information unknown).
     Please note that among these chunks, there is a small block of text with an artificial format which represents a stamp. This stamp will allow to directly identify some precise fields.
-    """)
-
-    incipit: str = dspy.OutputField(desc="The header and first content part of the main report document, with all its metadata.")
-    archival_stamp: Optional[str] = dspy.OutputField(desc="A small part of non-natural text with a protocol number and a date, findable in the main report document.")
-    body: dict[str, ExtractedPDFContent] = dspy.OutputField(desc="To each document, the remaining content, divided into chunks as in the input.")
+    """
 
 class ArchaeologicalInterventionContext(dspy.Signature):
     """Extract structured information about an archaeological intervention from an official archive document."""
 
     context: str = dspy.InputField(desc="Facts here are assumed to be true and must be taken in account for the analysis to suitably process")
-    archaeological_report_incipit: str = dspy.InputField(desc="The header and first content part of the archaeological intervention report, with all its metadata.")
-    archaeological_report_body: str = dspy.InputField(desc="All the content of the report concretely describing the archaeological intervention.")
+    document_ocr_scans: PDFSources = dspy.InputField(desc=SCAN_DESCRIPTION)
 
     # TODO: add the thesaurii
     municipality: str = dspy.OutputField(
@@ -79,7 +70,7 @@ class ArchaeologicalInterventionContext(dspy.Signature):
 
 class TechnicalInformation(dspy.Signature):
     context: str = dspy.InputField(desc="Facts here are assumed to be true and must be taken in account for the analysis to suitably process")
-    archaeological_report_body: str = dspy.InputField(desc="All the content of the report concretely describing the archaeological intervention. You should use it in priority for extracting archaeological technical data.")
+    document_ocr_scans: PDFSources = dspy.InputField()
 
     sample_number: int = dspy.OutputField(desc="(mandatory) The number of samples recovered on site during this intervention")
     field_size: Optional[float] = dspy.OutputField(desc="The sample area of the excavation in square metres.")
@@ -102,7 +93,7 @@ class TechnicalInformation(dspy.Signature):
 
 class SourceOfInformationInReport(dspy.Signature):
     context: str = dspy.InputField(desc="Facts here are assumed to be true and must be taken in account for the analysis to suitably process")
-    report_incipit: str = dspy.InputField()
+    document_ocr_scans: PDFSources = dspy.InputField(desc=SCAN_DESCRIPTION)
 
     document_source_type: ItalianOGM = dspy.OutputField(desc="(mandatory) A class of document source among a set of official values to identify which kind of institution has processed the current report.")
     institution: Optional[str] = dspy.OutputField(desc="Italian title of the Archaeology institution carrying out the intervention. It is directly written in the report then you do not have to invent it.")
@@ -110,10 +101,10 @@ class SourceOfInformationInReport(dspy.Signature):
 
 class ArchivalInformation(dspy.Signature):
     context: str = dspy.InputField(desc="Facts here are assumed to be true and must be taken in account for the analysis to suitably process")
-    report_archive_office_stamp: str = dspy.InputField()
+    document_ocr_scans: PDFSources = dspy.InputField(desc=SCAN_DESCRIPTION)
 
     # these two fields vary along the archival system and the time when it has
     # been archieved
     # TODO:
-    protocol: str = dspy.OutputField(desc="Identifier of the protocol, with a range of digits and sometimes a hyphen with a letter as suffix")
+    protocol: str = dspy.OutputField(desc="Identifier of the protocol, with a range of digits and sometimes a hyphen with a letter as suffix. It is in a part of the report pdf which is similar to a stamp.")
     protocol_date: str = dspy.OutputField(desc="The date of the archival in the protocol")

@@ -10,7 +10,6 @@ from ..signatures.arch_dictionnaries import (
 from ..signatures.input import PDFSources
 
 from ..signatures.arch_extract_type import (
-    ArchaeologicalReportCutting,
     ArchaeologicalInterventionContext,
     SourceOfInformationInReport,
     TechnicalInformation,
@@ -25,7 +24,6 @@ class ExtractedInterventionData(TypedDict):
 
 class ExtractDataFromInterventionReport(dspy.Module):
     def __init__(self):
-        self.cut_report = dspy.Predict(ArchaeologicalReportCutting)
         self.extract_intervention_context_data = dspy.ChainOfThought(
             ArchaeologicalInterventionContext
         )
@@ -40,49 +38,34 @@ class ExtractDataFromInterventionReport(dspy.Module):
 
         ASSURANCE_CONTEXT = """I have mentionned some information as optional as a document can forget to mention it, then try to think if you can figure it out or if you have to answer nothing for these given fields. For the non optional field, you must answer something as the information is directly written in the content I'll give you."""
         print_debug_log("Requesting document cutting...")
-        cuts = document_ocr_scan
-        cuts = cast(
-            ArchaeologicalReportCutting,
-            self.cut_report(
-                italian_document_ocr_scan=document_ocr_scan, context=CONTEXT
-            ),
-        )
         print_debug_log("Requesting document sources...")
         document_source_data = cast(
             SourceOfInformationInReport,
             self.extract_report_sources(
-                context=CONTEXT + ASSURANCE_CONTEXT, report_incipit=cuts.incipit
+                context=CONTEXT + ASSURANCE_CONTEXT, document_ocr_scans=document_ocr_scan
             ),
         )
         print_debug_log("Requesting archaeological intervention context...")
         intervention_context = cast(
             ArchaeologicalInterventionContext,
             self.extract_intervention_context_data(
-                context=CONTEXT + ASSURANCE_CONTEXT,
-                archaeological_report_incipit=cuts.incipit,
-                archaeological_report_body=cuts.body,
+                context=CONTEXT + ASSURANCE_CONTEXT, document_ocr_scans=document_ocr_scan
             ),
         )
         print_debug_log("Requesting archaeological intervention details...")
         techinal_achievements = cast(
             TechnicalInformation,
             self.extract_intervention_technical_achievements(
-                context=CONTEXT + ASSURANCE_CONTEXT,
-                archaeological_report_body=cuts.body,
+                context=CONTEXT + ASSURANCE_CONTEXT, document_ocr_scans=document_ocr_scan
             ),
         )
 
         print_debug_log("Requesting document archival metadata...")
-        report_archival_metadata = (
-            cast(
-                ArchivalInformation,
-                self.extract_archival_metadata(
-                    context=CONTEXT + ASSURANCE_CONTEXT,
-                    report_archive_office_stamp=cuts.archival_stamp,
-                ),
-            )
-            if cuts.archival_stamp is not None
-            else None
+        report_archival_metadata = cast(
+            ArchivalInformation,
+            self.extract_archival_metadata(
+                context=CONTEXT + ASSURANCE_CONTEXT, document_ocr_scans=document_ocr_scan
+            ),
         )
 
         final_prediction: ExtractedInterventionData = {

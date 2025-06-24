@@ -45,8 +45,8 @@ test:
   poetry run python tests/magoh_transform.py
 
 [group("monitor")]
-trace:
-  poetry run mlflow ui --port 5000
+serve-tracer:
+  poetry run mlflow server --host $MLFLOW_HOST --port $MLFLOW_PORT
 
 [group("test")]
 type_check:

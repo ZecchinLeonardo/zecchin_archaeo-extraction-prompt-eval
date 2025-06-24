@@ -1,10 +1,9 @@
 """Abstract data type for handling a dataset of read pdfs"""
 
-from functools import reduce
 from pandas import concat
 from pandera.pandas import DataFrameModel
 from pandera.typing import DataFrame, Series
-from typing import Generator, Iterable, List, NewType, TypedDict, Union, cast
+from typing import Generator, Iterable, List, NewType, Tuple, TypedDict, Union, cast
 
 from archaeo_super_prompt.signatures.input import (
     Chunk,
@@ -64,35 +63,32 @@ def buildPdfChunkDataset(chunks: List[PDFChunk]) -> PDFChunkDataset:
 
 
 def getExtractedPdfContent(
-    dataset: PDFChunkDataset, intervention_id: InterventionId
-) -> PDFSources:
-    def add_to_dict(acc_d: PDFSources, row_: Series):
-        TAG_TO_STRING = {
-            "para": "Paragraph",
-            "list_item": "List item",
-            "table": "Table",
-            "header": "Header",
-        }
-        DEFAULT_ITEM = "Unknown pdf item"
+    dataset: PDFChunkDataset,
+) -> Generator[Tuple[InterventionId, PDFSources]]:
+    def items_for_pdf_source(fileChunks: PDFChunkDataset):
+        def process_row(row_):
+            TAG_TO_STRING = {
+                "para": "Paragraph",
+                "list_item": "List item",
+                "table": "Table",
+                "header": "Header",
+            }
+            DEFAULT_ITEM = "Unknown pdf item"
+            row = PDFChunk(cast(PDFChunk, row_.to_dict()))
+            tag_description = TAG_TO_STRING.get(row["chunk_type"], DEFAULT_ITEM)
+            description = ChunkHumanDescription(
+                f"Chunk {row['chunk_index']} ({tag_description} page {row['chunk_page_position']})"
+            )
+            return description, row["chunk_content"]
 
-        row = PDFChunk(cast(PDFChunk, row_.to_dict()))
-        filename = Filename(row["filename"])
-        if filename not in acc_d:
-            acc_d[filename] = {}
-        tag_description = TAG_TO_STRING.get(row['chunk_type'], DEFAULT_ITEM)
-        description = ChunkHumanDescription(
-            f"Chunk {row['chunk_index']} ({tag_description} page {row['chunk_page_position']})"
-        )
-        acc_d[filename][description] = row["chunk_content"]
-        return acc_d
+        return dict(process_row(row) for _, row in fileChunks.iterrows())
 
-    return reduce(
-        add_to_dict,
-        (
-            row
-            for _, row in dataset[
-                _get_intervention_ids(dataset) == intervention_id
-            ].iterrows()
-        ),
-        dict(),
+    return (
+        (InterventionId(cast(int, id_)), {
+            Filename(cast(str, filename)): items_for_pdf_source(
+                PDFChunkDataset(cast(PDFChunkDataset, fileChunks))
+            )
+            for filename, fileChunks in inpt.groupby("filename")
+        })
+        for id_, inpt in dataset.groupby("id")
     )

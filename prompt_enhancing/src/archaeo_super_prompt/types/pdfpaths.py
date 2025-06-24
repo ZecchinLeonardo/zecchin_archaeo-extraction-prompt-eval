@@ -25,9 +25,9 @@ def buildPdfPathDataset(items: Iterable[Tuple[InterventionId, Path]]):
 
 
 def get_intervention_rows(ds: PDFPathDataset):
-    return (
+    return [
         (InterventionId(row["id"]), Path(row["filepath"])) for _, row in ds.iterrows()
-    )
+    ]
 
 
 def get_paths(ds: PDFPathDataset) -> List[Path]:
