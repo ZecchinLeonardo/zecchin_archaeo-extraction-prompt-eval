@@ -1,7 +1,6 @@
 from typing import TypedDict, cast
 from archaeo_super_prompt.types.pdfchunks import (
     PDFChunkPerInterventionDataset,
-    getExtractedPdfContent,
 )
 import dspy
 
@@ -37,7 +36,8 @@ class ExtractDataFromInterventionReport(dspy.Module):
         self.extract_archival_metadata = dspy.ChainOfThought(ArchivalInformation)
 
     def forward(self, document_ocr_scans__df: PDFChunkPerInterventionDataset):
-        document_ocr_scans = getExtractedPdfContent(document_ocr_scans__df)
+        # TODO: filter the data before
+        document_ocr_scans = document_ocr_scans__df.getExtractedPdfContent()
 
         CONTEXT = """You are analysing a Italian official documents about an archaeological intervention and you are going to extract in Italian some information as the archivists in archaeology do."""
 

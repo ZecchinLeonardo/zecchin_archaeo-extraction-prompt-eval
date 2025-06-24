@@ -42,7 +42,7 @@ class MagohDataExtractor:
             id_: answer
             for id_, answer in {
                 id_: self._module.forward_and_type(
-                    cast(PDFChunkPerInterventionDataset, source)
+                    PDFChunkPerInterventionDataset(cast(DataFrame, source))
                 )
                 for id_, source in X.groupby("id")
             }.items()
