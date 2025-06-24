@@ -1,4 +1,8 @@
 from typing import TypedDict, cast
+from archaeo_super_prompt.types.pdfchunks import (
+    PDFChunkPerInterventionDataset,
+    getExtractedPdfContent,
+)
 import dspy
 
 from ..debug_log import forward_warning, print_debug_log
@@ -7,7 +11,6 @@ from ..signatures.arch_dictionnaries import (
     to_magoh_build_data,
     to_magoh_university_data,
 )
-from ..signatures.input import PDFSources
 
 from ..signatures.arch_extract_type import (
     ArchaeologicalInterventionContext,
@@ -33,30 +36,35 @@ class ExtractDataFromInterventionReport(dspy.Module):
         )
         self.extract_archival_metadata = dspy.ChainOfThought(ArchivalInformation)
 
-    def forward(self, document_ocr_scan: PDFSources):
+    def forward(self, document_ocr_scans__df: PDFChunkPerInterventionDataset):
+        document_ocr_scans = getExtractedPdfContent(document_ocr_scans__df)
+
         CONTEXT = """You are analysing a Italian official documents about an archaeological intervention and you are going to extract in Italian some information as the archivists in archaeology do."""
 
         ASSURANCE_CONTEXT = """I have mentionned some information as optional as a document can forget to mention it, then try to think if you can figure it out or if you have to answer nothing for these given fields. For the non optional field, you must answer something as the information is directly written in the content I'll give you."""
-        print_debug_log("Requesting document cutting...")
+
         print_debug_log("Requesting document sources...")
         document_source_data = cast(
             SourceOfInformationInReport,
             self.extract_report_sources(
-                context=CONTEXT + ASSURANCE_CONTEXT, document_ocr_scans=document_ocr_scan
+                context=CONTEXT + ASSURANCE_CONTEXT,
+                document_ocr_scans=document_ocr_scans,
             ),
         )
         print_debug_log("Requesting archaeological intervention context...")
         intervention_context = cast(
             ArchaeologicalInterventionContext,
             self.extract_intervention_context_data(
-                context=CONTEXT + ASSURANCE_CONTEXT, document_ocr_scans=document_ocr_scan
+                context=CONTEXT + ASSURANCE_CONTEXT,
+                document_ocr_scans=document_ocr_scans,
             ),
         )
         print_debug_log("Requesting archaeological intervention details...")
         techinal_achievements = cast(
             TechnicalInformation,
             self.extract_intervention_technical_achievements(
-                context=CONTEXT + ASSURANCE_CONTEXT, document_ocr_scans=document_ocr_scan
+                context=CONTEXT + ASSURANCE_CONTEXT,
+                document_ocr_scans=document_ocr_scans,
             ),
         )
 
@@ -64,7 +72,8 @@ class ExtractDataFromInterventionReport(dspy.Module):
         report_archival_metadata = cast(
             ArchivalInformation,
             self.extract_archival_metadata(
-                context=CONTEXT + ASSURANCE_CONTEXT, document_ocr_scans=document_ocr_scan
+                context=CONTEXT + ASSURANCE_CONTEXT,
+                document_ocr_scans=document_ocr_scans,
             ),
         )
 
@@ -78,10 +87,12 @@ class ExtractDataFromInterventionReport(dspy.Module):
         }
         return dspy.Prediction(**final_prediction)
 
-    def forward_and_type(self, document_ocr_scan: PDFSources):
+    def forward_and_type(self, document_ocr_scan__df: PDFChunkPerInterventionDataset):
         result: dspy.Prediction
         try:
-            result = cast(dspy.Prediction, self(document_ocr_scan=document_ocr_scan))
+            result = cast(
+                dspy.Prediction, self(document_ocr_scans__df=document_ocr_scan__df)
+            )
         except Exception as e:
             forward_warning(e)
             return None

@@ -18,8 +18,7 @@ from .intervention_id import InterventionId
 # TODO: type check
 
 
-class PDFChunkDatasetSchema(DataFrameModel):
-    id: Series[InterventionId]
+class PDFChunkSetPerInterventionSchema(DataFrameModel):
     filename: Series[Filename]
     chunk_type: Series[str]
     chunk_page_position: Series[str]  # fraction: page number over total page number
@@ -27,8 +26,15 @@ class PDFChunkDatasetSchema(DataFrameModel):
     chunk_content: Series[Chunk]
 
 
-# TODO: add filename
+class PDFChunkDatasetSchema(PDFChunkSetPerInterventionSchema):
+    id: Series[InterventionId]
+
+
+PDFChunkPerInterventionDataset = NewType(
+    "PDFChunkPerInterventionDataset", DataFrame[PDFChunkSetPerInterventionSchema]
+)
 PDFChunkDataset = NewType("PDFChunkDataset", DataFrame[PDFChunkDatasetSchema])
+
 
 """NB: this type of row is unnormalized for a memory-efficient processing but
 this might not be an issue in our pipeline, as the datasets are not huge and
@@ -48,10 +54,6 @@ PDFChunk = TypedDict(
 )
 
 
-def _get_intervention_ids(ds: PDFChunkDataset) -> Series[InterventionId]:
-    return ds["id"]
-
-
 def composePdfChunkDataset(
     datasets: Union[Generator[PDFChunkDataset], Iterable[PDFChunkDataset]],
 ) -> PDFChunkDataset:
@@ -63,8 +65,15 @@ def buildPdfChunkDataset(chunks: List[PDFChunk]) -> PDFChunkDataset:
 
 
 def getExtractedPdfContent(
-    dataset: PDFChunkDataset,
-) -> Generator[Tuple[InterventionId, PDFSources]]:
+    dataset: PDFChunkPerInterventionDataset,
+) -> PDFSources:
+    """Let dataset be a set of chunks from several pdf files related to a
+    single intervention. Computes the batch of chunk sources from this dataset
+
+    The dataset can be partial if a selection of chunks in each files has
+    already been carried out.
+    """
+
     def items_for_pdf_source(fileChunks: PDFChunkDataset):
         def process_row(row_):
             TAG_TO_STRING = {
@@ -83,12 +92,9 @@ def getExtractedPdfContent(
 
         return dict(process_row(row) for _, row in fileChunks.iterrows())
 
-    return (
-        (InterventionId(cast(int, id_)), {
-            Filename(cast(str, filename)): items_for_pdf_source(
-                PDFChunkDataset(cast(PDFChunkDataset, fileChunks))
-            )
-            for filename, fileChunks in inpt.groupby("filename")
-        })
-        for id_, inpt in dataset.groupby("id")
-    )
+    return {
+        Filename(cast(str, filename)): items_for_pdf_source(
+            PDFChunkDataset(cast(PDFChunkDataset, fileChunks))
+        )
+        for filename, fileChunks in dataset.groupby("filename")
+    }

@@ -1,6 +1,7 @@
 from typing import List, Tuple, cast
 
 from dspy import Example, Prediction, dspy
+
 # import mlflow
 import pandas
 from pandera.typing import DataFrame
@@ -18,7 +19,10 @@ from .output import save_outputs
 
 
 from .language_model import load_model
-from .types.pdfchunks import PDFChunkDataset, getExtractedPdfContent
+from .types.pdfchunks import (
+    PDFChunkDataset,
+    PDFChunkPerInterventionDataset,
+)
 
 
 class MagohDataExtractor:
@@ -37,16 +41,17 @@ class MagohDataExtractor:
         answers = {
             id_: answer
             for id_, answer in {
-                id_: self._module.forward_and_type(source)
-                for id_, source in getExtractedPdfContent(X)
+                id_: self._module.forward_and_type(
+                    cast(PDFChunkPerInterventionDataset, source)
+                )
+                for id_, source in X.groupby("id")
             }.items()
             if answer is not None
         }
         keys, values = zip(*answers.items())
         answer_df = pandas.json_normalize(cast(list[dict], list(values)))
-        answer_df['id'] = cast(List[InterventionId], list(keys))
+        answer_df["id"] = cast(List[InterventionId], list(keys))
         return cast(DataFrame, answer_df)
-        
 
     # def score(self, X: PDFChunkDataset, targets: MagohDataset):
     #     # TODO:
