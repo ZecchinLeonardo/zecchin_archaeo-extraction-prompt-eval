@@ -1,3 +1,4 @@
+from functools import reduce
 from typing import Dict, List, Optional, Tuple, cast
 import dspy
 from pathlib import Path
@@ -14,8 +15,8 @@ from .load_examples import DevSet
 
 
 class MyRun:
-    """Utils class for stacking the dataframes computed in an evaluation.
-    """
+    """Utils class for stacking the dataframes computed in an evaluation."""
+
     active_run: Optional[mlflow.ActiveRun] = None
     dataframes: List[Tuple[int, Dict[str, DataFrame]]] = []
 
@@ -35,14 +36,15 @@ def measure_and_plot(active_run: Optional[mlflow.ActiveRun]):
         result = is_prediction_valid(pred, trace)
         if result is None:
             result = validate_magoh_data(example, pred, trace)
-            run.dataframes.append(
-                save_visual_score_table(
-                    example.answer,
-                    cast(ExtractedInterventionData, pred.toDict()),
-                    result,
-                    run.active_run,
-                )
-            )
+            # TODO: remanage that later
+            # run.dataframes.append(
+            #     save_visual_score_table(
+            #         example.answer,
+            #         cast(ExtractedInterventionData, pred.toDict()),
+            #         result,
+            #         run.active_run,
+            #     )
+            # )
             result = reduce_magoh_data_eval(result, trace)
         return result
 
@@ -60,13 +62,16 @@ def get_evaluator(devset: DevSet, return_outputs=False):
         display_table=5,
     )
 
-    def evaluate(program: dspy.Module, active_run: mlflow.ActiveRun):
-        metric, run = measure_and_plot(active_run)
+    def evaluate(program: dspy.Module):
+        metric, run = measure_and_plot(None)
         lm = program.get_lm()
         if lm is None:
-            raise Exception("Cannot evaluate without a set language model for the given module")
-        temperature = int(lm.kwargs["temperature"]*1000)
-        mlflow.dspy.log_model(dspy_model=program, artifact_path=str(Path(f"./outputs/model_temp__{temperature}_x1000")), input_example=devset[0].inputs().toDict()) # type: ignore
+            raise Exception(
+                "Cannot evaluate without a set language model for the given module"
+            )
+        temperature = int(lm.kwargs["temperature"] * 1000)
+        # TODO: put the model logging in another place
+        # mlflow.dspy.log_model(dspy_model=program, artifact_path=str(Path(f"./outputs/model_temp__{temperature}_x1000")), input_example=devset[0].inputs().toDict()) # type: ignore
         results = evaluator(program, metric=metric)
         score_fields(run.dataframes, run.active_run)
         return results

@@ -161,7 +161,11 @@ def validate_magoh_data(example: Example, pred: Prediction, trace=None):
     Assume the given prediction is valid (check it with is_prediction_valid)
     """
     return _validate_magoh_data(
-        cast(MagohData, example.answer),
+        {
+            "university": example.university,
+            "building": example.building,
+            "scheda_intervento": {"id": 0},
+        },
         cast(ExtractedInterventionData, pred),
         trace,
     )

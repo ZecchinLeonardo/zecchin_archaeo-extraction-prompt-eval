@@ -22,7 +22,7 @@ from ..signatures.arch_extract_type import (
 
 class ExtractedInterventionData(TypedDict):
     university: MagohUniversityData
-    build: MagohDocumentBuildingData
+    building: MagohDocumentBuildingData
 
 
 class ExtractDataFromInterventionReport(dspy.Module):
@@ -41,7 +41,9 @@ class ExtractDataFromInterventionReport(dspy.Module):
         document_incipits = select_incipit(document_ocr_scans__df)
         document_end_pages = select_end_pages(document_ocr_scans__df)
         document_incipits_content = document_incipits.to_readable_context_string()
-        document_full_contextual_content = (document_incipits + document_end_pages).to_readable_context_string()
+        document_full_contextual_content = (
+            document_incipits + document_end_pages
+        ).to_readable_context_string()
 
         CONTEXT = """You are analysing a Italian official documents about an archaeological intervention and you are going to extract in Italian some information as the archivists in archaeology do."""
 
@@ -52,7 +54,7 @@ class ExtractDataFromInterventionReport(dspy.Module):
             SourceOfInformationInReport,
             self.extract_report_sources(
                 context=CONTEXT + ASSURANCE_CONTEXT,
-                documents_contextual_content=document_full_contextual_content
+                documents_contextual_content=document_full_contextual_content,
             ),
         )
         print_debug_log("Requesting archaeological intervention context...")
@@ -68,7 +70,7 @@ class ExtractDataFromInterventionReport(dspy.Module):
             TechnicalInformation,
             self.extract_intervention_technical_achievements(
                 context=CONTEXT + ASSURANCE_CONTEXT,
-                documents_full_content=document_ocr_scans
+                documents_full_content=document_ocr_scans,
             ),
         )
 
@@ -85,7 +87,7 @@ class ExtractDataFromInterventionReport(dspy.Module):
             "university": to_magoh_university_data(
                 intervention_context, techinal_achievements, document_source_data
             ),
-            "build": to_magoh_build_data(
+            "building": to_magoh_build_data(
                 intervention_context, document_source_data, report_archival_metadata
             ),
         }

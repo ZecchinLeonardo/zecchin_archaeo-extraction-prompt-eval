@@ -4,7 +4,7 @@ from .models.main_pipeline import ExtractedInterventionData
 def toMagohData(output: ExtractedInterventionData) -> MagohData:
     return {
         "university": output['university'],
-        "building": output['build'],
+        "building": output['building'],
         "scheda_intervento": {
             "id": 0  # TODO: edit this with the correct id, if exists
         },
