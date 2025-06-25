@@ -19,11 +19,11 @@ from .intervention_id import InterventionId
 
 
 class PDFChunkSetPerInterventionSchema(DataFrameModel):
-    filename: Series[Filename]
+    filename: Series[str]
     chunk_type: Series[str]
     chunk_page_position: Series[str]  # fraction: page number over total page number
     chunk_index: Series[int]
-    chunk_content: Series[Chunk]
+    chunk_content: Series[str]
 
 
 class PDFChunkDatasetSchema(PDFChunkSetPerInterventionSchema):
@@ -49,6 +49,16 @@ class PDFChunkPerInterventionDataset:
 
     def __init__(self, data: DataFrame[PDFChunkSetPerInterventionSchema]) -> None:
         self.data = data
+
+    def __add__(
+        self, otherDF: "PDFChunkPerInterventionDataset"
+    ) -> "PDFChunkPerInterventionDataset":
+        return PDFChunkPerInterventionDataset(
+            PDFChunkSetPerInterventionSchema.validate(
+                self.data.combine_first(otherDF.data),
+                lazy=True
+            )
+        )
 
     def getExtractedPdfContent(self) -> PDFSources:
         """Let dataset be a set of chunks from several pdf files related to a

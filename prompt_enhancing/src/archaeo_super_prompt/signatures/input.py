@@ -5,7 +5,7 @@ Chunk = NewType("Chunk", str)
 ChunkHumanDescription = NewType("ChunkHumanDescription", str)
 Filename = NewType("Filename", str)
 ExtractedPDFContent = Dict[ChunkHumanDescription, Chunk]
-PDFChunkEnumeration = NewType("PDFChunkEnumeration", str)
+PDFChunkEnumeration = str
 """
 The enumeration is for now done with a self-engineered mardkown rendering
 

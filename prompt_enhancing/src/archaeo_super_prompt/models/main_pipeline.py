@@ -1,4 +1,5 @@
 from typing import TypedDict, cast
+from archaeo_super_prompt.models.chunk_selector import select_end_pages, select_incipit
 from archaeo_super_prompt.types.pdfchunks import (
     PDFChunkPerInterventionDataset,
 )
@@ -36,8 +37,11 @@ class ExtractDataFromInterventionReport(dspy.Module):
         self.extract_archival_metadata = dspy.ChainOfThought(ArchivalInformation)
 
     def forward(self, document_ocr_scans__df: PDFChunkPerInterventionDataset):
-        # TODO: filter the data before
-        document_ocr_scans = document_ocr_scans__df.getExtractedPdfContent()
+        document_ocr_scans = document_ocr_scans__df.to_readable_context_string()
+        document_incipits = select_incipit(document_ocr_scans__df)
+        document_end_pages = select_end_pages(document_ocr_scans__df)
+        document_incipits_content = document_incipits.to_readable_context_string()
+        document_full_contextual_content = (document_incipits + document_end_pages).to_readable_context_string()
 
         CONTEXT = """You are analysing a Italian official documents about an archaeological intervention and you are going to extract in Italian some information as the archivists in archaeology do."""
 
@@ -48,7 +52,7 @@ class ExtractDataFromInterventionReport(dspy.Module):
             SourceOfInformationInReport,
             self.extract_report_sources(
                 context=CONTEXT + ASSURANCE_CONTEXT,
-                document_ocr_scans=document_ocr_scans,
+                documents_contextual_content=document_full_contextual_content
             ),
         )
         print_debug_log("Requesting archaeological intervention context...")
@@ -56,7 +60,7 @@ class ExtractDataFromInterventionReport(dspy.Module):
             ArchaeologicalInterventionContext,
             self.extract_intervention_context_data(
                 context=CONTEXT + ASSURANCE_CONTEXT,
-                document_ocr_scans=document_ocr_scans,
+                documents_contextual_content=document_full_contextual_content,
             ),
         )
         print_debug_log("Requesting archaeological intervention details...")
@@ -64,7 +68,7 @@ class ExtractDataFromInterventionReport(dspy.Module):
             TechnicalInformation,
             self.extract_intervention_technical_achievements(
                 context=CONTEXT + ASSURANCE_CONTEXT,
-                document_ocr_scans=document_ocr_scans,
+                documents_full_content=document_ocr_scans
             ),
         )
 
@@ -73,7 +77,7 @@ class ExtractDataFromInterventionReport(dspy.Module):
             ArchivalInformation,
             self.extract_archival_metadata(
                 context=CONTEXT + ASSURANCE_CONTEXT,
-                document_ocr_scans=document_ocr_scans,
+                documents_incipit=document_incipits_content,
             ),
         )
 

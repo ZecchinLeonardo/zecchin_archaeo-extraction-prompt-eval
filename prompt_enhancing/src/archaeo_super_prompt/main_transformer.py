@@ -22,6 +22,7 @@ from .language_model import load_model
 from .types.pdfchunks import (
     PDFChunkDataset,
     PDFChunkPerInterventionDataset,
+    PDFChunkSetPerInterventionSchema,
 )
 
 
@@ -37,12 +38,17 @@ class MagohDataExtractor:
         Y = Y
         return self
 
-    def transform(self, X: PDFChunkDataset) -> DataFrame:
+    # TODO: create a schema for the answer
+    def transform(self, X: PDFChunkDataset) -> pandas.DataFrame:
         answers = {
             id_: answer
             for id_, answer in {
                 id_: self._module.forward_and_type(
-                    PDFChunkPerInterventionDataset(cast(DataFrame, source))
+                    PDFChunkPerInterventionDataset(
+                        PDFChunkSetPerInterventionSchema.validate(
+                            source, lazy=True
+                        )
+                    )
                 )
                 for id_, source in X.groupby("id")
             }.items()
@@ -51,7 +57,7 @@ class MagohDataExtractor:
         keys, values = zip(*answers.items())
         answer_df = pandas.json_normalize(cast(list[dict], list(values)))
         answer_df["id"] = cast(List[InterventionId], list(keys))
-        return cast(DataFrame, answer_df)
+        return answer_df
 
     # def score(self, X: PDFChunkDataset, targets: MagohDataset):
     #     # TODO:
