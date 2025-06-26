@@ -101,7 +101,7 @@ class MagohDataExtractor:
                     [
                         [
                             {
-                                "id": 0,  # TODO:
+                                "id": ex.get("id"),
                                 "field_name": field,
                                 "predicted_value": ex.get(field),
                                 "expected_value": pred.get(field),
