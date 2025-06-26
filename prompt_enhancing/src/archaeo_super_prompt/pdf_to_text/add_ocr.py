@@ -73,6 +73,7 @@ def _log_progress(
         desc="Produced PDF/A files",
         total=file_to_produce_nb,
         initial=already_scanned_file_nb,
+        leave=False
     )
     while not stop_event.is_set():
         added_file_nb = _inspect_file_number() - current_file_nb
