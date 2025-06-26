@@ -1,16 +1,17 @@
-from functools import reduce
 from typing import Any, Callable, Dict, List, Tuple, TypeVar, Union, cast
+from ..types.structured_data import (
+    ExtractedStructuredDataSeries,
+    outputStructuredDataSchema,
+)
+from ..utils import flatten_dict
 from dspy import Example, Prediction
 import dspy
 from dspy.evaluate.metrics import answer_exact_match
 
 from .similarity_match import soft_accuracy
 
-from .smart_match_checking import check_date_with_LLM, check_with_LLM
+from .smart_match_checking import check_date_with_LLM
 
-from ..magoh_target import MagohData, toMagohData
-
-from ..models.main_pipeline import ExtractedInterventionData
 
 MIN_VALUE = 0
 MAX_VALUE = 1
@@ -19,8 +20,10 @@ U, V = TypeVar("U"), TypeVar("V")
 
 
 def _validate_magoh_data(
-    answer: MagohData, pred: ExtractedInterventionData, trace=None
-):
+    answer: ExtractedStructuredDataSeries,
+    pred: ExtractedStructuredDataSeries,
+    trace=None,
+) -> dict[str, float] | dict[str, bool]:
     def check_null[U, V](func: Callable[[U, V], bool]):
         def inner(e: Union[U, None], p: Union[V, None]):
             if (e is None) == (p is None):
@@ -66,23 +69,26 @@ def _validate_magoh_data(
     @validate_type
     def complex_match(e: str, p: str):
         TRESHOLD = 0.75
-        llm_check = check_with_LLM(TRESHOLD)
+        # llm_check = check_with_LLM(TRESHOLD)
+        # return llm_check(e, p, trace) == 1
         similarity_check = soft_accuracy([e], [p], TRESHOLD)["matches"].item()
         return similarity_check
-        return llm_check(e, p, trace) == 1
 
+    # unused
     @validate_type
     def neutral(e: str, p: str):
         e = e
         p = p
         return False
 
+    neutral = neutral
+
     @validate_type
     def date_compare(e: str, p: str):
         # TODO: avoid LLM when the typing will be better
         return check_date_with_LLM(e, p, trace) == 1
 
-    pred_to_compare = toMagohData(pred)
+    pred_to_compare = pred
     metrics: Dict[str, Dict[str, Callable[[Any, Any], bool]]] = {
         "university": {
             "Sigla": perfect_match,  # TODO: figure this out
@@ -112,60 +118,84 @@ def _validate_magoh_data(
         },
     }
 
-    metric_values: Dict[str, Dict[str, bool]] = {
-        first_depth_key: {
-            second_detph_key: metrics[first_depth_key][second_detph_key](
-                answer[first_depth_key][second_detph_key],  # type: ignore
-                pred_to_compare[first_depth_key][second_detph_key],  # type: ignore
-            )
-            for second_detph_key in metrics[first_depth_key]
-        }
-        for first_depth_key in metrics
+    f_metrics = flatten_dict(metrics)
+
+    metric_values: Dict[str, bool] = {
+        key: f_metrics[key](answer[key], pred_to_compare[key]) for key in f_metrics
     }
+
     return metric_values
 
 
 def reduce_magoh_data_eval(
-    metric_values: Dict[str, Dict[str, bool]],
+    metric_values: Dict[str, bool],
     trace=None,
 ) -> Union[float, bool]:
+    vals = metric_values.values()
     if trace is None:
         # for now, compute the fraction of the number of valid fields over all
         # the fields
-        summed_metrics, property_nb = reduce(
-            lambda t, dico: (t[0] + sum(dico.values()), t[1] + len(dico)),
-            metric_values.values(),
-            (0, 0),
-        )
-        return summed_metrics / property_nb
-    return all(
-        reduce(
-            lambda flat, vals: flat + list(vals.values()), metric_values.values(), []
-        )
-    )
+        return sum(vals) / len(vals)
+    return all(vals)
 
 
-def is_prediction_valid(pred: Prediction, trace=None):
+def _worst_metric_value(trace=None) -> bool | float:
+    if trace is None:
+        return MIN_VALUE
+    return False
+
+
+def _worst_metric_values(trace=None):
+    worst_val = _worst_metric_value(trace)
+    metrics: dict[str, dict[str, float]] | dict[str, dict[str, bool]] = {
+        "university": {
+            "Sigla": worst_val,
+            "Comune": worst_val,
+            "Ubicazione": worst_val,
+            "Indirizzo": worst_val,
+            "Località": worst_val,
+            "Data intervento": worst_val,
+            "Tipo di intervento": worst_val,
+            "Durata": worst_val,
+            "Eseguito da": worst_val,
+            "Direzione scientifica": worst_val,
+            "Estensione": worst_val,
+            "Numero di saggi": worst_val,
+            "Profondità massima": worst_val,
+            "Geologico": worst_val,
+            "OGD": worst_val,
+            "OGM": worst_val,
+            "Profondità falda": worst_val,
+        },
+        "building": {
+            "Istituzione": worst_val,
+            "Funzionario competente": worst_val,
+            "Tipo di documento": worst_val,
+            "Protocollo": worst_val,
+            "Data Protocollo": worst_val,
+        },
+    }
+    f_metrics = flatten_dict(metrics)
+    return f_metrics
+
+
+def _is_prediction_valid(pred: Prediction) -> bool:
     """
     Reutrn None if the prediction is valid, else a metric with the worst
     value.
     """
-    pred_dict = pred.toDict()
-    if not pred_dict:
-        return MIN_VALUE if trace is None else False
-    return None
+    return set(outputStructuredDataSchema.columns.keys()).issubset(pred.keys())
 
 
 def validate_magoh_data(example: Example, pred: Prediction, trace=None):
     """
-    Assume the given prediction is valid (check it with is_prediction_valid)
+    If the prediction is not valid, then return the dict with all metric values
+    at MIN_VALUE or False
     """
+    if not _is_prediction_valid(pred):
+        return _worst_metric_values(trace)
     return _validate_magoh_data(
-        {
-            "university": example.university,
-            "building": example.building,
-            "scheda_intervento": {"id": 0},
-        },
-        cast(ExtractedInterventionData, pred),
+        example.toDict(),
+        pred.toDict(),
         trace,
     )

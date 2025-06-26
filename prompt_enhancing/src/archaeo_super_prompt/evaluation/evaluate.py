@@ -1,15 +1,12 @@
-from functools import reduce
-from typing import Dict, List, Optional, Tuple, cast
+from typing import Dict, List, Optional, Tuple
 import dspy
-from pathlib import Path
 
 import mlflow
 from pandas import DataFrame
 
-from archaeo_super_prompt.models.main_pipeline import ExtractedInterventionData
 
-from .compare import is_prediction_valid, validate_magoh_data, reduce_magoh_data_eval
-from .display_fields import save_visual_score_table, score_fields
+from .compare import validate_magoh_data, reduce_magoh_data_eval
+from .display_fields import score_fields
 
 from .load_examples import DevSet
 
@@ -33,20 +30,17 @@ def measure_and_plot(active_run: Optional[mlflow.ActiveRun]):
 
     def metric(example: dspy.Example, pred: dspy.Prediction, trace=None):
         nonlocal run
-        result = is_prediction_valid(pred, trace)
-        if result is None:
-            result = validate_magoh_data(example, pred, trace)
-            # TODO: remanage that later
-            # run.dataframes.append(
-            #     save_visual_score_table(
-            #         example.answer,
-            #         cast(ExtractedInterventionData, pred.toDict()),
-            #         result,
-            #         run.active_run,
-            #     )
-            # )
-            result = reduce_magoh_data_eval(result, trace)
-        return result
+        result = validate_magoh_data(example, pred, trace)
+        # TODO: remanage that later
+        # run.dataframes.append(
+        #     save_visual_score_table(
+        #         example.answer,
+        #         cast(ExtractedInterventionData, pred.toDict()),
+        #         result,
+        #         run.active_run,
+        #     )
+        # )
+        return reduce_magoh_data_eval(result, trace)
 
     return metric, run
 
@@ -69,7 +63,7 @@ def get_evaluator(devset: DevSet, return_outputs=False):
             raise Exception(
                 "Cannot evaluate without a set language model for the given module"
             )
-        temperature = int(lm.kwargs["temperature"] * 1000)
+        # temperature = int(lm.kwargs["temperature"] * 1000)
         # TODO: put the model logging in another place
         # mlflow.dspy.log_model(dspy_model=program, artifact_path=str(Path(f"./outputs/model_temp__{temperature}_x1000")), input_example=devset[0].inputs().toDict()) # type: ignore
         results = evaluator(program, metric=metric)

@@ -1,3 +1,4 @@
+from typing import Any
 import pandera.pandas as pa
 
 def _negativeFloatColumn():
@@ -40,3 +41,33 @@ structuredDataSchema = pa.DataFrameSchema(
         "building.Data Protocollo": pa.Column(str, nullable=True),
     }
 )
+
+outputStructuredDataSchema = pa.DataFrameSchema(
+    {
+        "id": pa.Column(int),
+        "university.Sigla": pa.Column(str, nullable=True),
+        "university.Comune": pa.Column(str, nullable=True),
+        "university.Ubicazione": pa.Column(str, nullable=True),
+        "university.Indirizzo": pa.Column(str, nullable=True),
+        "university.Località": pa.Column(str, nullable=True),
+        "university.Data intervento": pa.Column(str, nullable=True),
+        "university.Tipo di intervento": pa.Column(str, nullable=True),
+        "university.Durata": pa.Column(str, nullable=True),
+        "university.Eseguito da": pa.Column(str, nullable=True),
+        "university.Direzione scientifica": pa.Column(str, nullable=True),
+        "university.Estensione": pa.Column(str, nullable=True),
+        "university.Numero di saggi": pa.Column('UInt32', pa.Check.ge(0), nullable=True),
+        "university.Profondità massima": _negativeFloatColumn(),
+        "university.Geologico": pa.Column("boolean", nullable=True),
+        "university.OGD": pa.Column(str, nullable=True),
+        "university.OGM": pa.Column(str, nullable=True),
+        "university.Profondità falda": _negativeFloatColumn(),
+        "building.Istituzione": pa.Column(str, nullable=True),
+        "building.Funzionario competente": pa.Column(str, nullable=True),
+        "building.Tipo di documento": pa.Column(str, nullable=True),
+        "building.Protocollo": pa.Column(str, nullable=True),
+        "building.Data Protocollo": pa.Column(str, nullable=True),
+    }
+)
+
+ExtractedStructuredDataSeries = dict[str, Any]

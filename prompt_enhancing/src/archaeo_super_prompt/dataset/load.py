@@ -1,8 +1,6 @@
-from typing import cast
 import pandas as pd
 
-from ..target_types import MagohData
-from ..types.structured_data import structuredDataSchema
+from ..types.structured_data import ExtractedStructuredDataSeries, structuredDataSchema
 
 from .postgresql_engine import get_entries
 from .minio_engine import download_files
@@ -15,7 +13,7 @@ def parse_intervention_data(intervention_data__df: pd.DataFrame):
     )
     filtered_df["university.Numero di saggi"] = filtered_df[
         "university.Numero di saggi"
-    ].astype('UInt32')
+    ].astype("UInt32")
     filtered_df["university.Geologico"] = filtered_df["university.Geologico"].astype(
         "boolean"
     )
@@ -53,24 +51,14 @@ class MagohDataset:
     def intervention_data(self):
         return self._intervention_data
 
-    def get_answer(self, id_: int) -> MagohData:
+    def get_answer(self, id_: int) -> ExtractedStructuredDataSeries:
         record = self._intervention_data[
             self._intervention_data["scheda_intervento.id"] == id_
-        ].filter(regex="^(scheda_intervento.id|(university|building).*)")
+        ].filter(regex="^((university|building).*)")
         if len(record) == 0:
             raise Exception(f"Unable to get record with id {id_}")
         record = record.iloc[0]
-        dict_record = {}
-        for k in record.keys():
-            chunks = k.split(".")
-            if len(chunks) != 2:
-                continue
-            prefix, suffix = chunks
-            if prefix not in dict_record:
-                dict_record[prefix] = {}
-            value = record[k]
-            dict_record[prefix][suffix] = value
-        return MagohData(cast(MagohData, dict_record))
+        return record.to_dict()
 
     @property
     def findings(self):

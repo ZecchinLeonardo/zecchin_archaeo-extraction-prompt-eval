@@ -1,8 +1,10 @@
-from typing import TypedDict, cast
+from typing import Any, TypedDict, cast
 from archaeo_super_prompt.models.chunk_selector import select_end_pages, select_incipit
 from archaeo_super_prompt.types.pdfchunks import (
     PDFChunkPerInterventionDataset,
 )
+from archaeo_super_prompt.types.structured_data import ExtractedStructuredDataSeries
+from archaeo_super_prompt.utils import flatten_dict
 import dspy
 
 from ..debug_log import forward_warning, print_debug_log
@@ -91,7 +93,10 @@ class ExtractDataFromInterventionReport(dspy.Module):
                 intervention_context, document_source_data, report_archival_metadata
             ),
         }
-        return dspy.Prediction(**final_prediction)
+
+        return dspy.Prediction(
+            **flatten_dict(cast(dict[str, dict[str, Any]], final_prediction))
+        )
 
     def forward_and_type(self, document_ocr_scan__df: PDFChunkPerInterventionDataset):
         result: dspy.Prediction
@@ -102,7 +107,4 @@ class ExtractDataFromInterventionReport(dspy.Module):
         except Exception as e:
             forward_warning(e)
             return None
-        return cast(
-            ExtractedInterventionData,
-            result.toDict(),
-        )
+        return cast(ExtractedStructuredDataSeries, result.toDict())

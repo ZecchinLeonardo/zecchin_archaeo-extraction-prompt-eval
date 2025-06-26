@@ -1,19 +1,22 @@
-from typing import List, Tuple, cast
+from typing import List, Optional, Tuple, cast
 
 from dspy import Example, Prediction, dspy
 
 # import mlflow
 import pandas
+from pandera.typing.pandas import DataFrame
 
-from archaeo_super_prompt.dataset.load import MagohDataset
-from archaeo_super_prompt.debug_log import print_log
-from archaeo_super_prompt.evaluation.evaluate import get_evaluator
-from archaeo_super_prompt.evaluation.load_examples import DevSet
-from archaeo_super_prompt.models.main_pipeline import (
+from archaeo_super_prompt.evaluation.compare import validate_magoh_data
+from archaeo_super_prompt.types.results import ResultSchema
+
+from .dataset.load import MagohDataset
+from .debug_log import print_log
+from .evaluation.evaluate import get_evaluator
+from .evaluation.load_examples import DevSet
+from .models.main_pipeline import (
     ExtractDataFromInterventionReport,
 )
-from archaeo_super_prompt.target_types import MagohData
-from archaeo_super_prompt.types.intervention_id import InterventionId
+from .types.intervention_id import InterventionId
 
 
 from .language_model import load_model
@@ -22,6 +25,7 @@ from .types.pdfchunks import (
     PDFChunkPerInterventionDataset,
     PDFChunkSetPerInterventionSchema,
 )
+from .types.structured_data import outputStructuredDataSchema
 
 
 class MagohDataExtractor:
@@ -29,6 +33,11 @@ class MagohDataExtractor:
         self._module = ExtractDataFromInterventionReport()
         self._llm = load_model(llm_temp)
         self._module.set_lm(self._llm)
+        self._cached_score_results: Optional[DataFrame[ResultSchema]]
+
+    @property
+    def score_results(self):
+        return self._cached_score_results
 
     def fit(self, X: PDFChunkDataset, Y: MagohDataset):
         # TODO: call a dspy optimizer
@@ -51,25 +60,27 @@ class MagohDataExtractor:
             if answer is not None
         }
         ids, output_structured_data = zip(*answers.items())
-        answer_df = pandas.json_normalize(
-            cast(list[dict], list(output_structured_data))
-        )
+        answer_df = pandas.DataFrame(cast(list[dict], list(output_structured_data)))
         answer_df["id"] = cast(List[InterventionId], list(ids))
-        return answer_df
+        return outputStructuredDataSchema.validate(answer_df)
 
     def score(self, X: PDFChunkDataset, targets: MagohDataset):
-        """For now, run an evaluation for each field
+        """Run an evaluation of the dpsy model over the given X dataset
+        
+        Also save the per-field results for each test record in a cached
+        dataframe, accessible after the function call with the score_results
+        property (it will not equal None after a sucessful run of this method)
+
+        To fit the sklearn Classifier interface, this method return a reduced
+        floating metric value for the model. 
         """
-        def to_dict(answer: MagohData):
-            return { "university": answer["university"], "building":
-                    answer["building"] }
 
         devset: DevSet = [
             dspy.Example(
                 document_ocr_scans__df=PDFChunkPerInterventionDataset(
                     PDFChunkSetPerInterventionSchema.validate(source, lazy=True)
                 ),
-                **to_dict(targets.get_answer(cast(int, id_))),
+                **targets.get_answer(cast(int, id_)),
             ).with_inputs("document_ocr_scans__df")
             for id_, source in X.groupby("id")
         ]
@@ -84,5 +95,28 @@ class MagohDataExtractor:
             Tuple[float, List[Tuple[Example, Prediction, float]]],
             evaluate(self._module),
         )
-        # return results[0]
-        return results
+        self._cached_score_results = ResultSchema.validate(
+            pandas.DataFrame(
+                sum(
+                    [
+                        [
+                            {
+                                "id": 0,  # TODO:
+                                "field_name": field,
+                                "predicted_value": ex.get(field),
+                                "expected_value": pred.get(field),
+                                "evaluation_method": "not specified yet",  # TODO:
+                                "metric_value": float(metric_value),
+                            }
+                            for field, metric_value in validate_magoh_data(
+                                ex, pred
+                            ).items()
+                        ]
+                        for ex, pred, _ in results[1]
+                    ],
+                    [],
+                )
+            ),
+        )
+
+        return results[0]
