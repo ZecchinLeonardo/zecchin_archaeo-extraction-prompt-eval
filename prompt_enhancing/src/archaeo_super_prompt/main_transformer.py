@@ -103,8 +103,8 @@ class MagohDataExtractor:
                             {
                                 "id": ex.get("id"),
                                 "field_name": field,
-                                "predicted_value": ex.get(field),
-                                "expected_value": pred.get(field),
+                                "predicted_value": pred.get(field),
+                                "expected_value": ex.get(field),
                                 "evaluation_method": "not specified yet",  # TODO:
                                 "metric_value": float(metric_value),
                             }
