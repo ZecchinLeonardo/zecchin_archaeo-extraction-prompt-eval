@@ -1,6 +1,7 @@
 import pandas as pd
 
 from archaeo_super_prompt.types.intervention_id import InterventionId
+from archaeo_super_prompt.utils import variabilize_column_name
 
 from ..types.structured_data import ExtractedStructuredDataSeries, structuredDataSchema
 
@@ -54,10 +55,14 @@ class MagohDataset:
         return self._intervention_data
 
     def get_answer(self, id_: InterventionId) -> ExtractedStructuredDataSeries:
-        record = self._intervention_data[
-            self._intervention_data["scheda_intervento.id"] == id_
-        ].filter(regex="^(scheda_intervento.id|(university|building).*)")
-        record = record.rename(columns={"scheda_intervento.id": "id"})
+        record = (
+            self._intervention_data[
+                self._intervention_data["scheda_intervento.id"] == id_
+            ]
+            .filter(regex="^(scheda_intervento.id|(university|building).*)")
+            .rename(columns={"scheda_intervento.id": "id"})
+            .rename(columns=variabilize_column_name)
+        )
         if len(record) == 0:
             raise Exception(f"Unable to get record with id {id_}")
         record = record.iloc[0]
