@@ -128,7 +128,7 @@ def _validate_magoh_data(
 
 
 def reduce_magoh_data_eval(
-    metric_values: Dict[str, bool],
+    metric_values: Dict[str, bool] | Dict[str, float],
     trace=None,
 ) -> Union[float, bool]:
     vals = metric_values.values()

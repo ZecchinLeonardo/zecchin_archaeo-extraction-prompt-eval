@@ -6,7 +6,6 @@ from pandas import DataFrame
 
 
 from .compare import validate_magoh_data, reduce_magoh_data_eval
-from .display_fields import score_fields
 
 from .load_examples import DevSet
 
@@ -67,7 +66,6 @@ def get_evaluator(devset: DevSet, return_outputs=False):
         # TODO: put the model logging in another place
         # mlflow.dspy.log_model(dspy_model=program, artifact_path=str(Path(f"./outputs/model_temp__{temperature}_x1000")), input_example=devset[0].inputs().toDict()) # type: ignore
         results = evaluator(program, metric=metric)
-        score_fields(run.dataframes, run.active_run)
         return results
 
     return evaluate
