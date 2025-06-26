@@ -1,5 +1,7 @@
 import pandas as pd
 
+from archaeo_super_prompt.types.intervention_id import InterventionId
+
 from ..types.structured_data import ExtractedStructuredDataSeries, structuredDataSchema
 
 from .postgresql_engine import get_entries
@@ -51,10 +53,11 @@ class MagohDataset:
     def intervention_data(self):
         return self._intervention_data
 
-    def get_answer(self, id_: int) -> ExtractedStructuredDataSeries:
+    def get_answer(self, id_: InterventionId) -> ExtractedStructuredDataSeries:
         record = self._intervention_data[
             self._intervention_data["scheda_intervento.id"] == id_
-        ].filter(regex="^((university|building).*)")
+        ].filter(regex="^(scheda_intervento.id|(university|building).*)")
+        record = record.rename(columns={"scheda_intervento.id": "id"})
         if len(record) == 0:
             raise Exception(f"Unable to get record with id {id_}")
         record = record.iloc[0]

@@ -52,7 +52,7 @@ class MagohDataExtractor:
             for id_, answer in {
                 id_: self._module.forward_and_type(
                     PDFChunkPerInterventionDataset(
-                        PDFChunkSetPerInterventionSchema.validate(source, lazy=True)
+                        PDFChunkSetPerInterventionSchema.validate(source, lazy=True),
                     )
                 )
                 for id_, source in X.groupby("id")
@@ -66,21 +66,21 @@ class MagohDataExtractor:
 
     def score(self, X: PDFChunkDataset, targets: MagohDataset):
         """Run an evaluation of the dpsy model over the given X dataset
-        
+
         Also save the per-field results for each test record in a cached
         dataframe, accessible after the function call with the score_results
         property (it will not equal None after a sucessful run of this method)
 
         To fit the sklearn Classifier interface, this method return a reduced
-        floating metric value for the model. 
+        floating metric value for the model.
         """
 
         devset: DevSet = [
             dspy.Example(
                 document_ocr_scans__df=PDFChunkPerInterventionDataset(
-                    PDFChunkSetPerInterventionSchema.validate(source, lazy=True)
+                    PDFChunkSetPerInterventionSchema.validate(source, lazy=True),
                 ),
-                **targets.get_answer(cast(int, id_)),
+                **targets.get_answer(InterventionId(cast(int, id_))),
             ).with_inputs("document_ocr_scans__df")
             for id_, source in X.groupby("id")
         ]

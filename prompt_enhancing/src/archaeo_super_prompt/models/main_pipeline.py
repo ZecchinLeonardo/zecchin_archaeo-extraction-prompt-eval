@@ -95,7 +95,7 @@ class ExtractDataFromInterventionReport(dspy.Module):
         }
 
         return dspy.Prediction(
-            **flatten_dict(cast(dict[str, dict[str, Any]], final_prediction))
+            **flatten_dict(cast(dict[str, dict[str, Any]], final_prediction)),
         )
 
     def forward_and_type(self, document_ocr_scan__df: PDFChunkPerInterventionDataset):

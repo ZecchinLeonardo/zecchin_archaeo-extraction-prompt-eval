@@ -184,7 +184,9 @@ def _is_prediction_valid(pred: Prediction) -> bool:
     Reutrn None if the prediction is valid, else a metric with the worst
     value.
     """
-    return set(outputStructuredDataSchema.columns.keys()).issubset(pred.keys())
+    required_keys = set(outputStructuredDataSchema.columns.keys())
+    required_keys.remove("id")
+    return required_keys.issubset(pred.keys())
 
 
 def validate_magoh_data(example: Example, pred: Prediction, trace=None):

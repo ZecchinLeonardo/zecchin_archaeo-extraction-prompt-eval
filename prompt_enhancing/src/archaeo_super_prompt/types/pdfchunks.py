@@ -47,7 +47,10 @@ class PDFChunkPerInterventionDataset:
     }
     DEFAULT_ITEM = "Unknown pdf item"
 
-    def __init__(self, data: DataFrame[PDFChunkSetPerInterventionSchema]) -> None:
+    def __init__(
+        self,
+        data: DataFrame[PDFChunkSetPerInterventionSchema],
+    ) -> None:
         self.data = data
 
     def __add__(
@@ -55,9 +58,8 @@ class PDFChunkPerInterventionDataset:
     ) -> "PDFChunkPerInterventionDataset":
         return PDFChunkPerInterventionDataset(
             PDFChunkSetPerInterventionSchema.validate(
-                self.data.combine_first(otherDF.data),
-                lazy=True
-            )
+                self.data.combine_first(otherDF.data), lazy=True
+            ),
         )
 
     def getExtractedPdfContent(self) -> PDFSources:
