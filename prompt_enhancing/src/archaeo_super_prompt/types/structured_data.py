@@ -61,12 +61,12 @@ outputStructuredDataSchema = pa.DataFrameSchema(
         "university__Geologico": pa.Column("boolean", nullable=True),
         "university__OGD": pa.Column(str, nullable=True),
         "university__OGM": pa.Column(str, nullable=True),
-        "university.Profondità_falda": _negativeFloatColumn(),
+        "university__Profondità_falda": _negativeFloatColumn(),
         "building__Istituzione": pa.Column(str, nullable=True),
-        "building__Funzionario competente": pa.Column(str, nullable=True),
-        "building__Tipo di documento": pa.Column(str, nullable=True),
+        "building__Funzionario_competente": pa.Column(str, nullable=True),
+        "building__Tipo_di_documento": pa.Column(str, nullable=True),
         "building__Protocollo": pa.Column(str, nullable=True),
-        "building__Data Protocollo": pa.Column(str, nullable=True),
+        "building__Data_Protocollo": pa.Column(str, nullable=True),
     }
 )
 

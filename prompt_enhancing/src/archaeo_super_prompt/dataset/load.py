@@ -3,7 +3,7 @@ import pandas as pd
 from archaeo_super_prompt.types.intervention_id import InterventionId
 from archaeo_super_prompt.utils import variabilize_column_name
 
-from ..types.structured_data import ExtractedStructuredDataSeries, structuredDataSchema
+from ..types.structured_data import ExtractedStructuredDataSeries, structuredDataSchema, outputStructuredDataSchema
 
 from .postgresql_engine import get_entries
 from .minio_engine import download_files
@@ -55,7 +55,7 @@ class MagohDataset:
         return self._intervention_data
 
     def get_answer(self, id_: InterventionId) -> ExtractedStructuredDataSeries:
-        record = (
+        record = outputStructuredDataSchema.validate(
             self._intervention_data[
                 self._intervention_data["scheda_intervento.id"] == id_
             ]

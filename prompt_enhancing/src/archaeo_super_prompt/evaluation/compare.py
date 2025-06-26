@@ -186,7 +186,8 @@ def _is_prediction_valid(pred: Prediction) -> bool:
     """
     required_keys = set(outputStructuredDataSchema.columns.keys())
     required_keys.remove("id")
-    return required_keys.issubset(pred.keys())
+    is_valid = required_keys.issubset(set(pred.keys()))
+    return is_valid
 
 
 def validate_magoh_data(example: Example, pred: Prediction, trace=None):
