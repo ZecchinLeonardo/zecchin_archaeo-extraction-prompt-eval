@@ -1,6 +1,7 @@
 import pandas as pd
 
 from archaeo_super_prompt.types.intervention_id import InterventionId
+from archaeo_super_prompt.types.pdfpaths import PDFPathSchema
 from archaeo_super_prompt.utils import variabilize_column_name
 
 from ..types.structured_data import ExtractedStructuredDataSeries, structuredDataSchema, outputStructuredDataSchema
@@ -28,18 +29,18 @@ def parse_intervention_data(intervention_data__df: pd.DataFrame):
 def _init_with_cache(size: int, seed: float, only_recent_entries=False):
     intervention_data, findings = get_entries(size, seed, only_recent_entries)
     intervention_data = parse_intervention_data(intervention_data)
-    files = pd.concat(
+    files = PDFPathSchema.validate(pd.concat(
         [
             pd.DataFrame(
                 [
-                    {"scheda_intervento.id": id_, "filepath": path}
+                    {"id": id_, "filepath": path}
                     for path in download_files(id_)
                 ]
             )
             for id_ in intervention_data["scheda_intervento.id"]
         ],
         ignore_index=True,
-    )
+    ))
     return intervention_data, findings, files
 
 
