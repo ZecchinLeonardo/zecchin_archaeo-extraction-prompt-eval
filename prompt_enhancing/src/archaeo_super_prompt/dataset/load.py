@@ -1,3 +1,4 @@
+from typing import Set
 import pandas as pd
 
 from archaeo_super_prompt.types.intervention_id import InterventionId
@@ -72,6 +73,9 @@ class MagohDataset:
     @property
     def findings(self):
         return self._findings
+
+    def get_files_for_batch(self, ids: Set[InterventionId]):
+        return self._files[self._files['id'].isin(ids)]
 
     @property
     def files(self):
