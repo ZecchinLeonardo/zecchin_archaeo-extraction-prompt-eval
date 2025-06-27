@@ -22,7 +22,8 @@ def _ocr_transform(X: PDFPathDataset) -> PDFPathDataset:
     return buildPdfPathDataset(t for t in zip(ids, output_paths, strict=True))
 
 
-OCR_Transformer = FunctionTransformer(_ocr_transform)
+def OCR_Transformer():
+    return FunctionTransformer(_ocr_transform)
 
 
 def _text_extract(X: PDFPathDataset) -> PDFChunkDataset:
@@ -34,4 +35,5 @@ def _text_extract(X: PDFPathDataset) -> PDFChunkDataset:
     )
 
 
-TextExtractor = FunctionTransformer(_text_extract)
+def TextExtractor():
+    return FunctionTransformer(_text_extract)

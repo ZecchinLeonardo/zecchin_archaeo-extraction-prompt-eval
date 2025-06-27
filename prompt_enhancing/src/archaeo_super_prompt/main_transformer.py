@@ -2,7 +2,6 @@ from typing import List, Optional, Tuple, cast
 
 from dspy import Example, Prediction, dspy
 
-# import mlflow
 import pandas
 from pandera.typing.pandas import DataFrame
 
@@ -33,11 +32,35 @@ class MagohDataExtractor:
         self._module = ExtractDataFromInterventionReport()
         self._llm = load_model(llm_temp)
         self._module.set_lm(self._llm)
-        self._cached_score_results: Optional[DataFrame[ResultSchema]]
+        self._cached_score_results: Optional[DataFrame[ResultSchema]] = None
 
     @property
     def score_results(self):
         return self._cached_score_results
+
+    @property
+    def dspy_model(self):
+        return self._module
+
+    def compute_model_input(self, X: PDFChunkDataset):
+        return [
+            (
+                id_,
+                PDFChunkPerInterventionDataset(
+                    PDFChunkSetPerInterventionSchema.validate(source, lazy=True),
+                ),
+            )
+            for id_, source in X.groupby("id")
+        ]
+
+    def compute_devset(self, X: PDFChunkDataset, targets: MagohDataset) -> DevSet:
+        return [
+            dspy.Example(
+                document_ocr_scans__df=model_input,
+                **targets.get_answer(InterventionId(cast(int, id_))),
+            ).with_inputs("document_ocr_scans__df")
+            for id_, model_input in self.compute_model_input(X)
+        ]
 
     def fit(self, X: PDFChunkDataset, Y: MagohDataset):
         # TODO: call a dspy optimizer
@@ -50,12 +73,8 @@ class MagohDataExtractor:
         answers = {
             id_: answer
             for id_, answer in {
-                id_: self._module.forward_and_type(
-                    PDFChunkPerInterventionDataset(
-                        PDFChunkSetPerInterventionSchema.validate(source, lazy=True),
-                    )
-                )
-                for id_, source in X.groupby("id")
+                id_: self._module.forward_and_type(model_input)
+                for id_, model_input in self.compute_model_input(X)
             }.items()
             if answer is not None
         }
@@ -74,16 +93,8 @@ class MagohDataExtractor:
         To fit the sklearn Classifier interface, this method return a reduced
         floating metric value for the model.
         """
+        devset = self.compute_devset(X, targets)
 
-        devset: DevSet = [
-            dspy.Example(
-                document_ocr_scans__df=PDFChunkPerInterventionDataset(
-                    PDFChunkSetPerInterventionSchema.validate(source, lazy=True),
-                ),
-                **targets.get_answer(InterventionId(cast(int, id_))),
-            ).with_inputs("document_ocr_scans__df")
-            for id_, source in X.groupby("id")
-        ]
         eval_model = self._llm
         dspy.configure(lm=eval_model)
         # The evaluator only enable to automate the standard workflow of dspy

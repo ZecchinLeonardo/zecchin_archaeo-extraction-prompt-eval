@@ -1,26 +1,27 @@
 import pandera.pandas as pa
+import pandas as pd
 from pathlib import Path
 from typing import Iterable, List, Tuple, cast
 
-from pandera.typing import DataFrame, Series
+from pandera.typing.pandas import DataFrame, Series
 
 from archaeo_super_prompt.types.intervention_id import InterventionId
+
 
 class PDFPathSchema(pa.DataFrameModel):
     id: Series[int]
     filepath: Series[str]
 
+
 PDFPathDataset = DataFrame[PDFPathSchema]
 
 
-def buildPdfPathDataset(items: Iterable[Tuple[InterventionId, Path]]):
-    if not items:
-        return PDFPathDataset(DataFrame())
+def buildPdfPathDataset(items: Iterable[Tuple[InterventionId, Path]]) -> PDFPathDataset:
     ids, paths = cast(
         Tuple[Tuple[InterventionId, ...], Tuple[Path, ...]], zip(*items, strict=True)
     )
-    return PDFPathDataset(
-        DataFrame({"id": ids, "filepath": [str(path) for path in paths]})
+    return PDFPathSchema.validate(
+        pd.DataFrame({"id": ids, "filepath": [str(path) for path in paths]})
     )
 
 
