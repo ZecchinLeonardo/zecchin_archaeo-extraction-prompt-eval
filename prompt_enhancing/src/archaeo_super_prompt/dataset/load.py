@@ -33,7 +33,7 @@ def _init_with_cache(size: int, seed: float, only_recent_entries=False):
         [
             pd.DataFrame(
                 [
-                    {"id": id_, "filepath": path}
+                    {"id": id_, "filepath": str(path.resolve())}
                     for path in download_files(id_)
                 ]
             )
