@@ -1,14 +1,22 @@
 from pathlib import Path
+from typing import cast
 from sklearn.pipeline import FunctionTransformer
+from tqdm import tqdm
+
+from archaeo_super_prompt.debug_log import print_warning
+
+from ..types.intervention_id import InterventionId
 from ..types.pdfchunks import PDFChunkDataset, composePdfChunkDataset
 from ..types.pdfpaths import (
     PDFPathDataset,
     buildPdfPathDataset,
-    get_intervention_rows,
 )
 
 from .add_ocr import add_ocr_layer
-from .smart_reading import extract_smart_chunks_from_pdf
+from .smart_reading import (
+    UnreadableSourceSetError,
+    extract_smart_chunks_from_pdfs_of_intervention,
+)
 
 
 def _ocr_transform(X: PDFPathDataset) -> PDFPathDataset:
@@ -27,19 +35,37 @@ def OCR_Transformer():
 
 
 def _text_extract(X: PDFPathDataset) -> PDFChunkDataset:
-    ds = PDFChunkDataset(
+    def readASet(pdf_path: PDFPathDataset, intervention_id: InterventionId):
+        try:
+            return extract_smart_chunks_from_pdfs_of_intervention(
+                pdf_path["filepath"], intervention_id
+            )
+        except UnreadableSourceSetError:
+            print_warning(
+                f"Impossible to read text from the given source set for intervention n°{intervention_id}"
+            )
+            return None
+
+    return PDFChunkDataset(
         composePdfChunkDataset(
-            extract_smart_chunks_from_pdf(pdf_path, intervention_id)
-            for intervention_id, pdf_path in get_intervention_rows(X)
+            cast(PDFChunkDataset, elt)
+            for elt in filter(
+                lambda elt: elt is not None,
+                (
+                    readASet(
+                        cast(PDFPathDataset, pdf_path),
+                        InterventionId(cast(int, intervention_id)),
+                    )
+                    for intervention_id, pdf_path in tqdm(
+                        X.groupby("id"),
+                        desc="Layout-Read PDF sets",
+                        leave=False,
+                        unit="intervention",
+                    )
+                ),
+            )
         )
     )
-    givenInterventions = set(X["id"].unique())
-    extractableInterventions = set(ds["id"].unique())
-    assert givenInterventions == extractableInterventions, (
-        f"Interventions with these ids are not processable: \
-{givenInterventions.difference(extractableInterventions)}"
-    )
-    return ds
 
 
 def TextExtractor():
