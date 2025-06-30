@@ -6,6 +6,7 @@ from archaeo_super_prompt.types.intervention_id import InterventionId
 from archaeo_super_prompt.types.pdfchunks import (
     PDFChunk,
     PDFChunkDataset,
+    PDFChunkDatasetSchema,
     buildPdfChunkDataset,
 )
 
@@ -24,10 +25,17 @@ def extract_smart_chunks_from_pdf(
     pdf_path: Path, intervention_id: InterventionId
 ) -> PDFChunkDataset:
     filename = Filename(pdf_path.name)
-    doc = _pdf_reader.read_pdf(str(pdf_path))
-    chunks: list[Block] = doc.chunks()
+    chunks: list[Block] = []
+    try:
+        # llmsherpa has unhandled KeyErrors ('return_dict')
+        # in json loading of the parsed values
+        # so it might happen on unprocessable pdfs
+        doc = _pdf_reader.read_pdf(str(pdf_path))
+        chunks = doc.chunks()
+    except *Exception:
+        pass
     if not chunks:
-        raise Exception("No content to be extracted")
+        return PDFChunkDataset(PDFChunkDatasetSchema.empty())
     total_page_number = max(chunk.page_idx for chunk in chunks)
 
     def get_row(chunk: Block, chunk_nb: int):

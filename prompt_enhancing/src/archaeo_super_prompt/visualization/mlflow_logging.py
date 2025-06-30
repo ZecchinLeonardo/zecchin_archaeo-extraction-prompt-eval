@@ -1,15 +1,13 @@
 """Module with functions to manage the mlflow logging and artifact saving"""
 
-from pathlib import Path
-from typing import Tuple, cast
+from typing import cast
 from pandera.typing.pandas import DataFrame
 from feature_engine.pipeline import Pipeline
 import mlflow
 import mlflow.dspy as mldspy
 
-from archaeo_super_prompt.types.intervention_id import InterventionId
-from archaeo_super_prompt.types.pdfchunks import PDFChunkDataset
-from archaeo_super_prompt.types.pdfpaths import buildPdfPathDataset
+from ..types.pdfchunks import PDFChunkDataset
+from ..types.pdfpaths import PDFPathDataset, PDFPathSchema
 
 from ..main_transformer import MagohDataExtractor
 
@@ -37,9 +35,9 @@ def save_metric_scores(
         mlflow.log_metric(str(fieldName), resultPerField["metric_value"].mean())
 
 
-def save_models(pipeline: Pipeline, input_example: Tuple[InterventionId, Path]):
+def save_models(pipeline: Pipeline, interventionExample: PDFPathDataset):
     """Save the dspy model for an inspection. The signature is just
-    representative. 
+    representative.
     """
     # TODO: log the sklearn pipeline model too
     extractorModel = cast(MagohDataExtractor, pipeline.named_steps["extractor"])
@@ -47,13 +45,11 @@ def save_models(pipeline: Pipeline, input_example: Tuple[InterventionId, Path]):
         "document_ocr_scans__df": extractorModel.compute_model_input(
             cast(
                 PDFChunkDataset,
-                Pipeline(pipeline.steps[:-1]).transform(
-                    buildPdfPathDataset([input_example])
-                ),
+                Pipeline(pipeline.steps[:-1]).transform(interventionExample),
             )
         )[0][1]
     }
-    dspy_model_input_example = dspy_model_input_example # unused for now
+    dspy_model_input_example = dspy_model_input_example  # unused for now
 
     mldspy.log_model(
         extractorModel.dspy_model,

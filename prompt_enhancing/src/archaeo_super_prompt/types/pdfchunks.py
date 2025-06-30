@@ -27,7 +27,7 @@ class PDFChunkSetPerInterventionSchema(DataFrameModel):
 
 
 class PDFChunkDatasetSchema(PDFChunkSetPerInterventionSchema):
-    id: Series[InterventionId]
+    id: Series[int]
 
 
 PDFChunkDataset = NewType("PDFChunkDataset", DataFrame[PDFChunkDatasetSchema])

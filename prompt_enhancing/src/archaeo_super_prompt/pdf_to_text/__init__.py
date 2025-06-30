@@ -27,12 +27,19 @@ def OCR_Transformer():
 
 
 def _text_extract(X: PDFPathDataset) -> PDFChunkDataset:
-    return PDFChunkDataset(
+    ds = PDFChunkDataset(
         composePdfChunkDataset(
             extract_smart_chunks_from_pdf(pdf_path, intervention_id)
             for intervention_id, pdf_path in get_intervention_rows(X)
         )
     )
+    givenInterventions = set(X["id"].unique())
+    extractableInterventions = set(ds["id"].unique())
+    assert givenInterventions == extractableInterventions, (
+        f"Interventions with these ids are not processable: \
+{givenInterventions.difference(extractableInterventions)}"
+    )
+    return ds
 
 
 def TextExtractor():
