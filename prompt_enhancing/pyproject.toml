@@ -45,6 +45,7 @@ nbstripout = "^0.8.1"
 pyyaml = "^6.0.2"
 black = "^25.1.0"
 frictionless = "^5.18.1"
+nest-asyncio = "^1.6.0"
 
 
 [[tool.poetry.source]]
