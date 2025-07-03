@@ -6,7 +6,7 @@ from .types import DashComponent
 
 from ..cache import get_cache_subdir
 
-_STATIC_DIR = get_cache_subdir("ocr-pdfs").resolve()
+_STATIC_DIR = get_cache_subdir("pdfs").resolve()
 
 
 def _get_file_endpoints():

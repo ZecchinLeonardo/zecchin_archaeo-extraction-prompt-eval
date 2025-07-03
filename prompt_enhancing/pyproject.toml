@@ -28,6 +28,9 @@ dependencies = [
     "pandera[mypy] (>=0.24.0,<0.25.0)",
     "feature-engine (>=1.8.3,<2.0.0)",
     "dash (>=3.0.4,<4.0.0)",
+    "ollama-ocr (>=0.1.6,<0.2.0)",
+    "torch (>=2.7.1,<3.0.0)",
+    "docling (>=2.39.0,<3.0.0)",
 ]
 
 [project.scripts]
@@ -44,6 +47,15 @@ pyyaml = "^6.0.2"
 black = "^25.1.0"
 frictionless = "^5.18.1"
 
+
+[[tool.poetry.source]]
+name = "torch-cpu-only"
+url = "https://download.pytorch.org/whl"
+priority = "supplemental"
+
+
+[tool.poetry.dependencies]
+torch = {source = "torch-cpu-only"}
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
