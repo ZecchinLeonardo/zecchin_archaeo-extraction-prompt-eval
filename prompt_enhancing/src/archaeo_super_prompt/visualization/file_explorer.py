@@ -4,9 +4,9 @@ import flask
 
 from .types import DashComponent
 
-from ..cache import get_cache_subdir
+from ..cache import get_cache_dir_for
 
-_STATIC_DIR = get_cache_subdir("pdfs").resolve()
+_STATIC_DIR = get_cache_dir_for("external", "pdfs").resolve()
 
 
 def _get_file_endpoints():

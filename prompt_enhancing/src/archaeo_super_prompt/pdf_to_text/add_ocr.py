@@ -7,10 +7,10 @@ import threading
 import time
 import queue
 
-from archaeo_super_prompt.cache import get_cache_subdir
+from archaeo_super_prompt.cache import get_cache_dir_for
 
-OUTPUT_DIR = get_cache_subdir("ocr-pdfs").resolve()
-EXPECTED_COMMON_INPUT_DIRECTORY = get_cache_subdir("pdfs").resolve()
+OUTPUT_DIR = get_cache_dir_for("interim", "ocr-pdfs").resolve()
+EXPECTED_COMMON_INPUT_DIRECTORY = get_cache_dir_for("external", "pdfs").resolve()
 
 
 def _get_output_pdfs(input_files: List[Path]):
@@ -18,7 +18,6 @@ def _get_output_pdfs(input_files: List[Path]):
 
 
 def _add_ocr_layer(input_files: List[Path]):
-    # Normally, "./cache/pdfs"
     common_input_directory = input_files[0].parent.parent.resolve()
     assert common_input_directory == EXPECTED_COMMON_INPUT_DIRECTORY
     output_pdfs = list(_get_output_pdfs(input_files))

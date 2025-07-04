@@ -9,7 +9,7 @@ from ..types.structured_data import ExtractedStructuredDataSeries, structuredDat
 
 from .postgresql_engine import get_entries
 from .minio_engine import download_files
-from ..cache import memory
+from ..cache import get_memory_for
 
 
 def parse_intervention_data(intervention_data__df: pd.DataFrame):
@@ -26,7 +26,7 @@ def parse_intervention_data(intervention_data__df: pd.DataFrame):
     return structuredDataSchema.validate(filtered_df)
 
 
-@memory.cache
+@get_memory_for("external").cache
 def _init_with_cache(size: int, seed: float, only_recent_entries=False):
     intervention_data, findings = get_entries(size, seed, only_recent_entries)
     intervention_data = parse_intervention_data(intervention_data)

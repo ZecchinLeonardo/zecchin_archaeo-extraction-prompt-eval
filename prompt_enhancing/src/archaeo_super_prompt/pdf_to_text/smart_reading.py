@@ -14,7 +14,7 @@ from ..types.pdfchunks import (
     composePdfChunkDataset,
 )
 
-from ..cache import memory
+from ..cache import get_memory_for
 from ..signatures.input import Chunk, Filename
 
 # TODO: edit it with .env
@@ -75,7 +75,7 @@ def _extract_smart_chunks_from_pdf(
     )
 
 
-_cached_func = cast(MemorizedFunc, memory.cache(_extract_smart_chunks_from_pdf))
+_cached_func = cast(MemorizedFunc, get_memory_for("interim").cache(_extract_smart_chunks_from_pdf))
 
 class UnreadableSourceSetError(Exception):
     pass

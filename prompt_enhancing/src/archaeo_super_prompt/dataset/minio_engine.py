@@ -2,6 +2,8 @@ from minio import Minio
 from pathlib import Path
 import re
 from typing import List
+
+from archaeo_super_prompt.cache import get_cache_dir_for
 from ..env import getenv_or_throw
 
 _host = getenv_or_throw("MINIO_HOST")
@@ -30,7 +32,7 @@ def sanitize_filename(filename):
 
 
 def download_files(intervention_id: int) -> List[Path]:
-    pdf_store_dir = Path("./.cache/pdfs/")
+    pdf_store_dir = get_cache_dir_for("external", "pdfs")
     if not pdf_store_dir.exists():
         pdf_store_dir.mkdir(parents=True, exist_ok=True)
 
@@ -38,7 +40,9 @@ def download_files(intervention_id: int) -> List[Path]:
 
     output_pathdir = pdf_store_dir / dirpath
     if output_pathdir.exists():
-        return [f for f in output_pathdir.iterdir()]
+        files = [f for f in output_pathdir.iterdir()]
+        if files:
+            return files
 
     files = __client.list_objects(BUCKET_NAME, prefix=str(dirpath), recursive=True)
 

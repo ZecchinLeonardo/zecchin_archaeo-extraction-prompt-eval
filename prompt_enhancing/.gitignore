@@ -4,6 +4,12 @@ outputs/*
 !outputs/.gitkeep
 inputs/*
 !inputs/.gitkeep
+data/external/
+data/interim/
+data/processed/
+!data/external/.gitkeep
+!data/interim/.gitkeep
+!data/processed/.gitkeep
 
 mlruns/
 mlartifacts/
