@@ -1,9 +1,10 @@
 from pathlib import Path
 from typing import cast
 from sklearn.pipeline import FunctionTransformer
+from sklearn.base import BaseEstimator, TransformerMixin
 from tqdm import tqdm
 
-from archaeo_super_prompt.debug_log import print_warning
+from ..debug_log import print_warning
 
 from ..types.intervention_id import InterventionId
 from ..types.pdfchunks import PDFChunkDataset, composePdfChunkDataset
@@ -17,6 +18,25 @@ from .smart_reading import (
     UnreadableSourceSetError,
     extract_smart_chunks_from_pdfs_of_intervention,
 )
+from . import stream_ocr as vllm_scan_mod
+
+
+class VLLM_Preprocessing(TransformerMixin, BaseEstimator):
+    def __init__(self, model: str, prompt: str, allowed_timeout: int = 60 * 5):
+        self._allowed_tiemout = allowed_timeout
+        self._converter = vllm_scan_mod.converter(
+            vllm_scan_mod.ollama_vlm_options(
+                model, prompt, allowed_timeout=allowed_timeout
+            )
+        )
+
+    def transform(self, X: PDFPathDataset):
+        conversion_results = vllm_scan_mod.process_documents(
+            [Path(p) for p in X["filepath"].to_list()],
+            self._converter,
+            self._allowed_tiemout,
+        )
+        # TODO: how do I postprocess my results
 
 
 def _ocr_transform(X: PDFPathDataset) -> PDFPathDataset:
