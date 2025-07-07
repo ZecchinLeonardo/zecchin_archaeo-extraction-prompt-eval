@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import Literal
 from joblib import Memory
 
-_CACHE_DIR = Path(__file__) / "../../data/"
+_CACHE_DIR = (Path(__file__) / "../../data/").resolve()
 
 CacheSubpart = Literal["external", "interim", "processed"]
 
