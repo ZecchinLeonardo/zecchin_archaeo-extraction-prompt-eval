@@ -25,7 +25,7 @@ handler.setFormatter(ColorFormatter("%(levelname)s: %(message)s"))
 # Configure logger
 logger = logging.getLogger(__name__)
 # TODO: make a production mode with logging.INFO mode
-logger.setLevel(logging.DEBUG)
+# logger.setLevel(logging.DEBUG)
 logger.addHandler(handler)
 logger.propagate = False  # Avoid duplicate logs
 
