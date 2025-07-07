@@ -2,7 +2,7 @@
 
 from io import BytesIO
 from pathlib import Path
-from typing import Iterable, List, Tuple
+from typing import Generator, Iterable, List, Tuple
 from docling.datamodel.document import ConversionResult
 from ollama_ocr import OCRProcessor
 from pydantic import AnyUrl
@@ -18,24 +18,24 @@ from docling.document_converter import DocumentConverter, PdfFormatOption
 from docling.pipeline.vlm_pipeline import VlmPipeline
 from docling.datamodel.base_models import DocumentStream
 
+
 _ocr = OCRProcessor(model_name="granite3.2-vision")
+_PARALLEL_PAGE_NB = 2  # TODO: put this at 2
 
 
 def _stream_document_pages(file: Path) -> Tuple[Iterable[DocumentStream], int]:
     source_doc = pymupdf.open(file)
 
-    def create_smaller_pdf_for_page(source_doc: pymupdf.Document, page_number: int):
+    def create_smaller_pdf_for_page(page_number: int):
         per_page_pdf = pymupdf.open()
         per_page_pdf.insert_pdf(source_doc, from_page=page_number, to_page=page_number)
         return DocumentStream(
-            name=f"{source_doc.name}__p{page_number}.pdf",
+            # intervention_id + fileanme + page_number + .pdf
+            name=f"{file.parent.name}__{file.stem}__p{page_number}.pdf",
             stream=BytesIO(per_page_pdf.tobytes()),
         )
 
-    pages = (
-        create_smaller_pdf_for_page(source_doc, pn)
-        for pn in range(source_doc.page_count)
-    )
+    pages = (create_smaller_pdf_for_page(pn) for pn in range(source_doc.page_count))
     return pages, source_doc.page_count
 
 
@@ -52,8 +52,8 @@ def ollama_vlm_options(model: str, prompt: str, response_format: ResponseFormat)
             model=model,
         ),
         prompt=prompt,
-        timeout=60,
-        concurrency=2,
+        timeout=60 * 10,  # One page can take 10 minutes to be processed
+        concurrency=_PARALLEL_PAGE_NB,
         scale=1.0,
         response_format=response_format,
     )
@@ -79,12 +79,25 @@ def converter(ollama_vlm_options: ApiVlmOptions):
     return doc_converter
 
 
+def _flatten_iterable[T](gen: Generator[Iterable[T]]):
+    for batch in gen:
+        for elt in batch:
+            yield elt
+
+
 def process_documents(files: List[Path], documentConvertor: DocumentConverter):
     results_over_files: List[List[ConversionResult]] = []
     for file in tqdm(files, desc="processed files"):
         page_stream, page_number = _stream_document_pages(file)
-        results = documentConvertor.convert_all(page_stream)
-        results_over_files.append([result for result in tqdm(results, desc="VLLM processed pages", total=page_number, unit="page")])
+        results = documentConvertor.convert_all(
+            page_stream, max_num_pages=1, raises_on_error=False
+        )
+        lst = []
+        for result in tqdm(
+            results, desc="VLLM processed pages", total=page_number, unit="page"
+        ):
+            lst.append(result)
+        results_over_files.append(lst)
     return results_over_files
 
 
