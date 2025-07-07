@@ -2,7 +2,7 @@
 
 from io import BytesIO
 from pathlib import Path
-from typing import Generator, Iterable, List, Tuple
+from typing import Generator, Iterable, List, Literal, Tuple
 from docling.datamodel.document import ConversionResult
 from ollama_ocr import OCRProcessor
 from pydantic import AnyUrl
@@ -20,10 +20,22 @@ from docling.datamodel.base_models import DocumentStream
 
 
 _ocr = OCRProcessor(model_name="granite3.2-vision")
-_PARALLEL_PAGE_NB = 2  # TODO: put this at 2
+_PARALLEL_PAGE_NB = 2
 
 
-def _stream_document_pages(file: Path) -> Tuple[Iterable[DocumentStream], int]:
+def _document_page_number(file: Path) -> int:
+    source_doc = pymupdf.open(file)
+    page_count = source_doc.page_count
+    source_doc.close()
+    return page_count
+
+
+def stream_document_pages(file: Path) -> Tuple[Iterable[DocumentStream], int]:
+    """We do not use a per-page processing to let Docling running its native
+    per-page vllm processing, hoping more performant results will be output.
+
+    So this function is kept here in case of
+    """
     source_doc = pymupdf.open(file)
 
     def create_smaller_pdf_for_page(page_number: int):
@@ -39,7 +51,21 @@ def _stream_document_pages(file: Path) -> Tuple[Iterable[DocumentStream], int]:
     return pages, source_doc.page_count
 
 
-def ollama_vlm_options(model: str, prompt: str, response_format: ResponseFormat):
+def ollama_vlm_options(
+    model: str,
+    prompt: str,
+    response_format: Literal[
+        ResponseFormat.HTML, ResponseFormat.MARKDOWN
+    ] = ResponseFormat.MARKDOWN,
+    allowed_timeout: int = 60 * 3,
+):
+    """Arguments:
+    * model: the string identifier of the vllm model in ollama
+    * prompt: a string to prompt to the vllm to contextualize its OCR task
+    * response_format: a supported response format for the vllm
+    * allowed_timeout: the allowed time for processing one page in one
+    document (default to 3 minutes)
+    """
     # The ApiVlmOptions() allows to interface with APIs supporting
     # the multi-modal chat interface. Here follow a few example on how to configure those.
     #
@@ -52,7 +78,8 @@ def ollama_vlm_options(model: str, prompt: str, response_format: ResponseFormat)
             model=model,
         ),
         prompt=prompt,
-        timeout=60 * 10,  # One page can take 10 minutes to be processed
+        # One page may take 3 minutes to be roughly well processed
+        timeout=allowed_timeout,
         concurrency=_PARALLEL_PAGE_NB,
         scale=1.0,
         response_format=response_format,
@@ -79,25 +106,29 @@ def converter(ollama_vlm_options: ApiVlmOptions):
     return doc_converter
 
 
-def _flatten_iterable[T](gen: Generator[Iterable[T]]):
-    for batch in gen:
-        for elt in batch:
-            yield elt
+def process_documents(
+    files: List[Path], documentConvertor: DocumentConverter, timeout_per_page: int
+):
+    results_over_files: List[ConversionResult] = []
+    page_counts = (_document_page_number(p) for p in files)
+    result_iterable = documentConvertor.convert_all(
+        files, max_num_pages=150, raises_on_error=False
+    )
+    print(
+        "Max duration for the current scan:", next(page_counts) * timeout_per_page, "s"
+    )
+    for result in tqdm(result_iterable, desc="vllm-scanned files", unit="file"):
+        try:
+            print(
+                "Max duration for the current scan:",
+                next(page_counts) * timeout_per_page,
+                "s",
+            )
+        except StopIteration:
+            # edge-case for the last loop
+            pass
+        results_over_files.append(result)
 
-
-def process_documents(files: List[Path], documentConvertor: DocumentConverter):
-    results_over_files: List[List[ConversionResult]] = []
-    for file in tqdm(files, desc="processed files"):
-        page_stream, page_number = _stream_document_pages(file)
-        results = documentConvertor.convert_all(
-            page_stream, max_num_pages=1, raises_on_error=False
-        )
-        lst = []
-        for result in tqdm(
-            results, desc="VLLM processed pages", total=page_number, unit="page"
-        ):
-            lst.append(result)
-        results_over_files.append(lst)
     return results_over_files
 
 
