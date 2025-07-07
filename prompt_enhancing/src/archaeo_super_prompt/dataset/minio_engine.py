@@ -3,7 +3,7 @@ from pathlib import Path
 import re
 from typing import List
 
-from archaeo_super_prompt.cache import get_cache_dir_for
+from ..cache import get_cache_dir_for
 from ..env import getenv_or_throw
 
 _host = getenv_or_throw("MINIO_HOST")

@@ -53,14 +53,18 @@ def get_entries(max_number: int, seed: float, only_recent_entries=False):
         else __sampling_on_recents_request,
     )
     deterministic_params = {"seed": seed, "max_number": max_number}
+    print("Fetching structured intervention data...")
     intervention_data = pd.read_sql(
         __seed_setting_request + "\n" + __sampling_request,
         __engine,
         params=deterministic_params,
     )
+    print("Fetching done!")
+    print("Fetching saved findings for each intervention...")
     findings = pd.read_sql(
         __seed_setting_request + "\n" + findingds_request,
         __engine,
         params=deterministic_params,
     )
+    print("Fetching done!")
     return intervention_data, findings

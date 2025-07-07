@@ -1,11 +1,16 @@
 from typing import Set
 import pandas as pd
+from tqdm import tqdm
 
 from archaeo_super_prompt.types.intervention_id import InterventionId
 from archaeo_super_prompt.types.pdfpaths import PDFPathSchema
 from archaeo_super_prompt.utils import variabilize_column_name
 
-from ..types.structured_data import ExtractedStructuredDataSeries, structuredDataSchema, outputStructuredDataSchema
+from ..types.structured_data import (
+    ExtractedStructuredDataSeries,
+    structuredDataSchema,
+    outputStructuredDataSchema,
+)
 
 from .postgresql_engine import get_entries
 from .minio_engine import download_files
@@ -15,12 +20,8 @@ from ..cache import get_memory_for
 def parse_intervention_data(intervention_data__df: pd.DataFrame):
     filtered_df = intervention_data__df.filter(
         regex="^(scheda_intervento.id|(university|building|check).*)"
-    )
-    filtered_df["university.Numero di saggi"] = filtered_df[
-        "university.Numero di saggi"
-    ].astype("UInt32")
-    filtered_df["university.Geologico"] = filtered_df["university.Geologico"].astype(
-        "boolean"
+    ).astype(
+        {"university.Numero di saggi": "UInt32", "university.Geologico": "boolean"}
     )
 
     return structuredDataSchema.validate(filtered_df)
@@ -30,18 +31,24 @@ def parse_intervention_data(intervention_data__df: pd.DataFrame):
 def _init_with_cache(size: int, seed: float, only_recent_entries=False):
     intervention_data, findings = get_entries(size, seed, only_recent_entries)
     intervention_data = parse_intervention_data(intervention_data)
-    files = PDFPathSchema.validate(pd.concat(
-        [
-            pd.DataFrame(
-                [
-                    {"id": id_, "filepath": str(path.resolve())}
-                    for path in download_files(id_)
-                ]
-            )
-            for id_ in intervention_data["scheda_intervento.id"]
-        ],
-        ignore_index=True,
-    ))
+    files = PDFPathSchema.validate(
+        pd.concat(
+            [
+                pd.DataFrame(
+                    [
+                        {"id": id_, "filepath": str(path.resolve())}
+                        for path in download_files(id_)
+                    ]
+                )
+                for id_ in tqdm(
+                    intervention_data["scheda_intervento.id"],
+                    desc="Downloaded files",
+                    unit="interventions",
+                )
+            ],
+            ignore_index=True,
+        )
+    )
     return intervention_data, findings, files
 
 
@@ -75,7 +82,7 @@ class MagohDataset:
         return self._findings
 
     def get_files_for_batch(self, ids: Set[InterventionId]):
-        return self._files[self._files['id'].isin(ids)]
+        return self._files[self._files["id"].isin(ids)]
 
     @property
     def files(self):
