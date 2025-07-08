@@ -4,6 +4,7 @@ from sklearn.pipeline import FunctionTransformer
 from sklearn.base import BaseEstimator, TransformerMixin
 from tqdm import tqdm
 
+
 from ..debug_log import print_warning
 
 from ..types.intervention_id import InterventionId
@@ -14,6 +15,7 @@ from ..types.pdfpaths import (
 )
 
 from .add_ocr import add_ocr_layer
+from .chunking import get_chunker, get_chunks
 from .smart_reading import (
     UnreadableSourceSetError,
     extract_smart_chunks_from_pdfs_of_intervention,
@@ -22,13 +24,28 @@ from . import stream_ocr as vllm_scan_mod
 
 
 class VLLM_Preprocessing(TransformerMixin, BaseEstimator):
-    def __init__(self, model: str, prompt: str, allowed_timeout: int = 60 * 5):
+    def __init__(
+        self,
+        model: str,
+        prompt: str,
+        embedding_model_hf_id: str,
+        allowed_timeout: int = 60 * 5,
+    ):
+        """Arguments:
+        * embedding_model_hf_id: the identifier on HuggingFace API of the embedding model, so its tokenizer can be fetched
+        """
         self._allowed_tiemout = allowed_timeout
         self._converter = vllm_scan_mod.converter(
             vllm_scan_mod.ollama_vlm_options(
                 model, prompt, allowed_timeout=allowed_timeout
             )
         )
+        self._chunker = get_chunker(embedding_model_hf_id)
+
+    def _retry_scanning_failed_document(self):
+        # TODO: scan the document in another vllm
+        # or scan page per page
+        return None
 
     def transform(self, X: PDFPathDataset):
         conversion_results = vllm_scan_mod.process_documents(
@@ -36,7 +53,12 @@ class VLLM_Preprocessing(TransformerMixin, BaseEstimator):
             self._converter,
             self._allowed_tiemout,
         )
-        # TODO: how do I postprocess my results
+        chunked_results = [
+            get_chunks(self._chunker, r) if r is not None else None
+            for r in conversion_results
+        ]
+        # TODO: store the chunks with their contextual text and their metadata
+        # in a pandas dataframe
 
 
 def _ocr_transform(X: PDFPathDataset) -> PDFPathDataset:

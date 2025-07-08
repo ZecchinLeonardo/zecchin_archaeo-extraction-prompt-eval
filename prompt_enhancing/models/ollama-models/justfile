@@ -1,3 +1,5 @@
+set dotenv-load
+
 # Start the ollma server in the cluster
 start-ollama:
   ssh -f $REMOTE_SERVER_SSH_LOGIN "tmux new-session -d -s ollama_main '$OLLAMA_ENV_VARS OLLAMA_HOST=127.0.0.1:$REMOTE_OLLAMA_PORT $OLLAMA_PATH_IN_REMOTE_SERVER serve'; tmux new-session -d -s ollama_llm '$OLLAMA_PATH_IN_REMOTE_SERVER run gemma3:27b'; tmux new-session -d -s ollama_vision '$OLLAMA_PATH_IN_REMOTE_SERVER run granite3.2-vision:latest'"

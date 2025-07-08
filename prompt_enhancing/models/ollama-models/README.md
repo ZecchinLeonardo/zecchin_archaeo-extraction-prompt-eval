@@ -9,5 +9,5 @@ You need to fill in this file a `.env` file as in the `.env.example`.
 ## Used models
 
 - Vision Language Model for OCR and PDF text reading: `granite3.2-vision:latest`
-- Embedding Model: <!-- TODO: figure it out again -->
+- Embedding Model: `nomic-embed-text:latest`
 - Main Language Model for data extraction : `gemma3:27b`

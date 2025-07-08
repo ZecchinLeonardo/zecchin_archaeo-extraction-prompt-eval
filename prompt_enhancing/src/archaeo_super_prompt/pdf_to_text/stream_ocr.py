@@ -2,7 +2,16 @@
 
 from io import BytesIO
 from pathlib import Path
-from typing import Generator, Iterable, List, Literal, Tuple
+from typing import (
+    Generator,
+    Iterable,
+    List,
+    Literal,
+    NewType,
+    Optional,
+    Tuple,
+    TypeGuard,
+)
 from docling.datamodel.document import ConversionResult
 from ollama_ocr import OCRProcessor
 from pydantic import AnyUrl
@@ -16,7 +25,9 @@ from docling.datamodel.pipeline_options import (
 from docling.datamodel.pipeline_options_vlm_model import ApiVlmOptions, ResponseFormat
 from docling.document_converter import DocumentConverter, PdfFormatOption
 from docling.pipeline.vlm_pipeline import VlmPipeline
-from docling.datamodel.base_models import DocumentStream
+from docling.datamodel.base_models import DocumentStream, ConversionStatus
+
+from .types import has_document_been_well_scanned, CorrectlyConvertedDocument
 
 
 _ocr = OCRProcessor(model_name="granite3.2-vision")
@@ -106,9 +117,16 @@ def converter(ollama_vlm_options: ApiVlmOptions):
     return doc_converter
 
 
+
+
+
+def _retry_scanning_failed_document(doc: ConversionResult):
+    return None
+
+
 def process_documents(
     files: List[Path], documentConvertor: DocumentConverter, timeout_per_page: int
-):
+) -> List[Optional[CorrectlyConvertedDocument]]:
     results_over_files: List[ConversionResult] = []
     page_counts = (_document_page_number(p) for p in files)
     result_iterable = documentConvertor.convert_all(
@@ -129,7 +147,10 @@ def process_documents(
             pass
         results_over_files.append(result)
 
-    return results_over_files
+    return [
+        r if has_document_been_well_scanned(r) else _retry_scanning_failed_document(r)
+        for r in results_over_files
+    ]
 
 
 def process_documents__ollma_ocr(files: List[Path]):
