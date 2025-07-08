@@ -1,8 +1,0 @@
-wheel
-pytest
-empty
-flask
-flask-testing
-marshmallow
-flask-marshmallow
-flask-debugtoolbar
