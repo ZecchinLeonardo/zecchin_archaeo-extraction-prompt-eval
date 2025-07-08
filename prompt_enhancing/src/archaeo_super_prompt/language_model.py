@@ -14,10 +14,9 @@ def _get_openai_model():
     )
 
 def _get_ollama_model(temperature=0.0):
-    ollama_localhost_port = getenv_or_throw("LOCAL_LLM_PORT")
     return dspy.LM(
         "ollama_chat/gemma3:27b",
-        api_base=f"http://localhost:{ollama_localhost_port}",
+        api_base="http://localhost:11434",
         api_key='',
         temperature=temperature
     )
