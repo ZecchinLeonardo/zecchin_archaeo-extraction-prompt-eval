@@ -1,4 +1,4 @@
-LOCAL_PORT := "8886"
+LOCAL_PORT := "8884"
 REMOTE_PORT := "8000"
 REMOTE_SERVER_SSH_LOGIN := "mappa_cluster"
 
