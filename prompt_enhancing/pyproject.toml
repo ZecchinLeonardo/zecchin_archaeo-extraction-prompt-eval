@@ -30,6 +30,7 @@ dependencies = [
     "dash (>=3.0.4,<4.0.0)",
     "ollama-ocr (>=0.1.6,<0.2.0)", # TODO: remove
     "docling (>=2.39.0,<3.0.0)",
+    "fuzzywuzzy (>=0.18.0,<0.19.0)",
 ]
 
 [project.scripts]
