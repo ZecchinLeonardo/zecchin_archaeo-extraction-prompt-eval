@@ -1,0 +1,12 @@
+LOCAL_PORT := "8886"
+REMOTE_PORT := "8000"
+REMOTE_SERVER_SSH_LOGIN := "mappa_cluster"
+
+sync:
+  rsync --exclude-from=.gitignore -azvhP . \
+    {{REMOTE_SERVER_SSH_LOGIN}}:raid/magoh_ai/inference-server
+
+# Connect to the inference server through a ssh tunnel toward the cluster
+connect_remote_server:
+  @echo "You can now fetch your llm from http://localhost:{{LOCAL_PORT}}"
+  ssh -N {{REMOTE_SERVER_SSH_LOGIN}} -L {{LOCAL_PORT}}:localhost:{{REMOTE_PORT}}
