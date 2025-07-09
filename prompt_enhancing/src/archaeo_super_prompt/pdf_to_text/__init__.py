@@ -34,7 +34,7 @@ class VLLM_Preprocessing(TransformerMixin, BaseEstimator):
         """Arguments:
         * embedding_model_hf_id: the identifier on HuggingFace API of the embedding model, so its tokenizer can be fetched
         """
-        self._allowed_tiemout = allowed_timeout
+        self._allowed_timeout = allowed_timeout
         self._converter = vllm_scan_mod.converter(
             vllm_scan_mod.ollama_vlm_options(
                 model, prompt, allowed_timeout=allowed_timeout
@@ -51,7 +51,7 @@ class VLLM_Preprocessing(TransformerMixin, BaseEstimator):
         conversion_results = vllm_scan_mod.process_documents(
             [Path(p) for p in X["filepath"].to_list()],
             self._converter,
-            self._allowed_tiemout,
+            self._allowed_timeout,
         )
         chunked_results = [
             get_chunks(self._chunker, r) if r is not None else None

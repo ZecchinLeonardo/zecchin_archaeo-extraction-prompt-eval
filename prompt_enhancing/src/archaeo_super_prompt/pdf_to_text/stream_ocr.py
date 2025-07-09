@@ -3,21 +3,21 @@
 from io import BytesIO
 from pathlib import Path
 from typing import (
-    Generator,
+    cast,
+    Callable,
     Iterable,
     List,
     Literal,
-    NewType,
     Optional,
     Tuple,
-    TypeGuard,
 )
-from docling.datamodel.document import ConversionResult
+from joblib.memory import MemorizedFunc
 from ollama_ocr import OCRProcessor
 from pydantic import AnyUrl
 import pymupdf
 from tqdm import tqdm
 
+from docling.datamodel.document import ConversionResult
 from docling.datamodel.base_models import InputFormat
 from docling.datamodel.pipeline_options import (
     VlmPipelineOptions,
@@ -25,9 +25,10 @@ from docling.datamodel.pipeline_options import (
 from docling.datamodel.pipeline_options_vlm_model import ApiVlmOptions, ResponseFormat
 from docling.document_converter import DocumentConverter, PdfFormatOption
 from docling.pipeline.vlm_pipeline import VlmPipeline
-from docling.datamodel.base_models import DocumentStream, ConversionStatus
+from docling.datamodel.base_models import DocumentStream
 
 from .types import has_document_been_well_scanned, CorrectlyConvertedDocument
+from ..cache import get_memory_for
 
 
 _ocr = OCRProcessor(model_name="granite3.2-vision")
@@ -122,6 +123,41 @@ def converter(ollama_vlm_options: ApiVlmOptions):
 
 def _retry_scanning_failed_document(doc: ConversionResult):
     return None
+
+def __vllm_cache_output(filepath: str, output_to_be_cached: Optional[CorrectlyConvertedDocument]=None) -> Optional[CorrectlyConvertedDocument]:
+    return output_to_be_cached
+
+_vllm_cache_output = cast(MemorizedFunc, get_memory_for("interim").cache(__vllm_cache_output), ignore=["output_to_be_cached"])
+
+def _cached_convert_all(convert_all_func: Callable[[List[Path]], Iterable[CorrectlyConvertedDocument]], files: List[Path]):
+    """Get the conversion results for all the documents, with only requesting
+    the vllm when the results are not cached. Save them in the cache after the
+    computation.
+
+    Arguments:
+    * convert_all_func: a function which should always return a valid
+    ConversionResult (so failed results must be managed in this function
+
+    Return an Iterable with (documentFilePath, CorrectlyConvertedDocument)
+    """
+    results = []
+    files_to_be_processed = []
+    for f in files:
+        mresult = _vllm_cache_output.call_and_shelve(str(f))
+        cached_result = mresult.get()
+        results.append((f, cached_result))
+        if cached_result is None:
+            files_to_be_processed.append(f)
+            mresult.clear()
+    new_results = convert_all_func(files_to_be_processed)
+    for f, result in results:
+        if result is None:
+            new_result = next(new_results)
+            # just pass to this identity function to save it in the cache
+            new_result = __vllm_cache_output(str(f), new_result)
+            yield f, new_result
+            continue
+        yield f, result
 
 
 def process_documents(
