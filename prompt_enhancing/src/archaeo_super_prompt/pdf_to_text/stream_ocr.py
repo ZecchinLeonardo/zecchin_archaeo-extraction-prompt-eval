@@ -254,4 +254,4 @@ def process_documents(
                 # edge-case for the last loop
                 pass
 
-    return [result for _, result in convert_with_debug()]
+    return list(convert_with_debug())

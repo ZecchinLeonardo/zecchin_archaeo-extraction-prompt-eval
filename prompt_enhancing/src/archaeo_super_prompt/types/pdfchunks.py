@@ -3,7 +3,7 @@
 from pandas import concat
 from pandera.pandas import DataFrameModel
 from pandera.typing import DataFrame, Series
-from typing import Generator, Iterable, List, NewType, TypedDict, Union, cast
+from typing import Generator, Iterable, List, Set, NewType, TypedDict, Union, cast
 
 from ..signatures.input import (
     Chunk,
@@ -20,8 +20,8 @@ from .intervention_id import InterventionId
 
 class PDFChunkSetPerInterventionSchema(DataFrameModel):
     filename: Series[str]
-    chunk_type: Series[str]
-    chunk_page_position: Series[str]  # fraction: page number over total page number
+    chunk_type: Series[Set[str]]
+    chunk_page_position: Series[Set[int]]
     chunk_index: Series[int]
     chunk_content: Series[str]
 

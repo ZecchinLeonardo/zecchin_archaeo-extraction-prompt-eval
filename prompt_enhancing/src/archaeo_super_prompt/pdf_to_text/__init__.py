@@ -8,14 +8,14 @@ from tqdm import tqdm
 from ..debug_log import print_warning
 
 from ..types.intervention_id import InterventionId
-from ..types.pdfchunks import PDFChunkDataset, composePdfChunkDataset
+from ..types.pdfchunks import PDFChunkDataset, PdfChunkDatasetSchema, composePdfChunkDataset
 from ..types.pdfpaths import (
     PDFPathDataset,
     buildPdfPathDataset,
 )
 
 from .add_ocr import add_ocr_layer
-from .chunking import get_chunker, get_chunks
+from .chunking import get_chunker, get_chunks, chunk_to_ds
 from .smart_reading import (
     UnreadableSourceSetError,
     extract_smart_chunks_from_pdfs_of_intervention,
@@ -55,12 +55,10 @@ class VLLM_Preprocessing(TransformerMixin, BaseEstimator):
             self._second_converter,
             self._allowed_timeout,
         )
-        chunked_results = [get_chunks(self._chunker, r)
-                           for r in conversion_results]
+        chunked_results = [(f, get_chunks(self._chunker, r))
+                           for f, r in conversion_results]
 
-        return chunked_results
-        # TODO: store the chunks with their contextual text and their metadata
-        # in a pandas dataframe
+        return chunk_to_ds(chunked_results, self._chunker)
 
 
 def _ocr_transform(X: PDFPathDataset) -> PDFPathDataset:
