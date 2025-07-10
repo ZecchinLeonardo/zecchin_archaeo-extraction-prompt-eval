@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Literal
+from typing import Literal, Tuple, cast
 from joblib import Memory
 
 _CACHE_DIR = (Path(__file__).parent / "../../data/").resolve()
@@ -7,7 +7,8 @@ _CACHE_DIR = (Path(__file__).parent / "../../data/").resolve()
 CacheSubpart = Literal["external", "interim", "processed"]
 
 _memories: dict[CacheSubpart, Memory] = {
-    k: Memory(str(_CACHE_DIR / k), verbose=0) for k in ("external", "interim", "processed")
+    k: Memory(str(_CACHE_DIR / k), verbose=0)
+    for k in cast(Tuple[CacheSubpart, ...], ("external", "interim", "processed"))
 }
 
 

@@ -24,9 +24,10 @@ from docling.datamodel.pipeline_options import (
 from docling.datamodel.pipeline_options_vlm_model import ApiVlmOptions, ResponseFormat
 from docling.document_converter import DocumentConverter, PdfFormatOption
 from docling.pipeline.vlm_pipeline import VlmPipeline
-from docling.datamodel.base_models import DocumentStream
+from docling_core.types.io import DocumentStream
 
 from .types import has_document_been_well_scanned, CorrectlyConvertedDocument
+from ..types.intervention_id import InterventionId
 from ..cache import get_memory_for
 
 
@@ -128,29 +129,23 @@ def merge_docs(
     for doc in docs:
         current_page_nb = max(merged.pages.keys())
         for page_nb in doc.pages:
-            merged.pages[current_page_nb + page_nb] = doc.pages[page_nb].model_copy(
-                deep=True
-            )
+            new_page = doc.pages[page_nb].model_copy(deep=True)
 
+            merged.pages[current_page_nb + page_nb] = new_page
     return merged
 
 
 def _retry_scanning_failed_document(
-    doc: Path, otherDocumentConverter: DocumentConverter
-) -> CorrectlyConvertedDocument:
-    print("Retry scanning the document with another vllm...")
-    newResult = has_document_been_well_scanned(
-        otherDocumentConverter.convert(doc, max_num_pages=150, raises_on_error=False)
-    )
-    if newResult is not None:
-        return newResult
+    doc: Path, docConverter: DocumentConverter
+) -> List[CorrectlyConvertedDocument]:
+    print("Retry scanning the document page per page...")
     pages_iter, page_number = stream_document_pages(doc)
-    return merge_docs(
+    return [
         r
         for r in tqdm(
             map(
                 has_document_been_well_scanned,
-                otherDocumentConverter.convert_all(
+                docConverter.convert_all(
                     pages_iter, max_num_pages=1, raises_on_error=False
                 ),
             ),
@@ -159,12 +154,13 @@ def _retry_scanning_failed_document(
             total=page_number,
         )
         if r is not None
-    )
+    ]
 
 
 def __vllm_cache_output(
-    filepath: str, output_to_be_cached: Optional[CorrectlyConvertedDocument] = None
-) -> Optional[CorrectlyConvertedDocument]:
+    filepath: str,
+    output_to_be_cached: Optional[List[CorrectlyConvertedDocument]] = None,
+) -> Optional[List[CorrectlyConvertedDocument]]:
     filepath = filepath  # unused but required
     return output_to_be_cached
 
@@ -178,25 +174,27 @@ _vllm_cache_output = cast(
 
 
 def _cached_convert_all(
-    convert_all_func: Callable[[Iterable[Path]], Iterator[CorrectlyConvertedDocument]],
-    files: List[Path],
+    convert_all_func: Callable[
+        [Iterable[Path]], Iterator[List[CorrectlyConvertedDocument]]
+    ],
+    files: List[Tuple[InterventionId, Path]],
 ):
     """Get the conversion results for all the documents, with only requesting
     the vllm when the results are not cached. Save them in the cache after the
     computation.
 
     Arguments:
-    * convert_all_func: a function which should always return a valid
+* convert_all_func: a function which should always return a valid
     ConversionResult (so failed results must be managed in this function
 
     Return an Iterable with (documentFilePath, CorrectlyConvertedDocument)
     """
-    results: List[Tuple[Path, Optional[CorrectlyConvertedDocument]]] = []
-    files_to_be_processed = []
-    for f in files:
+    results: List[Tuple[Tuple[InterventionId, Path], Optional[List[CorrectlyConvertedDocument]]]] = []
+    files_to_be_processed: List[Path] = []
+    for id_, f in files:
         mresult = _vllm_cache_output.call_and_shelve(str(f))
-        cached_result = cast(Optional[CorrectlyConvertedDocument], mresult.get())
-        results.append((f, cached_result))
+        cached_result = cast(Optional[List[CorrectlyConvertedDocument]], mresult.get())
+        results.append(((id_, f), cached_result))
         if cached_result is None:
             files_to_be_processed.append(f)
             mresult.clear()
@@ -212,11 +210,15 @@ def _cached_convert_all(
 
 
 def process_documents(
-    files: List[Path],
+    file_inputs: List[Tuple[InterventionId, Path]],
     documentConvertor: DocumentConverter,
-    secondDocumentConverter: DocumentConverter,
     timeout_per_page: int,
-) -> List[CorrectlyConvertedDocument]:
+) -> List[Tuple[Tuple[InterventionId, Path], List[CorrectlyConvertedDocument]]]:
+    """Return for each file either a list of one docling documnt, if all the
+    document can have been procesed at once, or one docling document for each
+    document page.
+    """
+    _, files = cast(Tuple[List[InterventionId], List[Path]], zip(*file_inputs))
     page_counts = (_document_page_number(p) for p in files)
 
     def convert_all_with_retry(files: Iterable[Path]):
@@ -230,16 +232,18 @@ def process_documents(
             files,
         ):
             if result is not None:
-                yield result
+                yield [result]
             else:
-                yield _retry_scanning_failed_document(f, secondDocumentConverter)
+                yield _retry_scanning_failed_document(f, documentConvertor)
 
     def convert_with_debug():
         print(
-            "Max duration for the current scan:", next(page_counts) * timeout_per_page, "s"
+            "Max duration for the current scan:",
+            next(page_counts) * timeout_per_page,
+            "s",
         )
         for f, result in tqdm(
-            _cached_convert_all(convert_all_with_retry, files),
+            _cached_convert_all(convert_all_with_retry, file_inputs),
             desc="vllm-scanned files",
             unit="file",
         ):

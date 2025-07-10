@@ -6956,6 +6956,18 @@ slack = ["slack-sdk"]
 telegram = ["requests"]
 
 [[package]]
+name = "tqdm-stubs"
+version = "0.2.1"
+description = "Stub type files for tqdm"
+optional = false
+python-versions = ">=3.7,<4.0"
+groups = ["dev"]
+files = [
+    {file = "tqdm-stubs-0.2.1.tar.gz", hash = "sha256:af7044737de561b2816b8b3fae1cb8af024ad0337311b9fc22d121cd3ab5c8e5"},
+    {file = "tqdm_stubs-0.2.1-py3-none-any.whl", hash = "sha256:cb794e89042aac254a77a4322a16f18dfd1d0d2ebe5b39cc4d3e6513fed00251"},
+]
+
+[[package]]
 name = "traitlets"
 version = "5.14.3"
 description = "Traitlets Python configuration system"
@@ -7699,4 +7711,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.13,<3.14"
-content-hash = "f7760ec36e7b22d1d158135a030e3b0347fe482d2f4b1efffbac8448d02cbcdc"
+content-hash = "3d1e7911dc3ace907a6c7712203f6359b29c8c065d3f6a076b987d398711059c"

@@ -47,6 +47,7 @@ pyyaml = "^6.0.2"
 black = "^25.1.0"
 frictionless = "^5.18.1"
 nest-asyncio = "^1.6.0"
+tqdm-stubs = "^0.2.1"
 
 
 [[tool.poetry.source]]
@@ -58,6 +59,9 @@ priority = "supplemental"
 [tool.poetry.dependencies]
 torch = {source = "torch-cpu-only"}
 torchvision = {source="torch-cpu-only"}
+
+[tool.mypy]
+disable_error_code = ["import-untyped"]
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]

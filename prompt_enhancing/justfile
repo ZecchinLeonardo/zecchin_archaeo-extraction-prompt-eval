@@ -50,4 +50,4 @@ serve-tracer:
 
 [group("test")]
 type_check:
-  poetry run mypy .
+  poetry run mypy src
