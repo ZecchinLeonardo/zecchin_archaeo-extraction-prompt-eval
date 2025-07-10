@@ -74,8 +74,7 @@ class MagohDataset:
         )
         if len(record) == 0:
             raise Exception(f"Unable to get record with id {id_}")
-        record = record.iloc[0]
-        return record.to_dict()
+        return record.iloc[0].to_dict()
 
     @property
     def findings(self):

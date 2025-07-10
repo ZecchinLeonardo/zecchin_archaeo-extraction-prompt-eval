@@ -23,6 +23,12 @@ def get_chunker(embed_model_id: str):
     )
     return HybridChunker(tokenizer=tokenizer, merge_peers=True)
 
+def _get_doc_items(chunk: BaseChunk) -> List[DocItem]:
+    return cast(List[DocItem], chunk.meta.doc_items)  # type: ignore
+
+def _set_doc_items(chunk: BaseChunk, doc_items: List[DocItem]):
+    # not pure
+    chunk.meta.doc_items = doc_items  # type: ignore
 
 def get_chunks(
     chunker: HybridChunker, documents: List[CorrectlyConvertedDocument]
@@ -45,19 +51,13 @@ def get_chunks(
             new_item.prov = list(map(adapt_page_number_for_prov, new_item.prov))
             return new_item
 
-        def get_doc_items(chunk: BaseChunk) -> List[DocItem]:
-            return cast(List[DocItem], chunk.meta.doc_items)  # type: ignore
 
-        def set_doc_items(chunk: BaseChunk, doc_items: List[DocItem]):
-            # not pure
-            chunk.meta.doc_items = doc_items  # type: ignore
-
-        set_doc_items(
+        _set_doc_items(
             new_chunk,
             list(
                 map(
                     adapt_page_number_for_doc_item,
-                    get_doc_items(new_chunk),
+                    _get_doc_items(new_chunk),
                 )
             ),
         )
@@ -75,18 +75,18 @@ def get_chunks(
     return chunks
 
 
-def page_numbers_of_chunk(chunk: BaseChunk) -> Set[int]:
+def _page_numbers_of_chunk(chunk: BaseChunk) -> Set[int]:
     return set(
         fnt.reduce(
-            lambda acc_lst, item: acc_lst + [p.page_no for p in item.prov],
-            chunk.meta.doc_items,  # type: ignore
-            [],
+            lambda acc_lst, item: acc_lst + list(p.page_no for p in item.prov),
+            _get_doc_items(chunk),
+            cast(List[int], []),
         )
     )
 
 
-def chunk_types_of_chunk(chunk: BaseChunk) -> Set[str]:
-    return set([item.label for item in chunk.meta.doc_items])  # type: ignore
+def _chunk_types_of_chunk(chunk: BaseChunk) -> Set[str]:
+    return set([item.label for item in _get_doc_items(chunk)])
 
 
 def chunk_to_ds(
@@ -99,8 +99,8 @@ def chunk_to_ds(
                     {
                         "id": int(id_),
                         "filename": file.name,
-                        "chunk_type": chunk_types_of_chunk(chunk),
-                        "chunk_page_position": page_numbers_of_chunk(chunk),
+                        "chunk_type": list(_chunk_types_of_chunk(chunk)),
+                        "chunk_page_position": list(_page_numbers_of_chunk(chunk)),
                         "chunk_index": chunk_idx,
                         "chunk_content": chunker.contextualize(chunk),
                     }

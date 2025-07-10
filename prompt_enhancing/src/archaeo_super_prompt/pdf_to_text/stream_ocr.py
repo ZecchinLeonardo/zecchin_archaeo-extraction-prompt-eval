@@ -199,14 +199,14 @@ def _cached_convert_all(
             files_to_be_processed.append(f)
             mresult.clear()
     new_results = convert_all_func(files_to_be_processed)
-    for f, result in results:
+    for fp, result in results:
         if result is None:
             new_result = next(new_results)
             # just pass to this identity function to save it in the cache
-            __vllm_cache_output(str(f), new_result)
-            yield f, new_result
+            __vllm_cache_output(str(fp), new_result)
+            yield fp, new_result
             continue
-        yield f, result
+        yield fp, result
 
 
 def process_documents(

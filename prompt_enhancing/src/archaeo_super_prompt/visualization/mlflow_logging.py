@@ -7,7 +7,7 @@ import mlflow
 import mlflow.dspy as mldspy
 
 from ..types.pdfchunks import PDFChunkDataset
-from ..types.pdfpaths import PDFPathDataset, PDFPathSchema
+from ..types.pdfpaths import PDFPathDataset
 
 from ..main_transformer import MagohDataExtractor
 

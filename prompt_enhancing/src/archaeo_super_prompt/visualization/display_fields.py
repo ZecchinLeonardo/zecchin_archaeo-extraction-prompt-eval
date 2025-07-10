@@ -1,4 +1,5 @@
-from dash import Dash, html, callback, Output, Input, dash_table, dcc
+from dash import Dash, html, callback, Output, Input, dcc
+from dash.dash_table.DataTable import DataTable
 import plotly.express as px
 from pandera.typing.pandas import DataFrame
 
@@ -8,8 +9,7 @@ from .prettify_field_names import prettify_field_names
 
 
 def display_results(score_results: DataFrame[ResultSchema]) -> DashComponent:
-    """Call this method once so the callbacks are initiated once
-    """
+    """Call this method once so the callbacks are initiated once"""
     score_results = prettify_field_names(score_results)
 
     field_grouping_keys = ["field_name", "evaluation_method"]
@@ -39,7 +39,7 @@ def display_results(score_results: DataFrame[ResultSchema]) -> DashComponent:
         dcc.Dropdown(fieldNames, DEFAULT_SELECTED_FIELD, id="dropdown-selection"),
         html.H3(children="Evaluation method used"),
         html.Blockquote(id="eval-method-description"),
-        dash_table.DataTable(id="table-content", page_size=10),
+        DataTable(id="table-content", page_size=10),
     ]
 
     def init_callbacks(app: Dash):
