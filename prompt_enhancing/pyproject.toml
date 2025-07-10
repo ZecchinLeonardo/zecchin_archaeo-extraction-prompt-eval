@@ -10,25 +10,19 @@ readme = "README.md"
 requires-python = ">=3.13,<3.14"
 dependencies = [
     "dspy (>=2.6.24,<3.0.0)",
-    "pypdf2 (>=3.0.1,<4.0.0)", # TODO: remove
     "dotenv (>=0.9.9,<0.10.0)",
     "bidict (>=0.23.1,<0.24.0)",
     "mlflow (>=2.22.0,<3.0.0)",
-    "pymupdf (>=1.26.0,<2.0.0)", # TODO: remove
-    "pymupdf4llm (>=0.0.24,<0.0.25)", # TODO: remove
-    "pandas-stubs (>=2.2.3.250527,<3.0.0.0)",
+    "pymupdf (>=1.26.0,<2.0.0)",
     "sqlalchemy (>=2.0.41,<3.0.0)",
     "psycopg2-binary (>=2.9.10,<3.0.0)",
     "minio (>=7.2.15,<8.0.0)",
     "joblib (>=1.5.1,<2.0.0)",
-    "pdftotext (>=3.0.0,<4.0.0)", # TODO: remove
     "scikit-learn (>=1.7.0,<2.0.0)",
-    "llmsherpa (>=0.1.4,<0.2.0)", # TODO: remove after replacement by docling
     "tqdm (>=4.67.1,<5.0.0)",
     "pandera[mypy] (>=0.24.0,<0.25.0)",
     "feature-engine (>=1.8.3,<2.0.0)",
     "dash (>=3.0.4,<4.0.0)",
-    "ollama-ocr (>=0.1.6,<0.2.0)", # TODO: remove
     "docling (>=2.39.0,<3.0.0)",
     "fuzzywuzzy (>=0.18.0,<0.19.0)",
 ]
@@ -48,6 +42,7 @@ black = "^25.1.0"
 frictionless = "^5.18.1"
 nest-asyncio = "^1.6.0"
 tqdm-stubs = "^0.2.1"
+pandas-stubs = ">=2.2.3.250527,<3.0.0.0"
 
 
 [[tool.poetry.source]]
@@ -62,6 +57,7 @@ torchvision = {source="torch-cpu-only"}
 
 [tool.mypy]
 disable_error_code = ["import-untyped"]
+plugins = ["pandera.mypy"]
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
