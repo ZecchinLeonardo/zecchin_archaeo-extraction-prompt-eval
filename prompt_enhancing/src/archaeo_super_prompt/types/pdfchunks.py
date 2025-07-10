@@ -20,8 +20,8 @@ from .intervention_id import InterventionId
 
 class PDFChunkSetPerInterventionSchema(DataFrameModel):
     filename: Series[str]
-    chunk_type: Series[List[str]]
-    chunk_page_position: Series[List[int]]
+    chunk_type: List[str]
+    chunk_page_position: List[int]
     chunk_index: Series[int]
     chunk_content: Series[str]
 

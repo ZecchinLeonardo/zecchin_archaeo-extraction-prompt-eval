@@ -78,7 +78,7 @@ def get_chunks(
 def _page_numbers_of_chunk(chunk: BaseChunk) -> Set[int]:
     return set(
         fnt.reduce(
-            lambda acc_lst, item: acc_lst + list(p.page_no for p in item.prov),
+            lambda acc_lst, item: list(acc_lst) + list(p.page_no for p in item.prov),
             _get_doc_items(chunk),
             cast(List[int], []),
         )
