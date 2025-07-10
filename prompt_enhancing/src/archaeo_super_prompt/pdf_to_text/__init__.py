@@ -27,6 +27,7 @@ class VLLM_Preprocessing(TransformerMixin, BaseEstimator):
     def __init__(
         self,
         model: str,
+        second_model: str,
         prompt: str,
         embedding_model_hf_id: str,
         allowed_timeout: int = 60 * 5,
@@ -40,23 +41,24 @@ class VLLM_Preprocessing(TransformerMixin, BaseEstimator):
                 model, prompt, allowed_timeout=allowed_timeout
             )
         )
+        self._second_converter = vllm_scan_mod.converter(
+            vllm_scan_mod.ollama_vlm_options(
+                second_model, prompt, allowed_timeout=allowed_timeout
+            )
+        )
         self._chunker = get_chunker(embedding_model_hf_id)
 
-    def _retry_scanning_failed_document(self):
-        # TODO: scan the document in another vllm
-        # or scan page per page
-        return None
-
-    def transform(self, X: PDFPathDataset):
+    def transform(self, X: PDFPathDataset) -> PDFChunkDataset:
         conversion_results = vllm_scan_mod.process_documents(
             [Path(p) for p in X["filepath"].to_list()],
             self._converter,
+            self._second_converter,
             self._allowed_timeout,
         )
-        chunked_results = [
-            get_chunks(self._chunker, r) if r is not None else None
-            for r in conversion_results
-        ]
+        chunked_results = [get_chunks(self._chunker, r)
+                           for r in conversion_results]
+
+        return chunked_results
         # TODO: store the chunks with their contextual text and their metadata
         # in a pandas dataframe
 
@@ -84,7 +86,9 @@ def _text_extract(X: PDFPathDataset) -> PDFChunkDataset:
             )
         except UnreadableSourceSetError:
             print_warning(
-                f"Impossible to read text from the given source set for intervention n°{intervention_id}"
+                f"Impossible to read text from the given source set for intervention n°{
+                    intervention_id
+                }"
             )
             return None
 
