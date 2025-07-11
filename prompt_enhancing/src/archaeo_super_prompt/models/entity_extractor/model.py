@@ -1,4 +1,4 @@
-from typing import Generator, Optional, Set, Tuple, cast, List
+from typing import Dict, Generator, Optional, Set, Tuple, cast, List
 import requests
 import fuzzywuzzy.process as fzwz
 
@@ -9,7 +9,12 @@ def fetch_entities(chunks: List[str]):
     payload = {"chunks": chunks}
     response = requests.post("http://localhost:8884/ner", json=payload)
     response.raise_for_status()
-    entities = cast(List[List[NerOutput]], response.json())
+    entities = list(
+        map(
+            lambda lst: list(map(lambda dct: NerOutput(**dct), lst)),
+            cast(List[List[Dict]], response.json()),
+        )
+    )
     return entities
 
 
@@ -23,7 +28,7 @@ def postrocess_entities(
     """
 
     def gatherEntityChunks(entity_chunks: List[NerOutput]):
-        entity_set: Set[CompleteEntity] = set()
+        entity_set: List[CompleteEntity] = list()
         current_entity: Optional[CompleteEntity] = None
         for entity_chunk in entity_chunks:
             # Edge-case when a chunks is under the confidence treshold
@@ -31,14 +36,14 @@ def postrocess_entities(
             # and ignore the following chunks
             if entity_chunk.score < confidence_treshold:
                 if current_entity is not None:
-                    entity_set.add(current_entity)
+                    entity_set.append(current_entity)
                     current_entity = None
                 continue
 
             if entity_chunk.entity.startswith("B-"):
                 # Start a new entity with B- entities
                 if current_entity is not None:
-                    entity_set.add(current_entity)
+                    entity_set.append(current_entity)
                 current_entity = CompleteEntity(
                     entity=cast(NerXXLEntities, entity_chunk.entity[2:]),
                     word=entity_chunk.word,
