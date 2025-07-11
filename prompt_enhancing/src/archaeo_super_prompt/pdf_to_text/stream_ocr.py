@@ -29,6 +29,9 @@ from docling_core.types.io import DocumentStream
 from .types import has_document_been_well_scanned, CorrectlyConvertedDocument
 from ..types.intervention_id import InterventionId
 from ..cache import get_memory_for
+from .. import cache
+
+from ..debug_log import print_log
 
 
 _PARALLEL_PAGE_NB = 2
@@ -138,7 +141,7 @@ def merge_docs(
 def _retry_scanning_failed_document(
     doc: Path, docConverter: DocumentConverter
 ) -> List[CorrectlyConvertedDocument]:
-    print("Retry scanning the document page per page...")
+    print_log("Retry scanning the document page per page...")
     pages_iter, page_number = stream_document_pages(doc)
     return [
         r
@@ -161,8 +164,7 @@ def __vllm_cache_output(
     filepath: str,
     output_to_be_cached: Optional[List[CorrectlyConvertedDocument]] = None,
 ) -> Optional[List[CorrectlyConvertedDocument]]:
-    filepath = filepath  # unused but required
-    return output_to_be_cached
+    return cache.identity_function(filepath, output_to_be_cached)
 
 
 _vllm_cache_output = cast(
@@ -180,33 +182,45 @@ def _cached_convert_all(
     files: List[Tuple[InterventionId, Path]],
 ):
     """Get the conversion results for all the documents, with only requesting
-    the vllm when the results are not cached. Save them in the cache after the
-    computation.
+        the vllm when the results are not cached. Save them in the cache after the
+        computation.
 
-    Arguments:
-* convert_all_func: a function which should always return a valid
-    ConversionResult (so failed results must be managed in this function
+        Arguments:
+    * convert_all_func: a function which should always return a valid
+        ConversionResult (so failed results must be managed in this function
 
-    Return an Iterable with (documentFilePath, CorrectlyConvertedDocument)
+        Return an Iterable with (documentFilePath, CorrectlyConvertedDocument)
     """
-    results: List[Tuple[Tuple[InterventionId, Path], Optional[List[CorrectlyConvertedDocument]]]] = []
+    results: List[
+        Tuple[Tuple[InterventionId, Path], Optional[List[CorrectlyConvertedDocument]]]
+    ] = []
     files_to_be_processed: List[Path] = []
+
+    def normalized_path_str(p: Path):
+        return str(p.resolve())
+
     for id_, f in files:
-        mresult = _vllm_cache_output.call_and_shelve(str(f))
-        cached_result = cast(Optional[List[CorrectlyConvertedDocument]], mresult.get())
-        results.append(((id_, f), cached_result))
-        if cached_result is None:
+        nf = normalized_path_str(f)
+        if cache.is_input_in_the_cache(_vllm_cache_output, nf):
+            results.append(
+                (
+                    (id_, f),
+                    cast(List[CorrectlyConvertedDocument], _vllm_cache_output(nf)),
+                )
+            )
+        else:
+            results.append(((id_, f), None))
             files_to_be_processed.append(f)
-            mresult.clear()
     new_results = convert_all_func(files_to_be_processed)
-    for fp, result in results:
+    for (id_, f), result in results:
+        nf = normalized_path_str(f)
         if result is None:
             new_result = next(new_results)
             # just pass to this identity function to save it in the cache
-            __vllm_cache_output(str(fp), new_result)
-            yield fp, new_result
+            cache.manually_cache_result(_vllm_cache_output, nf, new_result)
+            yield (id_, f), new_result
             continue
-        yield fp, result
+        yield (id_, f), result
 
 
 def process_documents(
@@ -237,10 +251,8 @@ def process_documents(
                 yield _retry_scanning_failed_document(f, documentConvertor)
 
     def convert_with_debug():
-        print(
-            "Max duration for the current scan:",
-            next(page_counts) * timeout_per_page,
-            "s",
+        print_log(
+            f"Max duration for the current scan: {next(page_counts) * timeout_per_page} s",
         )
         for f, result in tqdm(
             _cached_convert_all(convert_all_with_retry, file_inputs),
@@ -249,10 +261,8 @@ def process_documents(
         ):
             yield f, result
             try:
-                print(
-                    "Max duration for the current scan:",
-                    next(page_counts) * timeout_per_page,
-                    "s",
+                print_log(
+                    f"Max duration for the current scan: {next(page_counts) * timeout_per_page} s",
                 )
             except StopIteration:
                 # edge-case for the last loop

@@ -23,12 +23,15 @@ def get_chunker(embed_model_id: str):
     )
     return HybridChunker(tokenizer=tokenizer, merge_peers=True)
 
+
 def _get_doc_items(chunk: BaseChunk) -> List[DocItem]:
     return cast(List[DocItem], chunk.meta.doc_items)  # type: ignore
+
 
 def _set_doc_items(chunk: BaseChunk, doc_items: List[DocItem]):
     # not pure
     chunk.meta.doc_items = doc_items  # type: ignore
+
 
 def get_chunks(
     chunker: HybridChunker, documents: List[CorrectlyConvertedDocument]
@@ -50,7 +53,6 @@ def get_chunks(
             new_item = item.model_copy(deep=True)
             new_item.prov = list(map(adapt_page_number_for_prov, new_item.prov))
             return new_item
-
 
         _set_doc_items(
             new_chunk,
@@ -90,23 +92,31 @@ def _chunk_types_of_chunk(chunk: BaseChunk) -> Set[str]:
 
 
 def chunk_to_ds(
-    pairs: List[Tuple[Tuple[InterventionId, Path], List[BaseChunk]]], chunker: HybridChunker
+    pairs: List[Tuple[Tuple[InterventionId, Path], List[BaseChunk]]],
+    chunker: HybridChunker,
 ) -> PDFChunkDataset:
-    return PDFChunkDataset(PDFChunkDatasetSchema.validate(
-        pd.concat(
-            pd.DataFrame(
-                [
-                    {
-                        "id": int(id_),
-                        "filename": file.name,
-                        "chunk_type": list(_chunk_types_of_chunk(chunk)),
-                        "chunk_page_position": list(_page_numbers_of_chunk(chunk)),
-                        "chunk_index": chunk_idx,
-                        "chunk_content": chunker.contextualize(chunk),
-                    }
-                    for chunk_idx, chunk in enumerate(chunks_per_file)
-                ]
+    return PDFChunkDataset(
+        PDFChunkDatasetSchema.validate(
+            pd.concat(
+                (
+                    pd.DataFrame(
+                        [
+                            {
+                                "id": int(id_),
+                                "filename": file.name,
+                                "chunk_type": list(_chunk_types_of_chunk(chunk)),
+                                "chunk_page_position": list(
+                                    _page_numbers_of_chunk(chunk)
+                                ),
+                                "chunk_index": chunk_idx,
+                                "chunk_content": chunker.contextualize(chunk),
+                            }
+                            for chunk_idx, chunk in enumerate(chunks_per_file)
+                        ]
+                    )
+                    for (id_, file), chunks_per_file in pairs
+                ),
+                ignore_index=True,
             )
-            for (id_, file), chunks_per_file in pairs
         )
-    ))
+    )
