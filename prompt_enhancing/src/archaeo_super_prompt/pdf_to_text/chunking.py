@@ -16,10 +16,11 @@ from ..types.pdfchunks import PDFChunkDataset, PDFChunkDatasetSchema
 EMBED_MODEL_ID = "nomic-ai/nomic-embed-text-v1.5"
 
 
-def get_chunker(embed_model_id: str):
+def get_chunker(embed_model_id: str, max_chunk_size: int):
     # the tokenizer must be the same as the embedding model
     tokenizer = HuggingFaceTokenizer(
         tokenizer=AutoTokenizer.from_pretrained(embed_model_id),
+        max_tokens=max_chunk_size,
     )
     return HybridChunker(tokenizer=tokenizer, merge_peers=True)
 
@@ -67,7 +68,9 @@ def get_chunks(
 
     per_page_chunk_packs = (
         [adapt_page_numbers(chunk, page_nb) for chunk in chunks]
-        for page_nb, chunks in enumerate(map(lambda d: chunker.chunk(dl_doc=d), documents))
+        for page_nb, chunks in enumerate(
+            map(lambda d: chunker.chunk(dl_doc=d), documents)
+        )
     )
     chunks = fnt.reduce(
         lambda chunk_lst, per_page_chunk_pack: chunk_lst + per_page_chunk_pack,
@@ -109,7 +112,8 @@ def chunk_to_ds(
                                     _page_numbers_of_chunk(chunk)
                                 ),
                                 "chunk_index": chunk_idx,
-                                "chunk_content": chunker.contextualize(chunk),
+                                "chunk_embedding_content": chunker.contextualize(chunk),
+                                "chunk_content": chunk.text,
                             }
                             for chunk_idx, chunk in enumerate(chunks_per_file)
                         ]

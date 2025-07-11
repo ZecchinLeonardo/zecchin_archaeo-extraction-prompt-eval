@@ -14,6 +14,7 @@ def VLLM_Preprocessing(
     model: str,
     prompt: str,
     embedding_model_hf_id: str,
+    max_chunk_size: int = 512,
     allowed_timeout: int = 60 * 5,
 ):
     """Arguments:
@@ -23,7 +24,7 @@ def VLLM_Preprocessing(
     converter = vllm_scan_mod.converter(
         vllm_scan_mod.ollama_vlm_options(model, prompt, allowed_timeout=allowed_timeout)
     )
-    chunker = get_chunker(embedding_model_hf_id)
+    chunker = get_chunker(embedding_model_hf_id, max_chunk_size)
 
     def transform(X: PDFPathDataset) -> PDFChunkDataset:
         conversion_results = vllm_scan_mod.process_documents(

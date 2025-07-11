@@ -23,6 +23,7 @@ class PDFChunkSetPerInterventionSchema(DataFrameModel):
     chunk_type: List[str]
     chunk_page_position: List[int]
     chunk_index: Series[int]
+    chunk_embedding_content: Series[str]
     chunk_content: Series[str]
 
 
