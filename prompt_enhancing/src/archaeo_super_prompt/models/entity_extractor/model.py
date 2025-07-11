@@ -3,9 +3,13 @@ import requests
 import fuzzywuzzy.process as fzwz
 
 from .types import CompleteEntity, NerOutput, NerXXLEntities
+from ... import cache
 
 
-def fetch_entities(chunks: List[str]):
+def _fetch_entities(chunks: List[str]) -> List[List[NerOutput]]:
+    if not chunks:
+        return []
+    print("Fetching the transformers model")
     payload = {"chunks": chunks}
     response = requests.post("http://localhost:8884/ner", json=payload)
     response.raise_for_status()
@@ -16,6 +20,24 @@ def fetch_entities(chunks: List[str]):
         )
     )
     return entities
+
+
+def cache_remote_ner_results(inpt, output=None):
+    return cache.identity_function(inpt, output)
+
+
+def fetch_entities(chunks: List[str]):
+    # TODO: correct these iter-list-iter spaghetti
+    return [
+        ner_result
+        for _, ner_result in cache.escape_expensive_run_when_cached(
+            cache_remote_ner_results,
+            cache.get_memory_for("interim"),
+            lambda txt: txt,
+            lambda cit: iter(_fetch_entities(list(cit))),
+            iter(chunks),
+        )
+    ]
 
 
 def postrocess_entities(

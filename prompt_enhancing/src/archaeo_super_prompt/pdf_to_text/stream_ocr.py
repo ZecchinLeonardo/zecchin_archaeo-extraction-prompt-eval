@@ -12,7 +12,6 @@ from typing import (
     Optional,
     Tuple,
 )
-from joblib.memory import MemorizedFunc
 from pydantic import AnyUrl
 import pymupdf
 from tqdm import tqdm
@@ -120,24 +119,6 @@ def converter(ollama_vlm_options: ApiVlmOptions):
     return doc_converter
 
 
-def merge_docs(
-    docs: Iterator[CorrectlyConvertedDocument],
-) -> CorrectlyConvertedDocument:
-    try:
-        merged = next(docs).model_copy(deep=True)
-    except StopIteration:
-        raise Exception("No document has been provided")
-
-    # Merge pages and content items
-    for doc in docs:
-        current_page_nb = max(merged.pages.keys())
-        for page_nb in doc.pages:
-            new_page = doc.pages[page_nb].model_copy(deep=True)
-
-            merged.pages[current_page_nb + page_nb] = new_page
-    return merged
-
-
 def _retry_scanning_failed_document(
     doc: Path, docConverter: DocumentConverter
 ) -> List[CorrectlyConvertedDocument]:
@@ -160,19 +141,11 @@ def _retry_scanning_failed_document(
     ]
 
 
-def __vllm_cache_output(
+def _vllm_cache_output(
     filepath: str,
-    output_to_be_cached: Optional[List[CorrectlyConvertedDocument]] = None,
+    output: Optional[List[CorrectlyConvertedDocument]] = None,
 ) -> Optional[List[CorrectlyConvertedDocument]]:
-    return cache.identity_function(filepath, output_to_be_cached)
-
-
-_vllm_cache_output = cast(
-    MemorizedFunc,
-    get_memory_for("interim").cache(
-        __vllm_cache_output, ignore=["output_to_be_cached"]
-    ),
-)
+    return cache.identity_function(filepath, output)
 
 
 def _cached_convert_all(
@@ -191,36 +164,23 @@ def _cached_convert_all(
 
         Return an Iterable with (documentFilePath, CorrectlyConvertedDocument)
     """
-    results: List[
-        Tuple[Tuple[InterventionId, Path], Optional[List[CorrectlyConvertedDocument]]]
-    ] = []
-    files_to_be_processed: List[Path] = []
 
     def normalized_path_str(p: Path):
         return str(p.resolve())
 
-    for id_, f in files:
-        nf = normalized_path_str(f)
-        if cache.is_input_in_the_cache(_vllm_cache_output, nf):
-            results.append(
-                (
-                    (id_, f),
-                    cast(List[CorrectlyConvertedDocument], _vllm_cache_output(nf)),
-                )
-            )
-        else:
-            results.append(((id_, f), None))
-            files_to_be_processed.append(f)
-    new_results = convert_all_func(files_to_be_processed)
-    for (id_, f), result in results:
-        nf = normalized_path_str(f)
-        if result is None:
-            new_result = next(new_results)
-            # just pass to this identity function to save it in the cache
-            cache.manually_cache_result(_vllm_cache_output, nf, new_result)
-            yield (id_, f), new_result
-            continue
-        yield (id_, f), result
+    return (
+        ((id_, f), r)
+        for id_, (f, r) in zip(
+            (id_ for id_, _ in files),
+            cache.escape_expensive_run_when_cached(
+                _vllm_cache_output,
+                get_memory_for("interim"),
+                normalized_path_str,
+                convert_all_func,
+                (f for _, f in files),
+            ),
+        )
+    )
 
 
 def process_documents(
