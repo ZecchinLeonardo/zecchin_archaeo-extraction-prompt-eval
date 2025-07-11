@@ -29,35 +29,45 @@ def postrocess_entities(
 
     def gatherEntityChunks(entity_chunks: List[NerOutput]):
         entity_set: List[CompleteEntity] = list()
-        current_entity: Optional[CompleteEntity] = None
-        for entity_chunk in entity_chunks:
+        current_accumulated_entity: Optional[CompleteEntity] = None
+        for current_entity_chunk in entity_chunks:
             # Edge-case when a chunks is under the confidence treshold
             # We only keep the already added confident chunk of the entity
             # and ignore the following chunks
-            if entity_chunk.score < confidence_treshold:
-                if current_entity is not None:
-                    entity_set.append(current_entity)
-                    current_entity = None
+            if current_entity_chunk.score < confidence_treshold:
+                if current_accumulated_entity is not None:
+                    entity_set.append(current_accumulated_entity)
+                    current_accumulated_entity = None
                 continue
 
-            if entity_chunk.entity.startswith("B-"):
+            if current_entity_chunk.entity.startswith("B-"):
                 # Start a new entity with B- entities
-                if current_entity is not None:
-                    entity_set.append(current_entity)
-                current_entity = CompleteEntity(
-                    entity=cast(NerXXLEntities, entity_chunk.entity[2:]),
-                    word=entity_chunk.word,
-                    start=entity_chunk.start,
-                    end=entity_chunk.end,
+                if current_accumulated_entity is not None:
+                    entity_set.append(current_accumulated_entity)
+                current_accumulated_entity = CompleteEntity(
+                    entity=cast(NerXXLEntities, current_entity_chunk.entity[2:]),
+                    word=current_entity_chunk.word,
+                    start=current_entity_chunk.start,
+                    end=current_entity_chunk.end,
                 )
             elif (
-                current_entity is not None
-                and entity_chunk.start == current_entity.end
-                and entity_chunk.word.startswith("##")
+                current_accumulated_entity is not None
+                # the condition below allows entities of the same type that
+                # are consecutive or separated by one space to be merged
+                # WARN: it is expected that the output content of the ner model
+                # is normalized so words are only separated by 1 space at
+                # maximum
+                and abs(current_entity_chunk.start - current_accumulated_entity.end)
+                <= 1
             ):
+                current_accumulated_entity.end = current_entity_chunk.end
                 # Complete an entity with its additional chunks
-                current_entity.word += entity_chunk.word[2:]
-                current_entity.end = entity_chunk.end
+                if current_entity_chunk.word.startswith("##"):
+                    # the chunk belongs to the same entity word
+                    current_accumulated_entity.word += current_entity_chunk.word[2:]
+                else:
+                    # the entity is composed of several words
+                    current_accumulated_entity.word += " " + current_entity_chunk.word
         return entity_set
 
     return [gatherEntityChunks(entity_chunks) for entity_chunks in entitiesPerTextChunk]
