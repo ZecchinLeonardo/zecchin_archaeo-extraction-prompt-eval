@@ -39,7 +39,7 @@ def get_chunks(
     if not documents:
         return []
     if len(documents) == 1:
-        return list(chunker.chunk(documents[0]))
+        return list(chunker.chunk(dl_doc=documents[0]))
 
     def adapt_page_numbers(chunk: BaseChunk, page_number: int):
         new_chunk = chunk.model_copy(deep=True)
@@ -67,7 +67,7 @@ def get_chunks(
 
     per_page_chunk_packs = (
         [adapt_page_numbers(chunk, page_nb) for chunk in chunks]
-        for page_nb, chunks in enumerate(map(chunker.chunk, documents))
+        for page_nb, chunks in enumerate(map(lambda d: chunker.chunk(dl_doc=d), documents))
     )
     chunks = fnt.reduce(
         lambda chunk_lst, per_page_chunk_pack: chunk_lst + per_page_chunk_pack,
