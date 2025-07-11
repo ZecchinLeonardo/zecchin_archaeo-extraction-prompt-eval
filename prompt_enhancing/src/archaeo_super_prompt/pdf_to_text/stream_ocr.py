@@ -195,6 +195,7 @@ def process_documents(
     page_counts = (_document_page_number(p) for p in files)
 
     def convert_all_with_retry(files: Iterable[Path]):
+        files = list(files)
         for result, f in zip(
             map(
                 has_document_been_well_scanned,
