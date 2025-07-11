@@ -85,20 +85,27 @@ def escape_expensive_run_when_cached[Input, HashedT, Output](
 
     for inpt in input_iter:
         hashed_inpt = input_hash_function(inpt)
-        if is_input_in_the_cache(identity_function, hashed_inpt):
-            results.append((inpt, cached_fn(hashed_inpt, None)))
-        else:
-            print(hashed_inpt)
-            results.append((inpt, None))
+        result = (
+            cached_fn(hashed_inpt, None)
+            if is_input_in_the_cache(identity_function, hashed_inpt)
+            else None
+        )
+        results.append((inpt, result))
+        if result is None:
             inputs_to_be_processed.append(inpt)
 
     new_results = expensive_function(iter(inputs_to_be_processed))
     for inpt, result in results:
-        hashed_inpt = input_hash_function(inpt)
         if result is None:
-            new_result = next(new_results)
-            # just pass to this identity function to save it in the cache
-            manually_cache_result(identity_function, hashed_inpt, new_result)
-            yield inpt, new_result
-            continue
+            hashed_inpt = input_hash_function(inpt)
+            try:
+                new_result = next(new_results)
+                # just pass to this identity function to save it in the cache
+                manually_cache_result(identity_function, hashed_inpt, new_result)
+                yield inpt, new_result
+                continue
+            except StopIteration:
+                raise Exception(
+                    f"The function {named_id_func.__name__} has missed some results to be produced"
+                )
         yield inpt, result

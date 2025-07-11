@@ -159,8 +159,7 @@ def _cached_convert_all(
         computation.
 
         Arguments:
-    * convert_all_func: a function which should always return a valid
-        ConversionResult (so failed results must be managed in this function
+    * convert_all_func: a function which should always return a valid ConversionResult (so failed results must be managed in this function
 
         Return an Iterable with (documentFilePath, CorrectlyConvertedDocument)
     """
