@@ -1,4 +1,4 @@
-from typing import Dict, Generator, Optional, Set, Tuple, cast, List
+from typing import Callable, Dict, Generator, Optional, Set, Tuple, cast, List
 import requests
 import functools as fnt
 import thefuzz.process as fzwz
@@ -112,7 +112,7 @@ def filter_entities(
 # TODO: review the prototype
 def extract_wanted_entities(
     complete_entity_sets: List[List[CompleteEntity]],
-    wanted_entities: Set[str],
+    wanted_entities: Callable[[], List[str]],
     distance_treshold: float,
 ) -> List[Optional[Set[str]]]:
     """Filter only the entities that fuzzymatch with wanted thesaurus
@@ -146,7 +146,7 @@ def extract_wanted_entities(
                         Generator[Tuple[str, int]],
                         fzwz.extractWithoutOrder(
                             entity.word,
-                            wanted_entities,
+                            wanted_entities(),
                             score_cutoff=int(distance_treshold * 100),
                         ),
                     )

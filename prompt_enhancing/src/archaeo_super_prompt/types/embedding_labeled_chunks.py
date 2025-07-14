@@ -1,6 +1,6 @@
 from typing import Dict, List
 
-from pandera import DataFrameModel
+from pandera.pandas import DataFrameModel
 
 class SemanticallyLabeledChunkDatasetSchema(DataFrameModel):
     """If a chunk is likely to wear information about some data field to be

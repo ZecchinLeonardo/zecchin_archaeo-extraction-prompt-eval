@@ -1,5 +1,4 @@
-from typing import List, NamedTuple, Set, cast
-
+from typing import Callable, List, NamedTuple, Set, cast
 from pandera.typing.pandas import DataFrame
 import pandas as pd
 from sklearn.pipeline import FunctionTransformer
@@ -14,7 +13,7 @@ from ...types.pdfchunks import PDFChunkDataset
 class NamedEntityField(NamedTuple):
     name: str
     compatible_entities: Set[NerXXLEntities]
-    thesaurus_values: Set[str]
+    thesaurus_values: Callable[[], List[str]]
 
 
 def NerModel(
