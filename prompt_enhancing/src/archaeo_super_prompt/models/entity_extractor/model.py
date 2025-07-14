@@ -96,18 +96,19 @@ def postrocess_entities(
 
 
 def filter_entities(
-    complete_entity_sets: List[Set[CompleteEntity]],
+    complete_entity_sets: List[List[CompleteEntity]],  # List[Set[CompleteEntity]]
     allowed_entities: Set[NerXXLEntities],
-) -> List[Set[CompleteEntity]]:
+) -> List[List[CompleteEntity]]:  # List[Set[CompleteEntity]]
     """For each text chunk, keep only the entities included in the given group
     of allowed entity types.
     """
     return [
-        set(filter(lambda e: e.entity in allowed_entities, s))
+        list(filter(lambda e: e.entity in allowed_entities, s))
         for s in complete_entity_sets
     ]
 
 
+# TODO: review the prototype
 def extract_wanted_entities(
     complete_entity_sets: List[Set[CompleteEntity]],
     wanted_entities: Set[str],
