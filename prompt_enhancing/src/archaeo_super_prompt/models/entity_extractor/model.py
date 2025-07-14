@@ -1,6 +1,7 @@
 from typing import Dict, Generator, Optional, Set, Tuple, cast, List
 import requests
-import fuzzywuzzy.process as fzwz
+import functools as fnt
+import thefuzz.process as fzwz
 
 from .types import CompleteEntity, NerOutput, NerXXLEntities
 from ... import cache
@@ -110,10 +111,10 @@ def filter_entities(
 
 # TODO: review the prototype
 def extract_wanted_entities(
-    complete_entity_sets: List[Set[CompleteEntity]],
+    complete_entity_sets: List[List[CompleteEntity]],
     wanted_entities: Set[str],
     distance_treshold: float,
-) -> List[List[Tuple[CompleteEntity, List[str]]]]:
+) -> List[Optional[Set[str]]]:
     """Filter only the entities that fuzzymatch with wanted thesaurus
 
     Arguments:
@@ -124,15 +125,21 @@ def extract_wanted_entities(
     * distance_treshold: a float between 0 and 1
 
     ReturnType:
-    A list for each text chunk of the matched entities. Each of them are paired
-    with the thesaurus values they have matched above the given distance
-    treshold.
+    A list for each text chunk of the matched thesaurus above the given distance treshold. If there is not any filtered entity for a given chunk, then None is returned for this chunk instead of the empty set. 
+    The empty set means that the chunk contains entities that match the group
+    of entities of interests but these entities does not match the thesaurus.
     """
 
-    def aux(complete_entity_set: Set[CompleteEntity]):
-        return [
-            (
-                entity,
+    def aux(complete_entity_set: List[CompleteEntity]):
+        """
+        Arguments:
+        * complete_entity_set: a not empty list
+        """
+        return fnt.reduce(
+            lambda thesaurus_set, new_extracted_thesaurus_group: thesaurus_set.union(
+                new_extracted_thesaurus_group
+            ),
+            [
                 [
                     matched_thesaurus
                     for matched_thesaurus, _ in cast(
@@ -143,9 +150,10 @@ def extract_wanted_entities(
                             score_cutoff=int(distance_treshold * 100),
                         ),
                     )
-                ],
-            )
-            for entity in complete_entity_set
-        ]
+                ]
+                for entity in complete_entity_set
+            ],
+            cast(Set[str], set()),
+        )
 
-    return [aux(ces) for ces in complete_entity_sets]
+    return [aux(ces) if ces else None for ces in complete_entity_sets]
