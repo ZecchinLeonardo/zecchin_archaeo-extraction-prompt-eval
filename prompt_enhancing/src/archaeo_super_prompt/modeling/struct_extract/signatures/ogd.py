@@ -1,4 +1,4 @@
-from typing import List, Literal, Union
+from typing import Literal, Union
 
 """
 In most of the case, the sample in the training dataset will have the value
@@ -60,7 +60,7 @@ def process_with_reading_document() -> SpecialItalianOGD:
     return "sito non identificato"
 
 
-def get_ogd_from_finding_list(findings: List[Finding]) -> FinalItalianOGD:
+def get_ogd_from_finding_list(findings: list[Finding]) -> FinalItalianOGD:
     if len(findings) > 1:
         return "sito pluristratificato"
     if len(findings) == 0:  # unusual situation in reading reports

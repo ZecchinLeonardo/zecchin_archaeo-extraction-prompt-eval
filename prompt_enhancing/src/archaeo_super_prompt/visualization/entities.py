@@ -1,16 +1,15 @@
-from typing import List, Tuple
 from ..modeling.entity_extractor.types import CompleteEntity
 import functools as fnt
 
 
-def visualize_entities(content: str, entities: List[CompleteEntity]):
+def visualize_entities(content: str, entities: list[CompleteEntity]):
     """Render the content with all its extracted entities highlighted and
     labeled with their entities. The rendered string is written with Markdown
     syntax and is ready to be displayed in a notebook
     """
 
-    def add(acc: Tuple[str, int], entity: CompleteEntity) -> Tuple[str, int]:
-        """acc contains the accumulated string and the length of the
+    def add(acc: tuple[str, int], entity: CompleteEntity) -> tuple[str, int]:
+        """Acc contains the accumulated string and the length of the
         already-processed content
         """
         acc_text, processed_source_content_length = acc

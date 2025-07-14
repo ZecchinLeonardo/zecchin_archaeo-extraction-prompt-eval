@@ -1,4 +1,4 @@
-from typing import List, TypedDict, cast
+from typing import TypedDict, cast
 import numpy as np
 import numpy.typing as npt
 import string
@@ -19,7 +19,7 @@ class SoftAccuracyResult(TypedDict):
 
 
 def soft_accuracy(
-    predictions: List[str], references: List[str], threshold=0.75
+    predictions: list[str], references: list[str], threshold=0.75
 ) -> SoftAccuracyResult:
     assert len(predictions) == len(references), "Liste di lunghezza diversa!"
 

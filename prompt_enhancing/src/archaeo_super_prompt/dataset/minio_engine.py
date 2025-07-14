@@ -1,7 +1,6 @@
 from minio import Minio
 from pathlib import Path
 import re
-from typing import List
 
 from ..utils.cache import get_cache_dir_for
 from ..config.env import getenv_or_throw
@@ -31,7 +30,7 @@ def sanitize_filename(filename):
     )  # Replace unsafe chars with underscore
 
 
-def download_files(intervention_id: int) -> List[Path]:
+def download_files(intervention_id: int) -> list[Path]:
     pdf_store_dir = get_cache_dir_for("external", "pdfs")
     if not pdf_store_dir.exists():
         pdf_store_dir.mkdir(parents=True, exist_ok=True)

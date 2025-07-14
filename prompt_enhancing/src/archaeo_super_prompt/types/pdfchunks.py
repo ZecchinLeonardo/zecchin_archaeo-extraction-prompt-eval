@@ -3,7 +3,8 @@
 from pandas import concat
 from pandera.pandas import DataFrameModel
 from pandera.typing import DataFrame, Series
-from typing import Generator, Iterable, List, NewType, TypedDict, Union, cast
+from typing import NewType, TypedDict, cast
+from collections.abc import Generator, Iterable
 
 # TODO: remove these dependencies
 from ..modeling.struct_extract.signatures.input import (
@@ -21,8 +22,8 @@ from .intervention_id import InterventionId
 
 class PDFChunkSetPerInterventionSchema(DataFrameModel):
     filename: Series[str]
-    chunk_type: List[str]
-    chunk_page_position: List[int]
+    chunk_type: list[str]
+    chunk_page_position: list[int]
     chunk_index: Series[int]
     chunk_embedding_content: Series[str]
     chunk_content: Series[str]
@@ -36,8 +37,7 @@ PDFChunkDataset = NewType("PDFChunkDataset", DataFrame[PDFChunkDatasetSchema])
 
 
 class PDFChunkPerInterventionDataset:
-    """
-    DataFrame class wrapper to customize the auto-displaying from tracing tools
+    """DataFrame class wrapper to customize the auto-displaying from tracing tools
     such as mlflow
     """
 
@@ -126,10 +126,10 @@ inferences
 
 
 def composePdfChunkDataset(
-    datasets: Union[Generator[PDFChunkDataset], Iterable[PDFChunkDataset]],
+    datasets: Generator[PDFChunkDataset] | Iterable[PDFChunkDataset],
 ) -> PDFChunkDataset:
     return PDFChunkDataset(cast(DataFrame, concat(datasets)))
 
 
-def buildPdfChunkDataset(chunks: List[PDFChunk]) -> PDFChunkDataset:
+def buildPdfChunkDataset(chunks: list[PDFChunk]) -> PDFChunkDataset:
     return PDFChunkDataset(DataFrame(chunks))

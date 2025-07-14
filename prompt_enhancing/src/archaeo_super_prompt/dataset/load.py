@@ -1,4 +1,3 @@
-from typing import Set
 import pandas as pd
 from tqdm import tqdm
 
@@ -82,7 +81,7 @@ class MagohDataset:
     def findings(self):
         return self._findings
 
-    def get_files_for_batch(self, ids: Set[InterventionId]):
+    def get_files_for_batch(self, ids: set[InterventionId]):
         return self._files[self._files["id"].isin(ids)]
 
     @property

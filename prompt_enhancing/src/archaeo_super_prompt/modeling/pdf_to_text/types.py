@@ -1,4 +1,4 @@
-from typing import NewType, Optional
+from typing import NewType
 from docling.datamodel.document import ConversionResult
 from docling.datamodel.base_models import ConversionStatus
 from docling_core.types.doc.document import DoclingDocument
@@ -11,7 +11,7 @@ CorrectlyConvertedDocument = NewType(
 
 def has_document_been_well_scanned(
     doc: ConversionResult,
-) -> Optional[CorrectlyConvertedDocument]:
+) -> CorrectlyConvertedDocument | None:
     """Return the docling document typed as validated if the status of the
     conversion is at least partially successfull, else return None
     """

@@ -3,7 +3,7 @@ the LLM
 """
 
 from datetime import date
-from typing import List, Optional, TypeVar
+from typing import TypeVar
 from .arch_extract_type import (
     ArchaeologicalInterventionContext,
     ArchivalInformation,
@@ -16,7 +16,7 @@ from ....types.target_types import (
 )
 
 
-def process_extensions(ext: Optional[List[str]]):
+def process_extensions(ext: list[str] | None):
     if ext is None or len(ext) == 0:
         return None
     return ", ".join(ext)
@@ -25,19 +25,19 @@ def process_extensions(ext: Optional[List[str]]):
 T = TypeVar("T")
 
 
-def stringify_if_known[T](e: Optional[T]):
+def stringify_if_known[T](e: T | None):
     if e is None:
         return None
     return str(e)
 
 
-def coalesce_string(d: Optional[str]):
+def coalesce_string(d: str | None):
     if d is None:
         return ""
     return d
 
 
-def coalesce_date(d: Optional[str]):
+def coalesce_date(d: str | None):
     if d is None:
         # when the llm has not answered for the date, return today
         # of course, this result will always be wrong, which is
@@ -47,7 +47,7 @@ def coalesce_date(d: Optional[str]):
     return d
 
 
-def normalize_depth(depth: Optional[float]):
+def normalize_depth(depth: float | None):
     """Apply a simple mathematical operation to be sure the depth is a negative
     float
     We also assume that a reasonable value is between 0.5m to 50m. 50m is not a
@@ -97,7 +97,7 @@ def to_magoh_university_data(
 def to_magoh_build_data(
     context: ArchaeologicalInterventionContext,
     doc_build_data: SourceOfInformationInReport,
-    arch_metadata: Optional[ArchivalInformation],
+    arch_metadata: ArchivalInformation | None,
 ) -> MagohDocumentBuildingData:
     return {
         "Istituzione": coalesce_string(doc_build_data.institution),

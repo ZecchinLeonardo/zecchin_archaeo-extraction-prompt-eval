@@ -1,12 +1,12 @@
 from functools import reduce
-from typing import Dict, cast
+from typing import cast
 
 
 def variabilize_column_name(stringified_column_name: str) -> str:
     return stringified_column_name.replace(" ", "_").replace(".", "__")
 
 
-def flatten_dict[T](d: Dict[str, Dict[str, T]]) -> Dict[str, T]:
+def flatten_dict[T](d: dict[str, dict[str, T]]) -> dict[str, T]:
     return reduce(
         lambda flat_dict, first_depth_item: flat_dict
         | {

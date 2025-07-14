@@ -1,4 +1,4 @@
-from typing import List, Optional, Tuple, cast
+from typing import cast
 
 from dspy import Example, Prediction, dspy
 
@@ -32,7 +32,7 @@ class MagohDataExtractor:
         self._module = ExtractDataFromInterventionReport()
         self._llm = load_model(llm_temp)
         self._module.set_lm(self._llm)
-        self._cached_score_results: Optional[DataFrame[ResultSchema]] = None
+        self._cached_score_results: DataFrame[ResultSchema] | None = None
 
     @property
     def score_results(self):
@@ -86,7 +86,7 @@ class MagohDataExtractor:
         answer_df = pandas.DataFrame(
             cast(list[dict], list(output_structured_data))
         )
-        answer_df["id"] = cast(List[InterventionId], list(ids))
+        answer_df["id"] = cast(list[InterventionId], list(ids))
         return outputStructuredDataSchema.validate(answer_df)
 
     def score(self, X: PDFChunkDataset, targets: MagohDataset):
@@ -109,7 +109,7 @@ class MagohDataExtractor:
         evaluate = get_evaluator(devset, return_outputs=True)
         print_log("Tracing ready!\n")
         results = cast(
-            Tuple[float, List[Tuple[Example, Prediction, float]]],
+            tuple[float, list[tuple[Example, Prediction, float]]],
             evaluate(self._module),
         )
         self._cached_score_results = ResultSchema.validate(

@@ -1,4 +1,3 @@
-from typing import Dict, List, Optional, Tuple
 import dspy
 
 import mlflow
@@ -13,16 +12,15 @@ from .load_examples import DevSet
 class MyRun:
     """Utils class for stacking the dataframes computed in an evaluation."""
 
-    active_run: Optional[mlflow.ActiveRun] = None
-    dataframes: List[Tuple[int, Dict[str, DataFrame]]] = []
+    active_run: mlflow.ActiveRun | None = None
+    dataframes: list[tuple[int, dict[str, DataFrame]]] = []
 
-    def __init__(self, active_run: Optional[mlflow.ActiveRun]) -> None:
+    def __init__(self, active_run: mlflow.ActiveRun | None) -> None:
         self.active_run = active_run
 
 
-def measure_and_plot(active_run: Optional[mlflow.ActiveRun]):
-    """
-    Return an evaluation metric, suffixed by a taks of
+def measure_and_plot(active_run: mlflow.ActiveRun | None):
+    """Return an evaluation metric, suffixed by a taks of
     plotting when all the batch has been processed
     """
     run = MyRun(active_run=active_run)

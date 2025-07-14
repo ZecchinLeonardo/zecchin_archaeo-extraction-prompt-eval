@@ -1,4 +1,3 @@
-from typing import Dict, List
 from pandera.pandas import DataFrameModel
 
 
@@ -11,4 +10,4 @@ class NerLabeledChunkDatasetSchema(DataFrameModel):
     """
 
     # for each identified field, the list of identified thesaurus
-    nerIdentifiedThesaurus: Dict[str, List[str]]
+    nerIdentifiedThesaurus: dict[str, list[str]]

@@ -3,15 +3,10 @@
 from io import BytesIO
 from pathlib import Path
 from typing import (
-    Iterator,
     cast,
-    Callable,
-    Iterable,
-    List,
     Literal,
-    Optional,
-    Tuple,
 )
+from collections.abc import Iterator, Callable, Iterable
 from pydantic import AnyUrl
 import pymupdf
 from tqdm import tqdm
@@ -46,7 +41,7 @@ def _document_page_number(file: Path) -> int:
     return page_count
 
 
-def stream_document_pages(file: Path) -> Tuple[Iterable[DocumentStream], int]:
+def stream_document_pages(file: Path) -> tuple[Iterable[DocumentStream], int]:
     """We do not use a per-page processing to let Docling running its native
     per-page vllm processing, hoping more performant results will be output.
 
@@ -128,7 +123,7 @@ def converter(ollama_vlm_options: ApiVlmOptions):
 
 def _retry_scanning_failed_document(
     doc: Path, docConverter: DocumentConverter
-) -> List[CorrectlyConvertedDocument]:
+) -> list[CorrectlyConvertedDocument]:
     print_log("Retry scanning the document page per page...")
     pages_iter, page_number = stream_document_pages(doc)
     return [
@@ -150,22 +145,22 @@ def _retry_scanning_failed_document(
 
 def _vllm_cache_output(
     filepath: str,
-    output: Optional[List[CorrectlyConvertedDocument]] = None,
-) -> Optional[List[CorrectlyConvertedDocument]]:
+    output: list[CorrectlyConvertedDocument] | None = None,
+) -> list[CorrectlyConvertedDocument] | None:
     return cache.identity_function(filepath, output)
 
 
 def _cached_convert_all(
     convert_all_func: Callable[
-        [Iterable[Path]], Iterator[List[CorrectlyConvertedDocument]]
+        [Iterable[Path]], Iterator[list[CorrectlyConvertedDocument]]
     ],
-    files: List[Tuple[InterventionId, Path]],
+    files: list[tuple[InterventionId, Path]],
 ):
     """Get the conversion results for all the documents, with only requesting
         the vllm when the results are not cached. Save them in the cache after the
         computation.
 
-        Arguments:
+    Arguments:
     * convert_all_func: a function which should always return a valid ConversionResult (so failed results must be managed in this function
 
         Return an Iterable with (documentFilePath, CorrectlyConvertedDocument)
@@ -190,17 +185,17 @@ def _cached_convert_all(
 
 
 def process_documents(
-    file_inputs: List[Tuple[InterventionId, Path]],
+    file_inputs: list[tuple[InterventionId, Path]],
     documentConvertor: DocumentConverter,
     timeout_per_page: int,
-) -> List[
-    Tuple[Tuple[InterventionId, Path], List[CorrectlyConvertedDocument]]
+) -> list[
+    tuple[tuple[InterventionId, Path], list[CorrectlyConvertedDocument]]
 ]:
     """Return for each file either a list of one docling documnt, if all the
     document can have been procesed at once, or one docling document for each
     document page.
     """
-    _, files = cast(Tuple[List[InterventionId], List[Path]], zip(*file_inputs))
+    _, files = cast(tuple[list[InterventionId], list[Path]], zip(*file_inputs))
     page_counts = (_document_page_number(p) for p in files)
 
     def convert_all_with_retry(files: Iterable[Path]):

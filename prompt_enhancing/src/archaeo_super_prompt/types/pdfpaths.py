@@ -1,7 +1,8 @@
 import pandera.pandas as pa
 import pandas as pd
 from pathlib import Path
-from typing import Iterable, List, Tuple, cast
+from typing import cast
+from collections.abc import Iterable
 
 from pandera.typing.pandas import DataFrame, Series
 
@@ -17,10 +18,10 @@ PDFPathDataset = DataFrame[PDFPathSchema]
 
 
 def buildPdfPathDataset(
-    items: Iterable[Tuple[InterventionId, Path]],
+    items: Iterable[tuple[InterventionId, Path]],
 ) -> PDFPathDataset:
     ids, paths = cast(
-        Tuple[Tuple[InterventionId, ...], Tuple[Path, ...]],
+        tuple[tuple[InterventionId, ...], tuple[Path, ...]],
         zip(*items, strict=True),
     )
     return PDFPathSchema.validate(
@@ -35,5 +36,5 @@ def get_intervention_rows(ds: PDFPathDataset):
     ]
 
 
-def get_paths(ds: PDFPathDataset) -> List[Path]:
+def get_paths(ds: PDFPathDataset) -> list[Path]:
     return [Path(str_path) for str_path in cast(Series[str], ds["filepath"])]

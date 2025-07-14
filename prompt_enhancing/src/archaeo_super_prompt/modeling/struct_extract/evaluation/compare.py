@@ -1,4 +1,5 @@
-from typing import Any, Callable, Dict, List, Tuple, TypeVar, Union, cast
+from typing import Any, TypeVar, cast
+from collections.abc import Callable
 from ....types.structured_data import (
     ExtractedStructuredDataSeries,
     outputStructuredDataSchema,
@@ -25,7 +26,7 @@ def _validate_magoh_data(
     trace=None,
 ) -> dict[str, float] | dict[str, bool]:
     def check_null[U, V](func: Callable[[U, V], bool]):
-        def inner(e: Union[U, None], p: Union[V, None]):
+        def inner(e: U | None, p: V | None):
             if (e is None) == (p is None):
                 if e is None:
                     return True
@@ -46,12 +47,12 @@ def _validate_magoh_data(
     def iterate_if_needed[U](func: Callable[[U, U], bool]):
         @validate_type
         def inner(
-            e: Union[U, List[U], Tuple[U]], p: Union[U, List[U], Tuple[U]]
+            e: U | list[U] | tuple[U], p: U | list[U] | tuple[U]
         ):
-            if isinstance(e, List) or isinstance(e, Tuple):
+            if isinstance(e, list) or isinstance(e, tuple):
                 print(f"{e=}")
-                e_list = cast(Union[List[U], Tuple[U]], e)
-                p_list = cast(Union[List[U], Tuple[U]], p)
+                e_list = cast(list[U] | tuple[U], e)
+                p_list = cast(list[U] | tuple[U], p)
                 if len(p_list) != len(e_list):
                     return False
                 return all(inner(e_list[i], p_list[i]) for i in range(len(e)))
@@ -91,7 +92,7 @@ def _validate_magoh_data(
         return check_date_with_LLM(e, p, trace) == 1
 
     pred_to_compare = pred
-    metrics: Dict[str, Dict[str, Callable[[Any, Any], bool]]] = {
+    metrics: dict[str, dict[str, Callable[[Any, Any], bool]]] = {
         "university": {
             "Sigla": perfect_match,  # TODO: figure this out
             "Comune": complex_match,
@@ -122,7 +123,7 @@ def _validate_magoh_data(
 
     f_metrics = flatten_dict(metrics)
 
-    metric_values: Dict[str, bool] = {
+    metric_values: dict[str, bool] = {
         key: f_metrics[key](answer[key], pred_to_compare[key])
         for key in f_metrics
     }
@@ -131,9 +132,9 @@ def _validate_magoh_data(
 
 
 def reduce_magoh_data_eval(
-    metric_values: Dict[str, bool] | Dict[str, float],
+    metric_values: dict[str, bool] | dict[str, float],
     trace=None,
-) -> Union[float, bool]:
+) -> float | bool:
     vals = metric_values.values()
     if trace is None:
         # for now, compute the fraction of the number of valid fields over all
@@ -183,8 +184,7 @@ def _worst_metric_values(trace=None):
 
 
 def _is_prediction_valid(pred: Prediction) -> bool:
-    """
-    Reutrn None if the prediction is valid, else a metric with the worst
+    """Reutrn None if the prediction is valid, else a metric with the worst
     value.
     """
     required_keys = set(outputStructuredDataSchema.columns.keys())
@@ -194,8 +194,7 @@ def _is_prediction_valid(pred: Prediction) -> bool:
 
 
 def validate_magoh_data(example: Example, pred: Prediction, trace=None):
-    """
-    If the prediction is not valid, then return the dict with all metric values
+    """If the prediction is not valid, then return the dict with all metric values
     at MIN_VALUE or False
     """
     if not _is_prediction_valid(pred):

@@ -1,4 +1,4 @@
-from typing import Set, List, Tuple, cast
+from typing import cast
 from docling_core.transforms.chunker.base import BaseChunk
 from docling_core.transforms.chunker.tokenizer.huggingface import (
     HuggingFaceTokenizer,
@@ -27,18 +27,18 @@ def get_chunker(embed_model_id: str, max_chunk_size: int):
     return HybridChunker(tokenizer=tokenizer, merge_peers=True)
 
 
-def _get_doc_items(chunk: BaseChunk) -> List[DocItem]:
-    return cast(List[DocItem], chunk.meta.doc_items)  # type: ignore
+def _get_doc_items(chunk: BaseChunk) -> list[DocItem]:
+    return cast(list[DocItem], chunk.meta.doc_items)  # type: ignore
 
 
-def _set_doc_items(chunk: BaseChunk, doc_items: List[DocItem]):
+def _set_doc_items(chunk: BaseChunk, doc_items: list[DocItem]):
     # not pure
     chunk.meta.doc_items = doc_items  # type: ignore
 
 
 def get_chunks(
-    chunker: HybridChunker, documents: List[CorrectlyConvertedDocument]
-) -> List[BaseChunk]:
+    chunker: HybridChunker, documents: list[CorrectlyConvertedDocument]
+) -> list[BaseChunk]:
     if not documents:
         return []
     if len(documents) == 1:
@@ -79,28 +79,28 @@ def get_chunks(
     chunks = fnt.reduce(
         lambda chunk_lst, per_page_chunk_pack: chunk_lst + per_page_chunk_pack,
         per_page_chunk_packs,
-        cast(List[BaseChunk], []),
+        cast(list[BaseChunk], []),
     )
     return chunks
 
 
-def _page_numbers_of_chunk(chunk: BaseChunk) -> Set[int]:
+def _page_numbers_of_chunk(chunk: BaseChunk) -> set[int]:
     return set(
         fnt.reduce(
             lambda acc_lst, item: list(acc_lst)
             + list(p.page_no for p in item.prov),
             _get_doc_items(chunk),
-            cast(List[int], []),
+            cast(list[int], []),
         )
     )
 
 
-def _chunk_types_of_chunk(chunk: BaseChunk) -> Set[str]:
+def _chunk_types_of_chunk(chunk: BaseChunk) -> set[str]:
     return set([item.label for item in _get_doc_items(chunk)])
 
 
 def chunk_to_ds(
-    pairs: List[Tuple[Tuple[InterventionId, Path], List[BaseChunk]]],
+    pairs: list[tuple[tuple[InterventionId, Path], list[BaseChunk]]],
     chunker: HybridChunker,
 ) -> PDFChunkDataset:
     return PDFChunkDataset(

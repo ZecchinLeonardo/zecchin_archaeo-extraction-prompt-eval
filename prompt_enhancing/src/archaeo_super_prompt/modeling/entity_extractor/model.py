@@ -1,4 +1,5 @@
-from typing import Callable, Dict, Generator, Optional, Set, Tuple, cast, List
+from typing import cast
+from collections.abc import Callable, Generator
 import requests
 import functools as fnt
 import thefuzz.process as fzwz
@@ -7,7 +8,7 @@ from .types import CompleteEntity, NerOutput, NerXXLEntities
 from ... import cache
 
 
-def _fetch_entities(chunks: List[str]) -> List[List[NerOutput]]:
+def _fetch_entities(chunks: list[str]) -> list[list[NerOutput]]:
     if not chunks:
         return []
     print("Fetching the transformers model")
@@ -17,7 +18,7 @@ def _fetch_entities(chunks: List[str]) -> List[List[NerOutput]]:
     entities = list(
         map(
             lambda lst: list(map(lambda dct: NerOutput(**dct), lst)),
-            cast(List[List[Dict]], response.json()),
+            cast(list[list[dict]], response.json()),
         )
     )
     return entities
@@ -27,7 +28,7 @@ def cache_remote_ner_results(inpt, output=None):
     return cache.identity_function(inpt, output)
 
 
-def fetch_entities(chunks: List[str]):
+def fetch_entities(chunks: list[str]):
     # TODO: correct these iter-list-iter spaghetti
     return [
         ner_result
@@ -42,7 +43,7 @@ def fetch_entities(chunks: List[str]):
 
 
 def postrocess_entities(
-    entitiesPerTextChunk: List[List[NerOutput]], confidence_treshold: float
+    entitiesPerTextChunk: list[list[NerOutput]], confidence_treshold: float
 ):
     """Return a set of the occured entities for each chunks
     Arguments:
@@ -50,9 +51,9 @@ def postrocess_entities(
     of entities
     """
 
-    def gatherEntityChunks(entity_chunks: List[NerOutput]):
-        entity_set: List[CompleteEntity] = list()
-        current_accumulated_entity: Optional[CompleteEntity] = None
+    def gatherEntityChunks(entity_chunks: list[NerOutput]):
+        entity_set: list[CompleteEntity] = list()
+        current_accumulated_entity: CompleteEntity | None = None
         for current_entity_chunk in entity_chunks:
             # Edge-case when a chunks is under the confidence treshold
             # We only keep the already added confident chunk of the entity
@@ -108,11 +109,11 @@ def postrocess_entities(
 
 
 def filter_entities(
-    complete_entity_sets: List[
-        List[CompleteEntity]
+    complete_entity_sets: list[
+        list[CompleteEntity]
     ],  # List[Set[CompleteEntity]]
-    allowed_entities: Set[NerXXLEntities],
-) -> List[List[CompleteEntity]]:  # List[Set[CompleteEntity]]
+    allowed_entities: set[NerXXLEntities],
+) -> list[list[CompleteEntity]]:  # List[Set[CompleteEntity]]
     """For each text chunk, keep only the entities included in the given group
     of allowed entity types.
     """
@@ -124,10 +125,10 @@ def filter_entities(
 
 # TODO: review the prototype
 def extract_wanted_entities(
-    complete_entity_sets: List[List[CompleteEntity]],
-    wanted_entities: Callable[[], List[str]],
+    complete_entity_sets: list[list[CompleteEntity]],
+    wanted_entities: Callable[[], list[str]],
     distance_treshold: float,
-) -> List[Optional[Set[str]]]:
+) -> list[set[str] | None]:
     """Filter only the entities that fuzzymatch with wanted thesaurus
 
     Arguments:
@@ -143,9 +144,8 @@ def extract_wanted_entities(
     of entities of interests but these entities does not match the thesaurus.
     """
 
-    def aux(complete_entity_set: List[CompleteEntity]):
-        """
-        Arguments:
+    def aux(complete_entity_set: list[CompleteEntity]):
+        """Arguments:
         * complete_entity_set: a not empty list
         """
         return fnt.reduce(
@@ -157,7 +157,7 @@ def extract_wanted_entities(
                 [
                     matched_thesaurus
                     for matched_thesaurus, _ in cast(
-                        Generator[Tuple[str, int]],
+                        Generator[tuple[str, int]],
                         fzwz.extractWithoutOrder(
                             entity.word,
                             wanted_entities(),
@@ -167,7 +167,7 @@ def extract_wanted_entities(
                 ]
                 for entity in complete_entity_set
             ],
-            cast(Set[str], set()),
+            cast(set[str], set()),
         )
 
     return [aux(ces) if ces else None for ces in complete_entity_sets]

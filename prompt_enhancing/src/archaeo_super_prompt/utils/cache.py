@@ -1,15 +1,11 @@
 from pathlib import Path
 from typing import (
     Any,
-    Callable,
-    Iterator,
-    List,
     Literal,
-    Optional,
-    Tuple,
     TypeVar,
     cast,
 )
+from collections.abc import Callable, Iterator
 from joblib import Memory
 from joblib.memory import MemorizedFunc
 
@@ -20,7 +16,7 @@ CacheSubpart = Literal["external", "interim", "processed"]
 _memories: dict[CacheSubpart, Memory] = {
     k: Memory(str(_CACHE_DIR / k), verbose=0)
     for k in cast(
-        Tuple[CacheSubpart, ...], ("external", "interim", "processed")
+        tuple[CacheSubpart, ...], ("external", "interim", "processed")
     )
 }
 
@@ -39,7 +35,7 @@ def get_memory_for(cache_subpart: CacheSubpart):
 ## Manual caching
 
 
-def identity_function[U](input: Any, output_to_be_cached: Optional[U]):
+def identity_function[U](input: Any, output_to_be_cached: U | None):
     input = input
     return output_to_be_cached
 
@@ -53,8 +49,7 @@ def is_input_in_the_cache(identity_function: MemorizedFunc, input: Any):
 def manually_cache_result(
     identity_function: MemorizedFunc, input: Any, output: Any
 ):
-    """
-    Arguments:
+    """Arguments:
     * identity_function: a dummy cached function to carry out the joblib cache mechanism, built from a wrapping of the identity_function function given by the module. The funtion must ignore the output argument in the caching
     """
     identity_function.call(input, output)
@@ -62,7 +57,7 @@ def manually_cache_result(
 
 HashedT = TypeVar("HashedT")
 Output = TypeVar("Output")
-CacheIngestorFunction = Callable[[HashedT, Optional[Output]], Optional[Output]]
+CacheIngestorFunction = Callable[[HashedT, Output | None], Output | None]
 """The name of the arguments is important: the output argument must be exactly
 named 'output'
 """
@@ -75,8 +70,7 @@ def escape_expensive_run_when_cached[Input, HashedT, Output](
     expensive_function: Callable[[Iterator[Input]], Iterator[Output]],
     input_iter: Iterator[Input],
 ):
-    """
-    Arguments:
+    """Arguments:
     * named_id_func: a function defined like this (input, output) -> output
         output can be None
     """
@@ -84,8 +78,8 @@ def escape_expensive_run_when_cached[Input, HashedT, Output](
         MemorizedFunc, memory.cache(named_id_func, ignore=["output"])
     )
     cached_fn = cast(CacheIngestorFunction[HashedT, Output], identity_function)
-    results: List[Tuple[Input, Optional[Output]]] = []
-    inputs_to_be_processed: List[Input] = []
+    results: list[tuple[Input, Output | None]] = []
+    inputs_to_be_processed: list[Input] = []
 
     for inpt in input_iter:
         hashed_inpt = input_hash_function(inpt)
