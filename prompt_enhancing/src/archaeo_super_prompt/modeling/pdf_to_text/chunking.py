@@ -1,6 +1,8 @@
 from typing import Set, List, Tuple, cast
 from docling_core.transforms.chunker.base import BaseChunk
-from docling_core.transforms.chunker.tokenizer.huggingface import HuggingFaceTokenizer
+from docling_core.transforms.chunker.tokenizer.huggingface import (
+    HuggingFaceTokenizer,
+)
 from docling_core.types.doc.document import DocItem, ProvenanceItem
 import pandas as pd
 from transformers import AutoTokenizer
@@ -52,7 +54,9 @@ def get_chunks(
                 return new_prov
 
             new_item = item.model_copy(deep=True)
-            new_item.prov = list(map(adapt_page_number_for_prov, new_item.prov))
+            new_item.prov = list(
+                map(adapt_page_number_for_prov, new_item.prov)
+            )
             return new_item
 
         _set_doc_items(
@@ -83,7 +87,8 @@ def get_chunks(
 def _page_numbers_of_chunk(chunk: BaseChunk) -> Set[int]:
     return set(
         fnt.reduce(
-            lambda acc_lst, item: list(acc_lst) + list(p.page_no for p in item.prov),
+            lambda acc_lst, item: list(acc_lst)
+            + list(p.page_no for p in item.prov),
             _get_doc_items(chunk),
             cast(List[int], []),
         )
@@ -107,12 +112,16 @@ def chunk_to_ds(
                             {
                                 "id": int(id_),
                                 "filename": file.name,
-                                "chunk_type": list(_chunk_types_of_chunk(chunk)),
+                                "chunk_type": list(
+                                    _chunk_types_of_chunk(chunk)
+                                ),
                                 "chunk_page_position": list(
                                     _page_numbers_of_chunk(chunk)
                                 ),
                                 "chunk_index": chunk_idx,
-                                "chunk_embedding_content": chunker.contextualize(chunk),
+                                "chunk_embedding_content": chunker.contextualize(
+                                    chunk
+                                ),
                                 "chunk_content": chunk.text,
                             }
                             for chunk_idx, chunk in enumerate(chunks_per_file)

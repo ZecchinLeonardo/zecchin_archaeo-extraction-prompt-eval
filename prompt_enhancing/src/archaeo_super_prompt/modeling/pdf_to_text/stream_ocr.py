@@ -20,7 +20,10 @@ from docling.datamodel.base_models import InputFormat
 from docling.datamodel.pipeline_options import (
     VlmPipelineOptions,
 )
-from docling.datamodel.pipeline_options_vlm_model import ApiVlmOptions, ResponseFormat
+from docling.datamodel.pipeline_options_vlm_model import (
+    ApiVlmOptions,
+    ResponseFormat,
+)
 from docling.document_converter import DocumentConverter, PdfFormatOption
 from docling.pipeline.vlm_pipeline import VlmPipeline
 from docling_core.types.io import DocumentStream
@@ -53,14 +56,18 @@ def stream_document_pages(file: Path) -> Tuple[Iterable[DocumentStream], int]:
 
     def create_smaller_pdf_for_page(page_number: int):
         per_page_pdf = pymupdf.open()
-        per_page_pdf.insert_pdf(source_doc, from_page=page_number, to_page=page_number)
+        per_page_pdf.insert_pdf(
+            source_doc, from_page=page_number, to_page=page_number
+        )
         return DocumentStream(
             # intervention_id + fileanme + page_number + .pdf
             name=f"{file.parent.name}__{file.stem}__p{page_number}.pdf",
             stream=BytesIO(per_page_pdf.tobytes()),
         )
 
-    pages = (create_smaller_pdf_for_page(pn) for pn in range(source_doc.page_count))
+    pages = (
+        create_smaller_pdf_for_page(pn) for pn in range(source_doc.page_count)
+    )
     return pages, source_doc.page_count
 
 
@@ -186,7 +193,9 @@ def process_documents(
     file_inputs: List[Tuple[InterventionId, Path]],
     documentConvertor: DocumentConverter,
     timeout_per_page: int,
-) -> List[Tuple[Tuple[InterventionId, Path], List[CorrectlyConvertedDocument]]]:
+) -> List[
+    Tuple[Tuple[InterventionId, Path], List[CorrectlyConvertedDocument]]
+]:
     """Return for each file either a list of one docling documnt, if all the
     document can have been procesed at once, or one docling document for each
     document page.

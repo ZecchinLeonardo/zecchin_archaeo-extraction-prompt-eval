@@ -10,5 +10,7 @@ def prettify_field_names(results: DataFrame[ResultSchema]):
         return suffix
 
     new_results = results.copy()
-    new_results["field_name"] = new_results["field_name"].apply(process_field_name)
+    new_results["field_name"] = new_results["field_name"].apply(
+        process_field_name
+    )
     return new_results

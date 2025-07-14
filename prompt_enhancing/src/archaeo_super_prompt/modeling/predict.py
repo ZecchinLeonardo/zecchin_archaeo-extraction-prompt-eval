@@ -9,7 +9,9 @@ from .entity_extractor import NamedEntityField, NerModel
 def identity():
     def transform(X: PDFChunkDataset):
         return X
+
     return FunctionTransformer(transform)
+
 
 def get_pipeline():
     return Pipeline(

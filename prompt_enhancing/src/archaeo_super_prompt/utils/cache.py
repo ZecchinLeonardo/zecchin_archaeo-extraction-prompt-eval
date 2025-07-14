@@ -19,7 +19,9 @@ CacheSubpart = Literal["external", "interim", "processed"]
 
 _memories: dict[CacheSubpart, Memory] = {
     k: Memory(str(_CACHE_DIR / k), verbose=0)
-    for k in cast(Tuple[CacheSubpart, ...], ("external", "interim", "processed"))
+    for k in cast(
+        Tuple[CacheSubpart, ...], ("external", "interim", "processed")
+    )
 }
 
 
@@ -48,7 +50,9 @@ def is_input_in_the_cache(identity_function: MemorizedFunc, input: Any):
     return identity_function(input) is not None
 
 
-def manually_cache_result(identity_function: MemorizedFunc, input: Any, output: Any):
+def manually_cache_result(
+    identity_function: MemorizedFunc, input: Any, output: Any
+):
     """
     Arguments:
     * identity_function: a dummy cached function to carry out the joblib cache mechanism, built from a wrapping of the identity_function function given by the module. The funtion must ignore the output argument in the caching
@@ -101,7 +105,9 @@ def escape_expensive_run_when_cached[Input, HashedT, Output](
             try:
                 new_result = next(new_results)
                 # just pass to this identity function to save it in the cache
-                manually_cache_result(identity_function, hashed_inpt, new_result)
+                manually_cache_result(
+                    identity_function, hashed_inpt, new_result
+                )
                 yield inpt, new_result
                 continue
             except StopIteration:

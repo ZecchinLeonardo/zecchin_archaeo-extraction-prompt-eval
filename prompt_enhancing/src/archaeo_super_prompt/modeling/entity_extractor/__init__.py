@@ -21,7 +21,9 @@ def NerModel(
     allowed_ner_confidence=0.70,
     allowed_fuzzy_match_score=0.70,
 ):
-    def transform(X: PDFChunkDataset) -> DataFrame[NerLabeledChunkDatasetSchema]:
+    def transform(
+        X: PDFChunkDataset,
+    ) -> DataFrame[NerLabeledChunkDatasetSchema]:
         result = ner_module.fetch_entities(
             list(map(lambda row: cast(str, row.chunk_content), X.itertuples()))
         )
@@ -39,7 +41,9 @@ def NerModel(
                 [
                     {
                         "nerIdentifiedThesaurus": {
-                            k: result[k][i] for k in result if result[k][i] is not None
+                            k: result[k][i]
+                            for k in result
+                            if result[k][i] is not None
                         }
                     }
                     for i in range(len(X))

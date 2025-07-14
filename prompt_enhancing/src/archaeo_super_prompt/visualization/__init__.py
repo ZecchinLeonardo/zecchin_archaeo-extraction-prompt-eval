@@ -9,6 +9,7 @@ from .file_explorer import add_file_explorer
 _app = Dash()
 _is_display_server_running = False
 
+
 def init_complete_vizualisation_engine(results: DataFrame[ResultSchema]):
     resultChildren, c1 = display_results(results)
     fileExplorer, c2 = add_file_explorer()

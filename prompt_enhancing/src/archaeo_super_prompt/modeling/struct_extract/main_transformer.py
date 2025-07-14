@@ -47,13 +47,17 @@ class MagohDataExtractor:
             (
                 id_,
                 PDFChunkPerInterventionDataset(
-                    PDFChunkSetPerInterventionSchema.validate(source, lazy=True),
+                    PDFChunkSetPerInterventionSchema.validate(
+                        source, lazy=True
+                    ),
                 ),
             )
             for id_, source in X.groupby("id")
         ]
 
-    def compute_devset(self, X: PDFChunkDataset, targets: MagohDataset) -> DevSet:
+    def compute_devset(
+        self, X: PDFChunkDataset, targets: MagohDataset
+    ) -> DevSet:
         return [
             dspy.Example(
                 document_ocr_scans__df=model_input,
@@ -79,7 +83,9 @@ class MagohDataExtractor:
             if answer is not None
         }
         ids, output_structured_data = zip(*answers.items())
-        answer_df = pandas.DataFrame(cast(list[dict], list(output_structured_data)))
+        answer_df = pandas.DataFrame(
+            cast(list[dict], list(output_structured_data))
+        )
         answer_df["id"] = cast(List[InterventionId], list(ids))
         return outputStructuredDataSchema.validate(answer_df)
 

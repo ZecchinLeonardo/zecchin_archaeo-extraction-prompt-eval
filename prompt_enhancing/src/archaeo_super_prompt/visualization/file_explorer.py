@@ -11,7 +11,9 @@ _STATIC_DIR = get_cache_dir_for("external", "pdfs").resolve()
 
 def _get_file_endpoints():
     return {
-        dirp.name: [str((Path("/") / p.parent.name) / p.name) for p in dirp.iterdir()]
+        dirp.name: [
+            str((Path("/") / p.parent.name) / p.name) for p in dirp.iterdir()
+        ]
         for dirp in _STATIC_DIR.iterdir()
     }
 

@@ -20,7 +20,10 @@ def parse_intervention_data(intervention_data__df: pd.DataFrame):
     filtered_df = intervention_data__df.filter(
         regex="^(scheda_intervento.id|(university|building|check).*)"
     ).astype(
-        {"university.Numero di saggi": "UInt32", "university.Geologico": "boolean"}
+        {
+            "university.Numero di saggi": "UInt32",
+            "university.Geologico": "boolean",
+        }
     )
 
     return structuredDataSchema.validate(filtered_df)
@@ -54,8 +57,8 @@ def _init_with_cache(size: int, seed: float, only_recent_entries=False):
 class MagohDataset:
     def __init__(self, size: int, seed: float, only_recent_entries=False):
         """Fetch a maximum of `size` samples from the Magoh training database"""
-        self._intervention_data, self._findings, self._files = _init_with_cache(
-            size, seed, only_recent_entries
+        self._intervention_data, self._findings, self._files = (
+            _init_with_cache(size, seed, only_recent_entries)
         )
 
     @property

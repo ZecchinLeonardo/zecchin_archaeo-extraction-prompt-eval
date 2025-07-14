@@ -3,12 +3,17 @@ from ..chunk_selector import select_end_pages, select_incipit
 from ...types.pdfchunks import (
     PDFChunkPerInterventionDataset,
 )
-from archaeo_super_prompt.types.structured_data import ExtractedStructuredDataSeries
+from archaeo_super_prompt.types.structured_data import (
+    ExtractedStructuredDataSeries,
+)
 from ...utils.norm import flatten_dict
 import dspy
 
 from ...config.debug_log import forward_warning, print_debug_log
-from ...types.target_types import MagohDocumentBuildingData, MagohUniversityData
+from ...types.target_types import (
+    MagohDocumentBuildingData,
+    MagohUniversityData,
+)
 from .signatures.arch_dictionnaries import (
     to_magoh_build_data,
     to_magoh_university_data,
@@ -31,17 +36,25 @@ class ExtractDataFromInterventionReport(dspy.Module):
         self.extract_intervention_context_data = dspy.ChainOfThought(
             ArchaeologicalInterventionContext
         )
-        self.extract_report_sources = dspy.ChainOfThought(SourceOfInformationInReport)
+        self.extract_report_sources = dspy.ChainOfThought(
+            SourceOfInformationInReport
+        )
         self.extract_intervention_technical_achievements = dspy.ChainOfThought(
             TechnicalInformation
         )
-        self.extract_archival_metadata = dspy.ChainOfThought(ArchivalInformation)
+        self.extract_archival_metadata = dspy.ChainOfThought(
+            ArchivalInformation
+        )
 
     def forward(self, document_ocr_scans__df: PDFChunkPerInterventionDataset):
-        document_ocr_scans = document_ocr_scans__df.to_readable_context_string()
+        document_ocr_scans = (
+            document_ocr_scans__df.to_readable_context_string()
+        )
         document_incipits = select_incipit(document_ocr_scans__df)
         document_end_pages = select_end_pages(document_ocr_scans__df)
-        document_incipits_content = document_incipits.to_readable_context_string()
+        document_incipits_content = (
+            document_incipits.to_readable_context_string()
+        )
         document_full_contextual_content = (
             document_incipits + document_end_pages
         ).to_readable_context_string()
@@ -86,10 +99,14 @@ class ExtractDataFromInterventionReport(dspy.Module):
 
         final_prediction: ExtractedInterventionData = {
             "university": to_magoh_university_data(
-                intervention_context, techinal_achievements, document_source_data
+                intervention_context,
+                techinal_achievements,
+                document_source_data,
             ),
             "building": to_magoh_build_data(
-                intervention_context, document_source_data, report_archival_metadata
+                intervention_context,
+                document_source_data,
+                report_archival_metadata,
             ),
         }
 
@@ -97,11 +114,14 @@ class ExtractDataFromInterventionReport(dspy.Module):
             **flatten_dict(cast(dict[str, dict[str, Any]], final_prediction)),
         )
 
-    def forward_and_type(self, document_ocr_scan__df: PDFChunkPerInterventionDataset):
+    def forward_and_type(
+        self, document_ocr_scan__df: PDFChunkPerInterventionDataset
+    ):
         result: dspy.Prediction
         try:
             result = cast(
-                dspy.Prediction, self(document_ocr_scans__df=document_ocr_scan__df)
+                dspy.Prediction,
+                self(document_ocr_scans__df=document_ocr_scan__df),
             )
         except Exception as e:
             forward_warning(e)

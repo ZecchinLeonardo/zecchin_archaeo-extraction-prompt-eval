@@ -1,8 +1,10 @@
 from typing import Any
 import pandera.pandas as pa
 
+
 def _negativeFloatColumn():
     return pa.Column(float, pa.Check.lt(0.000001), nullable=True)
+
 
 structuredDataSchema = pa.DataFrameSchema(
     {
@@ -18,7 +20,9 @@ structuredDataSchema = pa.DataFrameSchema(
         "university.Eseguito da": pa.Column(str, nullable=True),
         "university.Direzione scientifica": pa.Column(str, nullable=True),
         "university.Estensione": pa.Column(str, nullable=True),
-        "university.Numero di saggi": pa.Column('UInt32', pa.Check.ge(0), nullable=True),
+        "university.Numero di saggi": pa.Column(
+            "UInt32", pa.Check.ge(0), nullable=True
+        ),
         "university.Profondità massima": _negativeFloatColumn(),
         "university.Geologico": pa.Column("boolean", nullable=True),
         "university.OGD": pa.Column(str, nullable=True),
@@ -56,7 +60,9 @@ outputStructuredDataSchema = pa.DataFrameSchema(
         "university__Eseguito_da": pa.Column(str, nullable=True),
         "university__Direzione_scientifica": pa.Column(str, nullable=True),
         "university__Estensione": pa.Column(str, nullable=True),
-        "university__Numero_di_saggi": pa.Column('UInt32', pa.Check.ge(0), nullable=True),
+        "university__Numero_di_saggi": pa.Column(
+            "UInt32", pa.Check.ge(0), nullable=True
+        ),
         "university__Profondità_massima": _negativeFloatColumn(),
         "university__Geologico": pa.Column("boolean", nullable=True),
         "university__OGD": pa.Column(str, nullable=True),

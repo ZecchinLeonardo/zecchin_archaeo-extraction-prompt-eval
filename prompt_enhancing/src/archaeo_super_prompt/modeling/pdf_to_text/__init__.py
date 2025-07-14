@@ -22,7 +22,9 @@ def VLLM_Preprocessing(
     """
     allowed_timeout = allowed_timeout
     converter = vllm_scan_mod.converter(
-        vllm_scan_mod.ollama_vlm_options(model, prompt, allowed_timeout=allowed_timeout)
+        vllm_scan_mod.ollama_vlm_options(
+            model, prompt, allowed_timeout=allowed_timeout
+        )
     )
     chunker = get_chunker(embedding_model_hf_id, max_chunk_size)
 
@@ -32,7 +34,9 @@ def VLLM_Preprocessing(
             converter,
             allowed_timeout,
         )
-        chunked_results = [(f, get_chunks(chunker, r)) for f, r in conversion_results]
+        chunked_results = [
+            (f, get_chunks(chunker, r)) for f, r in conversion_results
+        ]
 
         return chunk_to_ds(chunked_results, chunker)
 

@@ -32,7 +32,9 @@ def soft_accuracy(
     pred_vecs = vectorizer.transform(preproc_preds)
     ref_vecs = vectorizer.transform(preproc_refs)
 
-    similarities = cast(np.ndarray, cosine_similarity(pred_vecs, ref_vecs)).diagonal()
+    similarities = cast(
+        np.ndarray, cosine_similarity(pred_vecs, ref_vecs)
+    ).diagonal()
     correct = similarities >= threshold
     return {
         "accuracy": np.mean(correct),

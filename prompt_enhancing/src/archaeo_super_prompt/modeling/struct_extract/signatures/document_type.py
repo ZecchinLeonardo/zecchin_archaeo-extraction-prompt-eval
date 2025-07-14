@@ -31,21 +31,21 @@ ItalianDocumentType = Literal[
     "Piante/Disegni",
 ]
 
-TO_ITALIAN_DOCUMENT_TYPE: BidirectionalMapping[DocumentType, ItalianDocumentType] = (
-    bidict(
-        [
-            ("Assignment Reports", "Relazione di missione"),
-            ("Excavation Reports", "Relazione di scavo"),
-            ("State of Advancement Reports", "Relazione stato lavori"),
-            ("Information Reports/Notices", "Informativa/segnalazione"),
-            ("Collection Reports", "Verbale di ritiro"),
-            ("Requests for Authorisation", "Richiesta autorizzazione"),
-            ("Communications", "Comunicazione"),
-            ("Photographic images", "Immagini fotografiche"),
-            ("Basic data form", "Scheda dati minimi"),
-            ("Other", "Altro"),
-            ("Investigation report", "Relazione indagine"),
-            ("Plans/Drawings", "Piante/Disegni"),
-        ]
-    )
+TO_ITALIAN_DOCUMENT_TYPE: BidirectionalMapping[
+    DocumentType, ItalianDocumentType
+] = bidict(
+    [
+        ("Assignment Reports", "Relazione di missione"),
+        ("Excavation Reports", "Relazione di scavo"),
+        ("State of Advancement Reports", "Relazione stato lavori"),
+        ("Information Reports/Notices", "Informativa/segnalazione"),
+        ("Collection Reports", "Verbale di ritiro"),
+        ("Requests for Authorisation", "Richiesta autorizzazione"),
+        ("Communications", "Comunicazione"),
+        ("Photographic images", "Immagini fotografiche"),
+        ("Basic data form", "Scheda dati minimi"),
+        ("Other", "Altro"),
+        ("Investigation report", "Relazione indagine"),
+        ("Plans/Drawings", "Piante/Disegni"),
+    ]
 )

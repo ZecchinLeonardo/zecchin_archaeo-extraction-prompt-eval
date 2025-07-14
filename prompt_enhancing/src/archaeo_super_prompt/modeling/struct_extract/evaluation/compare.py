@@ -45,7 +45,9 @@ def _validate_magoh_data(
 
     def iterate_if_needed[U](func: Callable[[U, U], bool]):
         @validate_type
-        def inner(e: Union[U, List[U], Tuple[U]], p: Union[U, List[U], Tuple[U]]):
+        def inner(
+            e: Union[U, List[U], Tuple[U]], p: Union[U, List[U], Tuple[U]]
+        ):
             if isinstance(e, List) or isinstance(e, Tuple):
                 print(f"{e=}")
                 e_list = cast(Union[List[U], Tuple[U]], e)
@@ -121,7 +123,8 @@ def _validate_magoh_data(
     f_metrics = flatten_dict(metrics)
 
     metric_values: Dict[str, bool] = {
-        key: f_metrics[key](answer[key], pred_to_compare[key]) for key in f_metrics
+        key: f_metrics[key](answer[key], pred_to_compare[key])
+        for key in f_metrics
     }
 
     return metric_values

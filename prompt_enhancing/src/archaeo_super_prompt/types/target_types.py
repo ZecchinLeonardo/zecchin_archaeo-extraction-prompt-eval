@@ -1,34 +1,40 @@
 from typing import Optional, TypedDict
 
-MagohUniversityData = TypedDict("MagohUniversityData", {
-    "Sigla": Optional[str],
-    "Comune": str,
-    "Ubicazione": str,
-    "Indirizzo": Optional[str],
-    "Località": Optional[str],
-    "Data intervento": str,
-    "Tipo di intervento": str,
-    "Durata": Optional[str],
-    "Eseguito da": Optional[str],
-    "Direzione scientifica": Optional[str],
-    "Estensione": Optional[str],
-    "Numero di saggi": int, # unsigned
-    "Profondità massima": Optional[float], # absolute value but negative
-    "Geologico": Optional[bool],
-    "OGD":str,
-    "OGM": str,
-    "Profondità falda": Optional[float]
-})
+MagohUniversityData = TypedDict(
+    "MagohUniversityData",
+    {
+        "Sigla": Optional[str],
+        "Comune": str,
+        "Ubicazione": str,
+        "Indirizzo": Optional[str],
+        "Località": Optional[str],
+        "Data intervento": str,
+        "Tipo di intervento": str,
+        "Durata": Optional[str],
+        "Eseguito da": Optional[str],
+        "Direzione scientifica": Optional[str],
+        "Estensione": Optional[str],
+        "Numero di saggi": int,  # unsigned
+        "Profondità massima": Optional[float],  # absolute value but negative
+        "Geologico": Optional[bool],
+        "OGD": str,
+        "OGM": str,
+        "Profondità falda": Optional[float],
+    },
+)
 
 # TODO: MagohCheckedEras
 
-MagohDocumentBuildingData = TypedDict("MagohDocumentBuildingData", {
-    "Istituzione": str,
-    "Funzionario competente": str,
-    "Tipo di documento": str,
-    "Protocollo": str,
-    "Data Protocollo": str
-})
+MagohDocumentBuildingData = TypedDict(
+    "MagohDocumentBuildingData",
+    {
+        "Istituzione": str,
+        "Funzionario competente": str,
+        "Tipo di documento": str,
+        "Protocollo": str,
+        "Data Protocollo": str,
+    },
+)
 
 MagohFindingScheme = TypedDict(
     "MagohFindingScheme",
@@ -41,9 +47,7 @@ MagohFindingScheme = TypedDict(
     },
 )
 
-MagohArtificialRecordData = TypedDict(
-    "MagohArtificialRecordData", { "id": int }
-)
+MagohArtificialRecordData = TypedDict("MagohArtificialRecordData", {"id": int})
 
 # TODO: add findings to MagohData
 MagohData = TypedDict(
@@ -51,6 +55,6 @@ MagohData = TypedDict(
     {
         "university": MagohUniversityData,
         "building": MagohDocumentBuildingData,
-        "scheda_intervento": MagohArtificialRecordData
-    }
+        "scheda_intervento": MagohArtificialRecordData,
+    },
 )

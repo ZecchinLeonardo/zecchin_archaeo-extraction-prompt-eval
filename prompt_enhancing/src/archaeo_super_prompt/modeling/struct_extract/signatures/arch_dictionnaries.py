@@ -10,7 +10,10 @@ from .arch_extract_type import (
     SourceOfInformationInReport,
     TechnicalInformation,
 )
-from ....types.target_types import MagohDocumentBuildingData, MagohUniversityData
+from ....types.target_types import (
+    MagohDocumentBuildingData,
+    MagohUniversityData,
+)
 
 
 def process_extensions(ext: Optional[List[str]]):
@@ -43,6 +46,7 @@ def coalesce_date(d: Optional[str]):
         return str(date.today())
     return d
 
+
 def normalize_depth(depth: Optional[float]):
     """Apply a simple mathematical operation to be sure the depth is a negative
     float
@@ -56,8 +60,9 @@ def normalize_depth(depth: Optional[float]):
     abs_depth = abs(depth)
     if abs_depth >= 50:
         # the output result is likely in cm; convert it into metres
-        return abs_depth/100
+        return abs_depth / 100
     return -abs_depth
+
 
 def to_magoh_university_data(
     context: ArchaeologicalInterventionContext,
@@ -70,11 +75,15 @@ def to_magoh_university_data(
         "Ubicazione": context.location,
         "Indirizzo": context.address,
         "Località": context.place,
-        "Data intervento": coalesce_date(stringify_if_known(context.intervention_date)),
+        "Data intervento": coalesce_date(
+            stringify_if_known(context.intervention_date)
+        ),
         "Tipo di intervento": context.intervention_type,
         "Durata": stringify_if_known(context.duration),
         "Eseguito da": stringify_if_known(context.executor),
-        "Direzione scientifica": stringify_if_known(context.principal_investigator),
+        "Direzione scientifica": stringify_if_known(
+            context.principal_investigator
+        ),
         "Estensione": process_extensions(context.extension),
         "Numero di saggi": details.sample_number,
         "Profondità massima": normalize_depth(details.max_depth),
@@ -98,7 +107,9 @@ def to_magoh_build_data(
         if context.on_site_qualified_official is not None
         else "",
         "Tipo di documento": doc_build_data.document_type,
-        "Protocollo": arch_metadata.protocol if arch_metadata is not None else "",
+        "Protocollo": arch_metadata.protocol
+        if arch_metadata is not None
+        else "",
         "Data Protocollo": arch_metadata.protocol_date
         if arch_metadata is not None
         else "",

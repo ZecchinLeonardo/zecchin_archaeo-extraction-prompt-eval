@@ -16,9 +16,12 @@ class PDFPathSchema(pa.DataFrameModel):
 PDFPathDataset = DataFrame[PDFPathSchema]
 
 
-def buildPdfPathDataset(items: Iterable[Tuple[InterventionId, Path]]) -> PDFPathDataset:
+def buildPdfPathDataset(
+    items: Iterable[Tuple[InterventionId, Path]],
+) -> PDFPathDataset:
     ids, paths = cast(
-        Tuple[Tuple[InterventionId, ...], Tuple[Path, ...]], zip(*items, strict=True)
+        Tuple[Tuple[InterventionId, ...], Tuple[Path, ...]],
+        zip(*items, strict=True),
     )
     return PDFPathSchema.validate(
         pd.DataFrame({"id": ids, "filepath": [str(path) for path in paths]})
@@ -27,7 +30,8 @@ def buildPdfPathDataset(items: Iterable[Tuple[InterventionId, Path]]) -> PDFPath
 
 def get_intervention_rows(ds: PDFPathDataset):
     return [
-        (InterventionId(row["id"]), Path(row["filepath"])) for _, row in ds.iterrows()
+        (InterventionId(row["id"]), Path(row["filepath"]))
+        for _, row in ds.iterrows()
     ]
 
 

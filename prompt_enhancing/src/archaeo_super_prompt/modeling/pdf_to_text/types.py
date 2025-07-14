@@ -4,7 +4,9 @@ from docling.datamodel.base_models import ConversionStatus
 from docling_core.types.doc.document import DoclingDocument
 
 
-CorrectlyConvertedDocument = NewType("CorrectlyConvertedDocument", DoclingDocument)
+CorrectlyConvertedDocument = NewType(
+    "CorrectlyConvertedDocument", DoclingDocument
+)
 
 
 def has_document_been_well_scanned(

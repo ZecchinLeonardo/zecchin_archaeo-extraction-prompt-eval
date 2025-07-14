@@ -68,7 +68,9 @@ def postrocess_entities(
                 if current_accumulated_entity is not None:
                     entity_set.append(current_accumulated_entity)
                 current_accumulated_entity = CompleteEntity(
-                    entity=cast(NerXXLEntities, current_entity_chunk.entity[2:]),
+                    entity=cast(
+                        NerXXLEntities, current_entity_chunk.entity[2:]
+                    ),
                     word=current_entity_chunk.word,
                     start=current_entity_chunk.start,
                     end=current_entity_chunk.end,
@@ -80,24 +82,35 @@ def postrocess_entities(
                 # WARN: it is expected that the output content of the ner model
                 # is normalized so words are only separated by 1 space at
                 # maximum
-                and abs(current_entity_chunk.start - current_accumulated_entity.end)
+                and abs(
+                    current_entity_chunk.start - current_accumulated_entity.end
+                )
                 <= 1
             ):
                 current_accumulated_entity.end = current_entity_chunk.end
                 # Complete an entity with its additional chunks
                 if current_entity_chunk.word.startswith("##"):
                     # the chunk belongs to the same entity word
-                    current_accumulated_entity.word += current_entity_chunk.word[2:]
+                    current_accumulated_entity.word += (
+                        current_entity_chunk.word[2:]
+                    )
                 else:
                     # the entity is composed of several words
-                    current_accumulated_entity.word += " " + current_entity_chunk.word
+                    current_accumulated_entity.word += (
+                        " " + current_entity_chunk.word
+                    )
         return entity_set
 
-    return [gatherEntityChunks(entity_chunks) for entity_chunks in entitiesPerTextChunk]
+    return [
+        gatherEntityChunks(entity_chunks)
+        for entity_chunks in entitiesPerTextChunk
+    ]
 
 
 def filter_entities(
-    complete_entity_sets: List[List[CompleteEntity]],  # List[Set[CompleteEntity]]
+    complete_entity_sets: List[
+        List[CompleteEntity]
+    ],  # List[Set[CompleteEntity]]
     allowed_entities: Set[NerXXLEntities],
 ) -> List[List[CompleteEntity]]:  # List[Set[CompleteEntity]]
     """For each text chunk, keep only the entities included in the given group
@@ -125,7 +138,7 @@ def extract_wanted_entities(
     * distance_treshold: a float between 0 and 1
 
     ReturnType:
-    A list for each text chunk of the matched thesaurus above the given distance treshold. If there is not any filtered entity for a given chunk, then None is returned for this chunk instead of the empty set. 
+    A list for each text chunk of the matched thesaurus above the given distance treshold. If there is not any filtered entity for a given chunk, then None is returned for this chunk instead of the empty set.
     The empty set means that the chunk contains entities that match the group
     of entities of interests but these entities does not match the thesaurus.
     """
@@ -136,7 +149,8 @@ def extract_wanted_entities(
         * complete_entity_set: a not empty list
         """
         return fnt.reduce(
-            lambda thesaurus_set, new_extracted_thesaurus_group: thesaurus_set.union(
+            lambda thesaurus_set,
+            new_extracted_thesaurus_group: thesaurus_set.union(
                 new_extracted_thesaurus_group
             ),
             [

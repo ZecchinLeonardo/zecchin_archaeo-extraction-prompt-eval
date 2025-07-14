@@ -8,6 +8,7 @@ def visualize_entities(content: str, entities: List[CompleteEntity]):
     labeled with their entities. The rendered string is written with Markdown
     syntax and is ready to be displayed in a notebook
     """
+
     def add(acc: Tuple[str, int], entity: CompleteEntity) -> Tuple[str, int]:
         """acc contains the accumulated string and the length of the
         already-processed content
@@ -19,8 +20,10 @@ def visualize_entities(content: str, entities: List[CompleteEntity]):
         )
         return acc_text + to_be_add, entity.end
 
-    text_with_all_marked_entities, processed_source_content_length = fnt.reduce(
-        add, entities, ("", 0)
+    text_with_all_marked_entities, processed_source_content_length = (
+        fnt.reduce(add, entities, ("", 0))
     )
-    return text_with_all_marked_entities + content[processed_source_content_length:]
-
+    return (
+        text_with_all_marked_entities
+        + content[processed_source_content_length:]
+    )

@@ -11,6 +11,7 @@ embedder = dspy.Embedder(
     batch_size=100,
 )
 
+
 # In jupyter notebook, be sure to run the line
 #    nest_asyncio.apply()
 #  as the Embedder forward call use asyncio.run

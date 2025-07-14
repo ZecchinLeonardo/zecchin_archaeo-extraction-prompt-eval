@@ -20,7 +20,7 @@ class RetrievableFieldOption:
 @dataclass
 class RetrievableField:
     name: str
-    keywords: str # list of related keywords
+    keywords: str  # list of related keywords
     text_for_embedding: str
     """the text that will be passed into the embedder
     """

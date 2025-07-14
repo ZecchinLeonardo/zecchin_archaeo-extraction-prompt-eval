@@ -37,7 +37,9 @@ class ArchaeologicalInterventionContext(dspy.Signature):
     context: str = dspy.InputField(
         desc="Facts here are assumed to be true and must be taken in account for the analysis to suitably process"
     )
-    documents_contextual_content: PDFChunkEnumeration = dspy.InputField(desc=SCAN_DESCRIPTION)
+    documents_contextual_content: PDFChunkEnumeration = dspy.InputField(
+        desc=SCAN_DESCRIPTION
+    )
 
     # TODO: add the thesaurii
     municipality: str = dspy.OutputField(
@@ -127,7 +129,9 @@ class SourceOfInformationInReport(dspy.Signature):
     context: str = dspy.InputField(
         desc="Facts here are assumed to be true and must be taken in account for the analysis to suitably process"
     )
-    documents_contextual_content: PDFChunkEnumeration = dspy.InputField(desc=SCAN_DESCRIPTION)
+    documents_contextual_content: PDFChunkEnumeration = dspy.InputField(
+        desc=SCAN_DESCRIPTION
+    )
 
     document_source_type: ItalianOGM = dspy.OutputField(
         desc="(mandatory) A class of document source among a set of official values to identify which kind of institution has processed the current report."
@@ -144,7 +148,9 @@ class ArchivalInformation(dspy.Signature):
     context: str = dspy.InputField(
         desc="Facts here are assumed to be true and must be taken in account for the analysis to suitably process"
     )
-    documents_incipit: PDFChunkEnumeration = dspy.InputField(desc=SCAN_DESCRIPTION)
+    documents_incipit: PDFChunkEnumeration = dspy.InputField(
+        desc=SCAN_DESCRIPTION
+    )
 
     # these two fields vary along the archival system and the time when it has
     # been archieved

@@ -44,6 +44,7 @@ frictionless = "^5.18.1"
 nest-asyncio = "^1.6.0"
 tqdm-stubs = "^0.2.1"
 pandas-stubs = ">=2.2.3.250527,<3.0.0.0"
+ruff = "^0.12.3"
 
 
 [[tool.poetry.source]]
@@ -59,6 +60,18 @@ torchvision = {source="torch-cpu-only"}
 [tool.mypy]
 disable_error_code = ["import-untyped"]
 plugins = ["pandera.mypy"]
+
+[tool.ruff]
+line-length=79
+
+[tool.ruff.lint]
+extend-select = [
+  "UP",  # pyupgrade
+  "D",   # pydocstyle
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]

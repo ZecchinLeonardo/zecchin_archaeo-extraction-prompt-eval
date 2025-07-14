@@ -20,6 +20,7 @@ def select_incipit(chunkDataset: PDFChunkPerInterventionDataset):
         ]
     )
 
+
 def select_end_pages(chunkDataset: PDFChunkPerInterventionDataset):
     # TODO: refactor
     MAX_SELECTABLE_PAGE_NUMBER = 3

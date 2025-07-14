@@ -75,8 +75,11 @@ class PDFChunkPerInterventionDataset:
         def items_for_pdf_source(fileChunks: PDFChunkDataset):
             def process_row(row_):
                 row = PDFChunk(cast(PDFChunk, row_.to_dict()))
-                tag_description = PDFChunkPerInterventionDataset.TAG_TO_STRING.get(
-                    row["chunk_type"], PDFChunkPerInterventionDataset.DEFAULT_ITEM
+                tag_description = (
+                    PDFChunkPerInterventionDataset.TAG_TO_STRING.get(
+                        row["chunk_type"],
+                        PDFChunkPerInterventionDataset.DEFAULT_ITEM,
+                    )
                 )
                 description = ChunkHumanDescription(
                     f"Chunk {row['chunk_index']} ({tag_description} page {row['chunk_page_position']})"

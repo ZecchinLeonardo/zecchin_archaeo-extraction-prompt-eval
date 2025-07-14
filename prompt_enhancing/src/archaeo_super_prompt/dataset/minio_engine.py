@@ -44,7 +44,9 @@ def download_files(intervention_id: int) -> List[Path]:
         if files:
             return files
 
-    files = __client.list_objects(BUCKET_NAME, prefix=str(dirpath), recursive=True)
+    files = __client.list_objects(
+        BUCKET_NAME, prefix=str(dirpath), recursive=True
+    )
 
     def download_and_return():
         for file in files:
@@ -52,8 +54,14 @@ def download_files(intervention_id: int) -> List[Path]:
             if object_name is None:
                 continue
             it_id_subdir, filename = object_name.split("/")
-            output_path = (pdf_store_dir / it_id_subdir) / sanitize_filename(filename)
-            _ = (__client.fget_object(BUCKET_NAME, object_name, str(output_path)),)
+            output_path = (pdf_store_dir / it_id_subdir) / sanitize_filename(
+                filename
+            )
+            _ = (
+                __client.fget_object(
+                    BUCKET_NAME, object_name, str(output_path)
+                ),
+            )
             yield output_path
 
     return [p for p in download_and_return()]

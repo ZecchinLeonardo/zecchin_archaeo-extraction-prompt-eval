@@ -36,7 +36,9 @@ def display_results(score_results: DataFrame[ResultSchema]) -> DashComponent:
             )
         ),
         html.H2(children="Per field results"),
-        dcc.Dropdown(fieldNames, DEFAULT_SELECTED_FIELD, id="dropdown-selection"),
+        dcc.Dropdown(
+            fieldNames, DEFAULT_SELECTED_FIELD, id="dropdown-selection"
+        ),
         html.H3(children="Evaluation method used"),
         html.Blockquote(id="eval-method-description"),
         DataTable(id="table-content", page_size=10),
@@ -53,7 +55,10 @@ def display_results(score_results: DataFrame[ResultSchema]) -> DashComponent:
         def updateEvalMethod(fieldName: str):
             return f"Evaluation method used: {resultsPerField[fieldName]['method']}"
 
-        @callback(Output("table-content", "data"), Input("dropdown-selection", "value"))
+        @callback(
+            Output("table-content", "data"),
+            Input("dropdown-selection", "value"),
+        )
         def updatePerFieldResultTable(fieldName: str):
             return resultsPerField[fieldName]["table"].to_dict("records")
 

@@ -11,4 +11,3 @@ class Name(pydantic.BaseModel):
     @override
     def __str__(self):
         return f"{self.first_name[0].upper() if len(self.first_name) >= 1 else ''}. {self.surname}"
-
