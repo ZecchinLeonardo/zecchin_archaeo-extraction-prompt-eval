@@ -3,7 +3,7 @@
 
 import dspy
 
-from .env import getenv_or_throw
+from ...config.env import getenv_or_throw
 
 def _get_openai_model():
     api_key = getenv_or_throw("OPENAI_API_KEY")

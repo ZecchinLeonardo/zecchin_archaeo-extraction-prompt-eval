@@ -5,7 +5,8 @@ from pandera.pandas import DataFrameModel
 from pandera.typing import DataFrame, Series
 from typing import Generator, Iterable, List, NewType, TypedDict, Union, cast
 
-from ..signatures.input import (
+# TODO: remove these dependencies
+from ..modeling.struct_extract.signatures.input import (
     Chunk,
     ChunkHumanDescription,
     Filename,

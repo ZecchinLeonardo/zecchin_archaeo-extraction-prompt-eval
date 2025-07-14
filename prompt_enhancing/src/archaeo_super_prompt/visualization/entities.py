@@ -1,5 +1,5 @@
 from typing import List, Tuple
-from archaeo_super_prompt.models.entity_extractor.types import CompleteEntity
+from ..modeling.entity_extractor.types import CompleteEntity
 import functools as fnt
 
 

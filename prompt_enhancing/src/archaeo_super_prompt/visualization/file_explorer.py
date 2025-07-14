@@ -4,7 +4,7 @@ import flask
 
 from .types import DashComponent
 
-from ..cache import get_cache_dir_for
+from ..utils.cache import get_cache_dir_for
 
 _STATIC_DIR = get_cache_dir_for("external", "pdfs").resolve()
 

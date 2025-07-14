@@ -2,7 +2,7 @@ import pandas as pd
 from pathlib import Path
 from sqlalchemy import create_engine
 
-from ..env import getenv_or_throw
+from ..config.env import getenv_or_throw
 
 
 def _create_engine_from_credentials():

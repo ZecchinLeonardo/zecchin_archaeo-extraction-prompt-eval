@@ -1,9 +1,9 @@
 from typing import Any, Callable, Dict, List, Tuple, TypeVar, Union, cast
-from ..types.structured_data import (
+from ....types.structured_data import (
     ExtractedStructuredDataSeries,
     outputStructuredDataSchema,
 )
-from ..utils import flatten_dict
+from ....utils.norm import flatten_dict
 from dspy import Example, Prediction
 import dspy
 from dspy.evaluate.metrics import answer_exact_match

@@ -1,8 +1,8 @@
 from pathlib import Path
 from sklearn.pipeline import FunctionTransformer
 
-from ..types.pdfchunks import PDFChunkDataset
-from ..types.pdfpaths import (
+from ...types.pdfchunks import PDFChunkDataset
+from ...types.pdfpaths import (
     PDFPathDataset,
 )
 

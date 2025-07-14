@@ -1,5 +1,5 @@
 import dspy
-from ..env import getenv_or_throw
+from ..config.env import getenv_or_throw
 
 ollama_localhost_port = getenv_or_throw("LOCAL_LLM_PORT")
 

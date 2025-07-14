@@ -1,20 +1,19 @@
 from typing import Any, TypedDict, cast
-from archaeo_super_prompt.models.chunk_selector import select_end_pages, select_incipit
-from archaeo_super_prompt.types.pdfchunks import (
+from ..chunk_selector import select_end_pages, select_incipit
+from ...types.pdfchunks import (
     PDFChunkPerInterventionDataset,
 )
 from archaeo_super_prompt.types.structured_data import ExtractedStructuredDataSeries
-from archaeo_super_prompt.utils import flatten_dict
+from ...utils.norm import flatten_dict
 import dspy
 
-from ..debug_log import forward_warning, print_debug_log
-from ..target_types import MagohDocumentBuildingData, MagohUniversityData
-from ..signatures.arch_dictionnaries import (
+from ...config.debug_log import forward_warning, print_debug_log
+from ...types.target_types import MagohDocumentBuildingData, MagohUniversityData
+from .signatures.arch_dictionnaries import (
     to_magoh_build_data,
     to_magoh_university_data,
 )
-
-from ..signatures.arch_extract_type import (
+from .signatures.arch_extract_type import (
     ArchaeologicalInterventionContext,
     SourceOfInformationInReport,
     TechnicalInformation,

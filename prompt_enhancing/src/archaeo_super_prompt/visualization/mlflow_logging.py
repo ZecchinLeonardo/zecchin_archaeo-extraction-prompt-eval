@@ -9,7 +9,7 @@ import mlflow.dspy as mldspy
 from ..types.pdfchunks import PDFChunkDataset
 from ..types.pdfpaths import PDFPathDataset
 
-from ..main_transformer import MagohDataExtractor
+from ..modeling.struct_extract.main_transformer import MagohDataExtractor
 
 from ..types.results import ResultSchema
 from .prettify_field_names import prettify_field_names

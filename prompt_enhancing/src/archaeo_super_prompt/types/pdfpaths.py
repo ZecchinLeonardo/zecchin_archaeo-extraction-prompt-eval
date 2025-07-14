@@ -5,7 +5,7 @@ from typing import Iterable, List, Tuple, cast
 
 from pandera.typing.pandas import DataFrame, Series
 
-from archaeo_super_prompt.types.intervention_id import InterventionId
+from .intervention_id import InterventionId
 
 
 class PDFPathSchema(pa.DataFrameModel):

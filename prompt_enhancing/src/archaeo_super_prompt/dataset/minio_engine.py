@@ -3,8 +3,8 @@ from pathlib import Path
 import re
 from typing import List
 
-from ..cache import get_cache_dir_for
-from ..env import getenv_or_throw
+from ..utils.cache import get_cache_dir_for
+from ..config.env import getenv_or_throw
 
 _host = getenv_or_throw("MINIO_HOST")
 _user = getenv_or_throw("MINIO_ROOT_USER")

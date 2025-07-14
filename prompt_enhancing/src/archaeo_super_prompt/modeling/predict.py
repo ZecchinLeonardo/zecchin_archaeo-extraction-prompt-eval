@@ -1,7 +1,7 @@
 from sklearn.pipeline import FunctionTransformer, Pipeline, FeatureUnion
 
 from archaeo_super_prompt.types.pdfchunks import PDFChunkDataset
-from ..pdf_to_text import VLLM_Preprocessing
+from .pdf_to_text import VLLM_Preprocessing
 from ..dataset.thesaurus import load_comune
 from .entity_extractor import NamedEntityField, NerModel
 

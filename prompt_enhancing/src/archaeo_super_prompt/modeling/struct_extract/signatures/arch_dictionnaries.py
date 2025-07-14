@@ -10,7 +10,7 @@ from .arch_extract_type import (
     SourceOfInformationInReport,
     TechnicalInformation,
 )
-from ..target_types import MagohDocumentBuildingData, MagohUniversityData
+from ....types.target_types import MagohDocumentBuildingData, MagohUniversityData
 
 
 def process_extensions(ext: Optional[List[str]]):

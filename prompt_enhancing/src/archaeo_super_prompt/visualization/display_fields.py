@@ -3,7 +3,7 @@ from dash.dash_table.DataTable import DataTable
 import plotly.express as px
 from pandera.typing.pandas import DataFrame
 
-from archaeo_super_prompt.types.results import ResultSchema
+from ..types.results import ResultSchema
 from .types import DashComponent
 from .prettify_field_names import prettify_field_names
 

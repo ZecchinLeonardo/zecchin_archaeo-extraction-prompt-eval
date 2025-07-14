@@ -26,11 +26,11 @@ from docling.pipeline.vlm_pipeline import VlmPipeline
 from docling_core.types.io import DocumentStream
 
 from .types import has_document_been_well_scanned, CorrectlyConvertedDocument
-from ..types.intervention_id import InterventionId
-from ..cache import get_memory_for
-from .. import cache
+from ...types.intervention_id import InterventionId
+from ...utils.cache import get_memory_for
+from ...utils import cache
 
-from ..debug_log import print_log
+from ...config.debug_log import print_log
 
 
 _PARALLEL_PAGE_NB = 2

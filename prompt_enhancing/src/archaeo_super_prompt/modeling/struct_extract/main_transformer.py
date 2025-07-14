@@ -5,26 +5,26 @@ from dspy import Example, Prediction, dspy
 import pandas
 from pandera.typing.pandas import DataFrame
 
-from archaeo_super_prompt.evaluation.compare import validate_magoh_data
-from archaeo_super_prompt.types.results import ResultSchema
+from .evaluation.compare import validate_magoh_data
+from ...types.results import ResultSchema
 
-from .dataset.load import MagohDataset
-from .debug_log import print_log
+from ...dataset.load import MagohDataset
+from ...config.debug_log import print_log
 from .evaluation.evaluate import get_evaluator
 from .evaluation.load_examples import DevSet
-from .models.main_pipeline import (
+from .extractor_module import (
     ExtractDataFromInterventionReport,
 )
-from .types.intervention_id import InterventionId
+from ...types.intervention_id import InterventionId
 
 
 from .language_model import load_model
-from .types.pdfchunks import (
+from ...types.pdfchunks import (
     PDFChunkDataset,
     PDFChunkPerInterventionDataset,
     PDFChunkSetPerInterventionSchema,
 )
-from .types.structured_data import outputStructuredDataSchema
+from ...types.structured_data import outputStructuredDataSchema
 
 
 class MagohDataExtractor:

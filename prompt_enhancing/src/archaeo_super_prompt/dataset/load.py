@@ -2,10 +2,8 @@ from typing import Set
 import pandas as pd
 from tqdm import tqdm
 
-from archaeo_super_prompt.types.intervention_id import InterventionId
-from archaeo_super_prompt.types.pdfpaths import PDFPathSchema
-from archaeo_super_prompt.utils import variabilize_column_name
-
+from ..types.intervention_id import InterventionId
+from ..types.pdfpaths import PDFPathSchema
 from ..types.structured_data import (
     ExtractedStructuredDataSeries,
     structuredDataSchema,
@@ -14,7 +12,8 @@ from ..types.structured_data import (
 
 from .postgresql_engine import get_entries
 from .minio_engine import download_files
-from ..cache import get_memory_for
+from ..utils.cache import get_memory_for
+from ..utils.norm import variabilize_column_name
 
 
 def parse_intervention_data(intervention_data__df: pd.DataFrame):

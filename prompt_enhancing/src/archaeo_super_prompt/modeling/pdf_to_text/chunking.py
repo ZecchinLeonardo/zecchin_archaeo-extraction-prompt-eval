@@ -10,8 +10,8 @@ import functools as fnt
 
 from pathlib import Path
 from .types import CorrectlyConvertedDocument
-from ..types.intervention_id import InterventionId
-from ..types.pdfchunks import PDFChunkDataset, PDFChunkDatasetSchema
+from ...types.intervention_id import InterventionId
+from ...types.pdfchunks import PDFChunkDataset, PDFChunkDatasetSchema
 
 EMBED_MODEL_ID = "nomic-ai/nomic-embed-text-v1.5"
 
