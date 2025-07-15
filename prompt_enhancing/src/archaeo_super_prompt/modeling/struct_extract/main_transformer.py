@@ -28,7 +28,13 @@ from ...types.structured_data import outputStructuredDataSchema
 
 
 class MagohDataExtractor:
+    """Main model extracting structured data from contextualized LLM prompts.
+
+    It is a dspy model that can be trained and scored.
+    """
+
     def __init__(self, llm_temp=0.0) -> None:
+        """The main hyperparametre is the temperature of the llm model."""
         self._module = ExtractDataFromInterventionReport()
         self._llm = load_model(llm_temp)
         self._module.set_lm(self._llm)

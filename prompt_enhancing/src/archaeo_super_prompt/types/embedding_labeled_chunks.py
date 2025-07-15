@@ -1,4 +1,3 @@
-
 from pandera.pandas import DataFrameModel
 
 
@@ -11,4 +10,4 @@ class SemanticallyLabeledChunkDatasetSchema(DataFrameModel):
     """
 
     # for each identified field, the list of identified thesaurus
-    semanticallyIdentifiedThesaurus: dict[str, list[str]]
+    semanticallyIdentifiedThesaurus: dict[str, list[str] | None]
