@@ -10,4 +10,4 @@ class NerLabeledChunkDatasetSchema(DataFrameModel):
     """
 
     # for each identified field, the list of identified thesaurus
-    nerIdentifiedThesaurus: dict[str, list[str]]
+    nerIdentifiedThesaurus: dict[str, list[str] | None]

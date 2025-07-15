@@ -9,7 +9,7 @@ from collections.abc import Callable, Iterator
 from joblib import Memory
 from joblib.memory import MemorizedFunc
 
-_CACHE_DIR = (Path(__file__).parent / "../../data/").resolve()
+_CACHE_DIR = (Path(__file__).parent / "../../../data/").resolve()
 
 CacheSubpart = Literal["external", "interim", "processed"]
 

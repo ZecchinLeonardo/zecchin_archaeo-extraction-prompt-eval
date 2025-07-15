@@ -1,4 +1,10 @@
-from typing import List, NamedTuple, Set, cast
+"""Root of the module for infering in the NER model.
+
+The purpose of this model is to extract hints about chunks for helping the
+final LLM model to extract some named values for some fields.
+"""
+
+from typing import NamedTuple, cast
 from collections.abc import Callable
 from pandera.typing.pandas import DataFrame
 import pandas as pd
@@ -12,6 +18,7 @@ from ...types.pdfchunks import PDFChunkDataset
 
 
 class NamedEntityField(NamedTuple):
+    """Data for a structured data field with terms identifiable by NER."""
     name: str
     compatible_entities: set[NerXXLEntities]
     thesaurus_values: Callable[[], list[str]]
@@ -22,15 +29,18 @@ def NerModel(
     allowed_ner_confidence=0.70,
     allowed_fuzzy_match_score=0.70,
 ):
+    """Transformer adding identified NamedRecognition features for each chunk."""
     def transform(
         X: PDFChunkDataset,
     ) -> DataFrame[NerLabeledChunkDatasetSchema]:
-        result = ner_module.fetch_entities(
-            list(map(lambda row: cast(str, row.chunk_content), X.itertuples()))
+        chunk_contents = list(
+            map(lambda row: cast(str, row.chunk_content), X.itertuples())
         )
+        result = ner_module.fetch_entities(chunk_contents)
         result = ner_module.postrocess_entities(result, allowed_ner_confidence)
         result = {
             name: ner_module.extract_wanted_entities(
+                chunk_contents,
                 ner_module.filter_entities(result, compatible_entities),
                 thesaurus,
                 allowed_fuzzy_match_score,
@@ -42,7 +52,7 @@ def NerModel(
                 [
                     {
                         "nerIdentifiedThesaurus": {
-                            k: result[k][i]
+                            k: list(cast(set[str], result[k][i]))
                             for k in result
                             if result[k][i] is not None
                         }

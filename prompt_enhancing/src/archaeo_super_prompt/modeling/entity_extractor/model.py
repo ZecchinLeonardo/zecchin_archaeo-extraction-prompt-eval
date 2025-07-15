@@ -2,10 +2,11 @@ from typing import cast
 from collections.abc import Callable, Generator
 import requests
 import functools as fnt
-import thefuzz.process as fzwz
+import thefuzz.process as fzwz_p
+import thefuzz.fuzz as fzwz
 
 from .types import CompleteEntity, NerOutput, NerXXLEntities
-from ... import cache
+from ...utils import cache
 
 
 def _fetch_entities(chunks: list[str]) -> list[list[NerOutput]]:
@@ -45,10 +46,13 @@ def fetch_entities(chunks: list[str]):
 def postrocess_entities(
     entitiesPerTextChunk: list[list[NerOutput]], confidence_treshold: float
 ):
-    """Return a set of the occured entities for each chunks
+    """Return a set of the occured entities for each chunks.
+
     Arguments:
-    * confidence_treshold: a treshold between 0 and 1 to tolerate only a subset
-    of entities
+        entitiesPerTextChunk: for each chunk, a list of its retrieved \
+entities ordered by their occurence in the chunk's text content
+        confidence_treshold: a treshold between 0 and 1 to tolerate only a \
+subset of entities
     """
 
     def gatherEntityChunks(entity_chunks: list[NerOutput]):
@@ -125,18 +129,19 @@ def filter_entities(
 
 # TODO: review the prototype
 def extract_wanted_entities(
+    chunk_contents: list[str],
     complete_entity_sets: list[list[CompleteEntity]],
     wanted_entities: Callable[[], list[str]],
     distance_treshold: float,
 ) -> list[set[str] | None]:
-    """Filter only the entities that fuzzymatch with wanted thesaurus
+    """Filter only the entities that fuzzymatch with wanted thesaurus.
 
     Arguments:
-    * complete_entity_sets: a set for each text chunk of occurring entities
-    only in a group of entity types
-    * wanted_entities: a set of wanted string values to be extracted in the
-    same group of entity types
-    * distance_treshold: a float between 0 and 1
+        complete_entity_sets: a set for each text chunk of occurring entities \
+only in a group of entity types
+        wanted_entities: a set of wanted string values to be extracted in the \
+same group of entity types
+        distance_treshold: a float between 0 and 1
 
     ReturnType:
     A list for each text chunk of the matched thesaurus above the given distance treshold. If there is not any filtered entity for a given chunk, then None is returned for this chunk instead of the empty set.
@@ -144,11 +149,30 @@ def extract_wanted_entities(
     of entities of interests but these entities does not match the thesaurus.
     """
 
-    def aux(complete_entity_set: list[CompleteEntity]):
-        """Arguments:
-        * complete_entity_set: a not empty list
+    def aux(chunk_content: str, complete_entity_set: list[CompleteEntity]):
+        """Auxiliary function for processing the entities of one chunk.
+
+        To be mapped into an iterable.
+
+        Arguments:
+            chunk_content: the whole chunk's text content
+            complete_entity_set: a not empty list of entities identified in \
+the chunk
         """
-        return fnt.reduce(
+        wanted = wanted_entities()
+        matches_from_content = [
+            matched_thesaurus
+            for matched_thesaurus, _ in cast(
+                Generator[tuple[str, int]],
+                fzwz_p.extractWithoutOrder(
+                    chunk_content,
+                    wanted,
+                    scorer=fzwz.partial_ratio,
+                    score_cutoff=int(distance_treshold * 100),
+                ),
+            )
+        ]
+        matches_from_entities = fnt.reduce(
             lambda thesaurus_set,
             new_extracted_thesaurus_group: thesaurus_set.union(
                 new_extracted_thesaurus_group
@@ -158,9 +182,9 @@ def extract_wanted_entities(
                     matched_thesaurus
                     for matched_thesaurus, _ in cast(
                         Generator[tuple[str, int]],
-                        fzwz.extractWithoutOrder(
+                        fzwz_p.extractWithoutOrder(
                             entity.word,
-                            wanted_entities(),
+                            wanted,
                             score_cutoff=int(distance_treshold * 100),
                         ),
                     )
@@ -169,5 +193,11 @@ def extract_wanted_entities(
             ],
             cast(set[str], set()),
         )
+        return matches_from_entities.union(matches_from_content)
 
-    return [aux(ces) if ces else None for ces in complete_entity_sets]
+    return [
+        aux(chunk_content, ces) if ces else None
+        for chunk_content, ces in zip(
+            chunk_contents, complete_entity_sets, strict=True
+        )
+    ]
