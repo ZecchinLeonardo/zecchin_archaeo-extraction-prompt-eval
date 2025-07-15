@@ -1,4 +1,4 @@
-"""Better OCR model with VLLM"""
+"""Better OCR model with VLLM."""
 
 from io import BytesIO
 from pathlib import Path
@@ -42,7 +42,9 @@ def _document_page_number(file: Path) -> int:
 
 
 def stream_document_pages(file: Path) -> tuple[Iterable[DocumentStream], int]:
-    """We do not use a per-page processing to let Docling running its native
+    """Load a pdf document and split it into an iterable of buffer for each page.
+
+    We do not use a per-page processing to let Docling running its native
     per-page vllm processing, hoping more performant results will be output.
 
     So this function is kept here in case of
@@ -74,12 +76,14 @@ def ollama_vlm_options(
     ] = ResponseFormat.MARKDOWN,
     allowed_timeout: int = 60 * 3,
 ):
-    """Arguments:
-    * model: the string identifier of the vllm model in ollama
-    * prompt: a string to prompt to the vllm to contextualize its OCR task
-    * response_format: a supported response format for the vllm
-    * allowed_timeout: the allowed time for processing one page in one
-    document (default to 3 minutes)
+    """Return a configuration for vlm model set with ollama.
+
+    Arguments:
+        model: the string identifier of the vllm model in ollama
+        prompt: a string to prompt to the vllm to contextualize its OCR task
+        response_format: a supported response format for the vllm
+        allowed_timeout: the allowed time for processing one page in one \
+document (default to 3 minutes)
     """
     # The ApiVlmOptions() allows to interface with APIs supporting
     # the multi-modal chat interface. Here follow a few example on how to configure those.
@@ -103,6 +107,7 @@ def ollama_vlm_options(
 
 
 def converter(ollama_vlm_options: ApiVlmOptions):
+    """Return a Docling PDF converter object from an ollama vlm configuration."""
     pipeline_options = VlmPipelineOptions(
         enable_remote_services=True  # <-- this is required!
     )
@@ -156,14 +161,19 @@ def _cached_convert_all(
     ],
     files: list[tuple[InterventionId, Path]],
 ):
-    """Get the conversion results for all the documents, with only requesting
-        the vllm when the results are not cached. Save them in the cache after the
-        computation.
+    """Run the conversion for all the documents, using cache if possible.
+
+    If the vllm when the results are not cached, it save them in the cache
+    after the computation.
 
     Arguments:
-    * convert_all_func: a function which should always return a valid ConversionResult (so failed results must be managed in this function
+        convert_all_func: a function which should always return a valid \
+ConversionResult (so failed results must be managed in this function
+        files: a list of PDF files to be processed, related to their \
+intervention id
 
-        Return an Iterable with (documentFilePath, CorrectlyConvertedDocument)
+    Return:
+        An Iterable with (documentFilePath, CorrectlyConvertedDocument)
     """
 
     def normalized_path_str(p: Path):
@@ -191,8 +201,11 @@ def process_documents(
 ) -> list[
     tuple[tuple[InterventionId, Path], list[CorrectlyConvertedDocument]]
 ]:
-    """Return for each file either a list of one docling documnt, if all the
-    document can have been procesed at once, or one docling document for each
+    """Convert the documents into text with Docling, using the given converter.
+
+    Return:
+    For each file, either a list of one docling document, if all the document
+    can have been procesed at once, or a list of docling documents for each
     document page.
     """
     _, files = cast(tuple[list[InterventionId], list[Path]], zip(*file_inputs))
