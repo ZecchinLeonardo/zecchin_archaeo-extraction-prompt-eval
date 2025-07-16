@@ -1,3 +1,4 @@
+from typing import cast
 from minio import Minio
 from pathlib import Path
 import re
@@ -9,16 +10,23 @@ _host = getenv_or_throw("MINIO_HOST")
 _user = getenv_or_throw("MINIO_ROOT_USER")
 _password = getenv_or_throw("MINIO_ROOT_PASSWORD")
 
-__client = Minio(
-    _host,
-    access_key=_user,
-    secret_key=_password,
-    secure=not _host.startswith("localhost"),
-)
+__client = None
 
 BUCKET_NAME = "training-reports"
-if not __client.bucket_exists(BUCKET_NAME):
-    __client.make_bucket(BUCKET_NAME)
+
+
+def _init_client():
+    c = Minio(
+        _host,
+        access_key=_user,
+        secret_key=_password,
+        secure=not _host.startswith("localhost"),
+    )
+
+    if not c.bucket_exists(BUCKET_NAME):
+        c.make_bucket(BUCKET_NAME)
+    return c
+
 
 # Allow only letters, digits, underscores, hyphens, and dots
 SAFE_FILENAME_PATTERN = re.compile(r"[^a-zA-Z0-9_.-]+")  # MATCHES UNSAFE chars
@@ -31,6 +39,8 @@ def sanitize_filename(filename):
 
 
 def download_files(intervention_id: int) -> list[Path]:
+    global __client
+
     pdf_store_dir = get_cache_dir_for("external", "pdfs")
     if not pdf_store_dir.exists():
         pdf_store_dir.mkdir(parents=True, exist_ok=True)
@@ -43,6 +53,8 @@ def download_files(intervention_id: int) -> list[Path]:
         if files:
             return files
 
+    if __client is None:
+        __client = _init_client()
     files = __client.list_objects(
         BUCKET_NAME, prefix=str(dirpath), recursive=True
     )
@@ -57,7 +69,7 @@ def download_files(intervention_id: int) -> list[Path]:
                 filename
             )
             _ = (
-                __client.fget_object(
+                cast(Minio, __client).fget_object(
                     BUCKET_NAME, object_name, str(output_path)
                 ),
             )
