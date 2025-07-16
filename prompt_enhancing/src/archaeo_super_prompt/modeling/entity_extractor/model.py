@@ -1,9 +1,12 @@
+"""Core functions for inferring and filtering named entities in chunks."""
 from typing import cast
-from collections.abc import Callable, Generator
+from collections.abc import Generator
 import requests
 import functools as fnt
 import thefuzz.process as fzwz_p
 import thefuzz.fuzz as fzwz
+
+from archaeo_super_prompt.types.thesaurus import ThesaurusProvider
 
 from .types import CompleteEntity, NerOutput, NerXXLEntities
 from ...utils import cache
@@ -26,10 +29,12 @@ def _fetch_entities(chunks: list[str]) -> list[list[NerOutput]]:
 
 
 def cache_remote_ner_results(inpt, output=None):
+    """Dummy identity function for caching the fetched NER resuts."""
     return cache.identity_function(inpt, output)
 
 
 def fetch_entities(chunks: list[str]):
+    """Infer into the remote NER model to find named entities in each chunk."""
     # TODO: correct these iter-list-iter spaghetti
     return [
         ner_result
@@ -118,25 +123,23 @@ def filter_entities(
     ],  # List[Set[CompleteEntity]]
     allowed_entities: set[NerXXLEntities],
 ) -> list[list[CompleteEntity]]:  # List[Set[CompleteEntity]]
-    """For each text chunk, keep only the entities included in the given group
-    of allowed entity types.
-    """
+    """For each text chunk, keep only the entities included in the given group of allowed entity types."""
     return [
         list(filter(lambda e: e.entity in allowed_entities, s))
         for s in complete_entity_sets
     ]
 
 
-# TODO: review the prototype
 def extract_wanted_entities(
     chunk_contents: list[str],
     complete_entity_sets: list[list[CompleteEntity]],
-    wanted_entities: Callable[[], list[str]],
+    wanted_entities: ThesaurusProvider,
     distance_treshold: float,
-) -> list[set[str] | None]:
+) -> list[set[int] | None]:
     """Filter only the entities that fuzzymatch with wanted thesaurus.
 
     Arguments:
+        chunk_contents: for each chunk, its text content
         complete_entity_sets: a set for each text chunk of occurring entities \
 only in a group of entity types
         wanted_entities: a set of wanted string values to be extracted in the \
@@ -159,39 +162,30 @@ same group of entity types
             complete_entity_set: a not empty list of entities identified in \
 the chunk
         """
-        wanted = wanted_entities()
-        matches_from_content = [
-            matched_thesaurus
-            for matched_thesaurus, _ in cast(
-                Generator[tuple[str, int]],
-                fzwz_p.extractWithoutOrder(
-                    chunk_content,
-                    wanted,
-                    scorer=fzwz.partial_ratio,
-                    score_cutoff=int(distance_treshold * 100),
-                ),
-            )
-        ]
+        wanted = dict((v, k) for k, v in wanted_entities())
+
+        def extract(content: str):
+            return [
+                matched_thesaurus_id
+                for matched_thesaurus_id, _, _ in cast(
+                    Generator[tuple[int, int, str]],
+                    fzwz_p.extractWithoutOrder(
+                        content,
+                        wanted,
+                        scorer=fzwz.partial_ratio,
+                        score_cutoff=int(distance_treshold * 100),
+                    ),
+                )
+            ]
+
+        matches_from_content = extract(chunk_content)
         matches_from_entities = fnt.reduce(
             lambda thesaurus_set,
             new_extracted_thesaurus_group: thesaurus_set.union(
                 new_extracted_thesaurus_group
             ),
-            [
-                [
-                    matched_thesaurus
-                    for matched_thesaurus, _ in cast(
-                        Generator[tuple[str, int]],
-                        fzwz_p.extractWithoutOrder(
-                            entity.word,
-                            wanted,
-                            score_cutoff=int(distance_treshold * 100),
-                        ),
-                    )
-                ]
-                for entity in complete_entity_set
-            ],
-            cast(set[str], set()),
+            [extract(entity.word) for entity in complete_entity_set],
+            cast(set[int], set()),
         )
         return matches_from_entities.union(matches_from_content)
 

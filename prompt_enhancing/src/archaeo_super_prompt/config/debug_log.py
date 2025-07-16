@@ -1,3 +1,4 @@
+"""Logging management module."""
 import logging
 
 COLOR_RESET = "\033[0m"

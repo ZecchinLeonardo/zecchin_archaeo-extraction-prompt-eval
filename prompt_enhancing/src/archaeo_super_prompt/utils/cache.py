@@ -11,7 +11,7 @@ from joblib.memory import MemorizedFunc
 
 _CACHE_DIR = (Path(__file__).parent / "../../../data/").resolve()
 
-CacheSubpart = Literal["external", "interim", "processed"]
+CacheSubpart = Literal["external", "interim", "processed", "raw"]
 
 _memories: dict[CacheSubpart, Memory] = {
     k: Memory(str(_CACHE_DIR / k), verbose=0)
