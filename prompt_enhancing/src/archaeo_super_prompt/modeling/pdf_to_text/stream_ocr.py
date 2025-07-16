@@ -235,6 +235,7 @@ def process_documents(
             _cached_convert_all(convert_all_with_retry, file_inputs),
             desc="vllm-scanned files",
             unit="file",
+            total=len(file_inputs)
         ):
             yield f, result
             try:
