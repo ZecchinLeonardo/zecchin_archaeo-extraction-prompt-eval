@@ -1,0 +1,27 @@
+digraph Inference {
+  "+NER" [shape=rectangle];
+  "+EMB" [shape=rectangle];
+  "SEL - Comune" [shape=rectangle];
+  "SEL - Data Protocolo" [shape=rectangle];
+  "SEL - Fonte Informazione" [shape=rectangle];
+
+  "VLLM" -> "NER";
+  "VLLM" -> "EMB";
+  "VLLM" -> "+NER";
+  "VLLM" -> "+EMB";
+  "NER" -> "+NER";
+  "EMB" -> "+EMB";
+
+  "+NER" -> "SEL - Comune" -> "Comune" -> "Fonte Informazione";
+  "+NER" -> "SEL - Data Protocolo" -> "Data Protocolo" -> "Fonte Informazione";
+  "+NER" -> "SEL - Fonte Informazione" -> "Fonte Informazione";
+
+  subgraph cluster_legend {
+    label = "Legend";
+    style = dashed;
+    fontsize=12;
+    key1 [label="Model Layer", shape=circle];
+    key2 [label="Causal-neutral layer", shape=rectangle];
+    key1 -> key2 [style=invis];
+  }
+}
