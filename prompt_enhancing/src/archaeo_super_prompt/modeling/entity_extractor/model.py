@@ -162,13 +162,13 @@ same group of entity types
             complete_entity_set: a not empty list of entities identified in \
 the chunk
         """
-        wanted = dict((v, k) for k, v in wanted_entities())
+        wanted = { k: v for k, v in wanted_entities()}
 
         def extract(content: str):
             return [
                 matched_thesaurus_id
-                for matched_thesaurus_id, _, _ in cast(
-                    Generator[tuple[int, int, str]],
+                for _, _, matched_thesaurus_id in cast(
+                    Generator[tuple[str, int, int]],
                     fzwz_p.extractWithoutOrder(
                         content,
                         wanted,
