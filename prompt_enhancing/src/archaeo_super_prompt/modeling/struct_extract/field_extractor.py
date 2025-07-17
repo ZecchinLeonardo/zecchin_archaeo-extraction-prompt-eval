@@ -11,9 +11,6 @@ import pandas as pd
 import dspy
 
 from archaeo_super_prompt.dataset.load import MagohDataset
-from archaeo_super_prompt.modeling.struct_extract.evaluation.evaluate import (
-    get_evaluator,
-)
 from archaeo_super_prompt.types.intervention_id import InterventionId
 
 from . import types as extract_input_type
@@ -49,6 +46,7 @@ class FieldExtractor[DInput, DOutput, SuggestedOutputType, DFOutput](
         """Initialize the abstract class with the custom dspy module.
 
         Arguments:
+            llm_model: the dspy chat lm to be used for the extraction 
             model: the dspy module which will be used for the training and the \
 inference
             df_schemas: given for type checking
@@ -58,6 +56,7 @@ runtime the genericity and also to be able to log the model in mlflow
         super().__init__()
         self.__llm_model = llm_model
         self._model = model
+        self._model.set_lm(self.__llm_model)
         # check at initialization at runtime if DInput and DOutput are subtypes
         # of dict
         i, o = example
@@ -77,7 +76,14 @@ runtime the genericity and also to be able to log the model in mlflow
 
     @abstractmethod
     @classmethod
-    def _compare_values(cls, predicted: DOutput, expected: DOutput) -> float:
+    def _compare_values(cls, predicted: DOutput, expected: DOutput) -> tuple[float,
+        float]:
+        """Compute a metric to compare the expected output with the predicted one.
+
+        Return:
+            a score between 0 and 1
+            a treshold score above which the comparison is considered as successful
+        """
         pass
 
     def fit(
@@ -85,10 +91,12 @@ runtime the genericity and also to be able to log the model in mlflow
         X: DataFrame[
             extract_input_type.InputForExtraction[SuggestedOutputType]
         ],
-        y,
+        y: MagohDataset,
     ):
         """Optimize the dspy model according to the given dataset."""
         # TODO:
+        X = X  # unused
+        y = y  # unused
         return self
 
     def transform(
@@ -117,10 +125,12 @@ runtime the genericity and also to be able to log the model in mlflow
 
     @abstractmethod
     @classmethod
-    def select_answer(cls, y: MagohDataset, id: InterventionId) -> DOutput:
+    def _select_answers(
+        cls, y: MagohDataset, ids: set[InterventionId]
+    ) -> dict[InterventionId, DOutput]:
         pass
 
-    def compute_devset(
+    def _compute_devset(
         self,
         X: DataFrame[
             extract_input_type.InputForExtraction[SuggestedOutputType]
@@ -128,17 +138,29 @@ runtime the genericity and also to be able to log the model in mlflow
         y: MagohDataset,
     ):
         inputs = {
-            row.id: self._to_dspy_input(row)
+            InterventionId(cast(int, row.id)): self._to_dspy_input(row)
             for row in extract_input_type.itertuples(X)
         }
+        answers = self._select_answers(y, set(inputs.keys()))
         return [
             dspy.Example(
                 **model_input,
                 # TODO: select only one field with an abstract
-                **self.select_answer(y, InterventionId(cast(int, id_))),
+                **answers[id_],
             ).with_inputs(*cast(dict, model_input).keys())
             for id_, model_input in inputs.items()
         ]
+
+    @classmethod
+    def _dspy_metric(
+        cls, example: dspy.Example, prediction: dspy.Prediction, trace=None
+    ) -> float | bool:
+        result, passable_treshold = cls._compare_values(
+            cast(DOutput, prediction.toDict()), cast(DOutput, example.toDict())
+        )
+        if trace is None:
+            return result
+        return result >= passable_treshold
 
     @override
     def score(
@@ -160,13 +182,32 @@ runtime the genericity and also to be able to log the model in mlflow
         """
         sample_weight = sample_weight  # unused
 
-        devset = self.compute_devset(X, y)
+        devset = self._compute_devset(X, y)
 
-        eval_model = self.__llm_model
-        dspy.configure(lm=eval_model)
-        evaluate = get_evaluator(devset, return_outputs=True)
-        results = cast(
-            tuple[float, list[tuple[dspy.Example, dspy.Prediction, float]]],
-            evaluate(self._model),
+        evaluator = dspy.Evaluate(
+            devset=devset,
+            metric=self._dspy_metric,
+            return_outputs=False,
+            provide_traceback=True,  # TODO: remove it for traceback
+            num_threads=1,  # TODO: set it
+            display_progress=True,
+            display_table=5,
         )
-        return results[0]
+        score = cast(float, evaluator(self._model))
+        return score
+        # TODO: write a function for the evaluation with the vizualisation
+        # evaluator = dspy.Evaluate(
+        #     devset=devset,
+        #     metric=self._dspy_metric,
+        #     return_outputs=True,
+        #     provide_traceback=True,  # TODO: remove it for traceback
+        #     num_threads=1,  # TODO: set it
+        #     display_progress=True,
+        #     display_table=5,
+        # )
+        # results = cast(
+        #     tuple[float, list[tuple[dspy.Example, dspy.Prediction, float]]],
+        #     evaluator(self._model),
+        # )
+        # TODO: return somewhere the results for the vizualization
+        # return results[0]

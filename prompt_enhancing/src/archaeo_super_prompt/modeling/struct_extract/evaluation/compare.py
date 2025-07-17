@@ -2,7 +2,7 @@ from typing import Any, TypeVar, cast
 from collections.abc import Callable
 from ....types.structured_data import (
     ExtractedStructuredDataSeries,
-    outputStructuredDataSchema,
+    OutputStructuredDataSchema,
 )
 from ....utils.norm import flatten_dict
 from dspy import Example, Prediction
@@ -187,7 +187,7 @@ def _is_prediction_valid(pred: Prediction) -> bool:
     """Reutrn None if the prediction is valid, else a metric with the worst
     value.
     """
-    required_keys = set(outputStructuredDataSchema.columns.keys())
+    required_keys = set(OutputStructuredDataSchema.columns.keys())
     required_keys.remove("id")
     is_valid = required_keys.issubset(set(pred.keys()))
     return is_valid

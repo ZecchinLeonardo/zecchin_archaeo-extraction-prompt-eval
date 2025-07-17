@@ -24,7 +24,7 @@ from ...types.pdfchunks import (
     PDFChunkPerInterventionDataset,
     PDFChunkSetPerInterventionSchema,
 )
-from ...types.structured_data import outputStructuredDataSchema
+from ...types.structured_data import OutputStructuredDataSchema
 
 
 class MagohDataExtractor:
@@ -93,7 +93,7 @@ class MagohDataExtractor:
             cast(list[dict], list(output_structured_data))
         )
         answer_df["id"] = cast(list[InterventionId], list(ids))
-        return outputStructuredDataSchema.validate(answer_df)
+        return OutputStructuredDataSchema.validate(answer_df)
 
     def score(self, X: PDFChunkDataset, targets: MagohDataset):
         """Run an evaluation of the dpsy model over the given X dataset

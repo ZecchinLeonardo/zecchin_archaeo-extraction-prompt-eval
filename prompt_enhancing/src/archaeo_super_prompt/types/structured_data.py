@@ -1,5 +1,10 @@
-from typing import Any
+"""Types related to the wanted structured data in the dataset."""
+
+from collections.abc import Iterator
+from typing import Any, NamedTuple, cast
 import pandera.pandas as pa
+from pandera.typing.pandas import DataFrame, Series
+import pandas as pd
 
 
 def _negativeFloatColumn():
@@ -46,34 +51,68 @@ structuredDataSchema = pa.DataFrameSchema(
     }
 )
 
-outputStructuredDataSchema = pa.DataFrameSchema(
-    {
-        "id": pa.Column(int),
-        "university__Sigla": pa.Column(str, nullable=True),
-        "university__Comune": pa.Column(str, nullable=True),
-        "university__Ubicazione": pa.Column(str, nullable=True),
-        "university__Indirizzo": pa.Column(str, nullable=True),
-        "university__Località": pa.Column(str, nullable=True),
-        "university__Data_intervento": pa.Column(str, nullable=True),
-        "university__Tipo_di_intervento": pa.Column(str, nullable=True),
-        "university__Durata": pa.Column(str, nullable=True),
-        "university__Eseguito_da": pa.Column(str, nullable=True),
-        "university__Direzione_scientifica": pa.Column(str, nullable=True),
-        "university__Estensione": pa.Column(str, nullable=True),
-        "university__Numero_di_saggi": pa.Column(
-            "UInt32", pa.Check.ge(0), nullable=True
-        ),
-        "university__Profondità_massima": _negativeFloatColumn(),
-        "university__Geologico": pa.Column("boolean", nullable=True),
-        "university__OGD": pa.Column(str, nullable=True),
-        "university__OGM": pa.Column(str, nullable=True),
-        "university__Profondità_falda": _negativeFloatColumn(),
-        "building__Istituzione": pa.Column(str, nullable=True),
-        "building__Funzionario_competente": pa.Column(str, nullable=True),
-        "building__Tipo_di_documento": pa.Column(str, nullable=True),
-        "building__Protocollo": pa.Column(str, nullable=True),
-        "building__Data_Protocollo": pa.Column(str, nullable=True),
-    }
-)
+
+class OutputStructuredDataSchema(pa.DataFrameModel):
+    """Schema of the intervention target metadata in the dataset."""
+    
+    id: Series[int]
+    university__Sigla: Series[str | None]
+    university__Comune: Series[str | None]
+    university__Ubicazione: Series[str | None]
+    university__Indirizzo: Series[str | None]
+    university__Località: Series[str | None]
+    university__Data_intervento: Series[str | None]
+    university__Tipo_di_intervento: Series[str | None]
+    university__Durata: Series[str | None]
+    university__Eseguito_da: Series[str | None]
+    university__Direzione_scientifica: Series[str | None]
+    university__Estensione: Series[str | None]
+    university__Numero_di_saggi: Series[pd.UInt32Dtype | None]
+    university__Profondità_massima: Series[float | None]
+    university__Geologico: Series[bool | None]
+    university__OGD: Series[str | None]
+    university__OGM: Series[str | None]
+    university__Profondità_falda: Series[float | None]
+    building__Istituzione: Series[str | None]
+    building__Funzionario_competente: Series[str | None]
+    building__Tipo_di_documento: Series[str | None]
+    building__Protocollo: Series[str | None]
+    building__Data_Protocollo: Series[str | None]
+
+
+class DatasetAnswerSchema(NamedTuple):
+    """Schema of a row in the answer dataframe loadable from the dataset."""
+
+    id: int
+    university__Sigla: str | None
+    university__Comune: str | None
+    university__Ubicazione: str | None
+    university__Indirizzo: str | None
+    university__Località: str | None
+    university__Data_intervento: str | None
+    university__Tipo_di_intervento: str | None
+    university__Durata: str | None
+    university__Eseguito_da: str | None
+    university__Direzione_scientifica: str | None
+    university__Estensione: str | None
+    university__Numero_di_saggi: pd.UInt32Dtype | None
+    university__Profondità_massima: float | None
+    university__Geologico: bool | None
+    university__OGD: str | None
+    university__OGM: str | None
+    university__Profondità_falda: float | None
+    building__Istituzione: str | None
+    building__Funzionario_competente: str | None
+    building__Tipo_di_documento: str | None
+    building__Protocollo: str | None
+    building__Data_Protocollo: str | None
+
+
+def outputStructuredDataSchema_itertuples(
+    df: DataFrame[OutputStructuredDataSchema],
+):
+    """Type-safe wrapper of DataFrame.itertuples."""
+    return cast(Iterator[DatasetAnswerSchema], df.itertuples())
+
 
 ExtractedStructuredDataSeries = dict[str, Any]

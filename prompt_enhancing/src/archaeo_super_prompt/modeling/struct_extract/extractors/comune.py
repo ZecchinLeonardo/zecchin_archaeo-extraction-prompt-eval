@@ -1,8 +1,8 @@
 """Comune LLM extractor."""
 
-from math import exp
 from typing import TypedDict, override
 import dspy
+import re
 import pydantic
 
 from archaeo_super_prompt.dataset.load import MagohDataset
@@ -18,6 +18,8 @@ from ..field_extractor import FieldExtractor, TypedDspyModule
 
 # TODO: describe the model in Italian for the dspy model
 class Comune(pydantic.BaseModel):
+    """Questo elemento fornisce informazioni su un comune. È possibile trovare questo tipo di informazioni nel testo."""
+
     citta_nome: str
     provicia_nome: str
     provincia_sigla: str
@@ -37,11 +39,18 @@ class IdentificaComune(dspy.Signature):
 
 
 class ComuneInputData(TypedDict):
+    """Chunks of reports of an archaeological intervention with supposed information about the comune where the operations took place.
+
+    Identified likely comuni with their province are also provided to help in the extraction.
+    """
+
     fragmenti_relazione: str
     possibili_comuni: list[Comune]
 
 
 class ComuneOutputData(TypedDict):
+    """A predicted comune where the intervention took place, with its provincia."""
+
     comune: str
     provincia: str
 
@@ -83,7 +92,10 @@ class ComuneExtractor(
         ComuneFeatSchema,
     ]
 ):
+    """Dspy-LLM-based extractor of the comune data."""
+
     def __init__(self, llm_model: dspy.LM) -> None:
+        """Initialize the extractor with providing it the llm which will be used."""
         example = (
             ComuneInputData(
                 fragmenti_relazione=""""Relazione_scavo.pdf, Pagina 1 :
@@ -126,12 +138,30 @@ L'evento si è svolto a Lucca.""",
     @override
     @classmethod
     def _compare_values(cls, predicted, expected):
+        TRESHOLD = 0.95
         return 0.7 * int(
             predicted["comune"] == expected["comune"]
-        ) + 0.3 * int(predicted["provincia"] == expected["provincia"])
+        ) + 0.3 * int(
+            predicted["provincia"] == expected["provincia"]
+        ), TRESHOLD
 
     @override
     @classmethod
-    def select_answer(cls, y: MagohDataset, id: InterventionId) -> ComuneOutputData:
-        # TODO:
-        pass
+    def _select_answers(
+        cls, y: MagohDataset, ids: set[InterventionId]
+    ) -> dict[InterventionId, ComuneOutputData]:
+        def to_comune_data(comune_string: str | None) -> ComuneOutputData:
+            default_output = ComuneOutputData(comune="", provincia="")
+            if comune_string is None:
+                return default_output
+            pattern = r"^(.*?) \((.*?)\)$"
+            match = re.match(pattern, comune_string)
+            if match:
+                comune, provincia = match.groups()
+                return ComuneOutputData(comune=comune, provincia=provincia)
+            return default_output
+
+        return {
+            InterventionId(t.id): to_comune_data(t.university__Comune)
+            for t in y.get_answers(ids)
+        }
