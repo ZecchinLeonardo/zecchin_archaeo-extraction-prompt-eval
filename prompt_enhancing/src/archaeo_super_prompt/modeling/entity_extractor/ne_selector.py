@@ -15,6 +15,7 @@ class NeSelector(ClassifierMixin, BaseEstimator, TransformerMixin):
     def __init__(
         self,
         to_extract: NamedEntityField,
+        keep_chunks_without_identified_thesaurus=False,
         allowed_fuzzy_match_score=0.95,
     ) -> None:
         """Initialize the Named Entity Selector from the data about the field.
@@ -22,12 +23,19 @@ class NeSelector(ClassifierMixin, BaseEstimator, TransformerMixin):
         Arguments:
             to_extract: the data about the field to be extracted from the \
 entities to be filtered
+            keep_chunks_without_identified_thesaurus: if True, the chunks with \
+entities in the desired group of entity types are always kept, even if no \
+thesaurus has been identified among these entities. If False, these chunks are \
+only kept if there is not any chunk where thesaurus has been identified.
             allowed_fuzzy_match_score: the treshold (between 0 and 1) above \
 which a thesaurus match is kept
         """
         super().__init__()
         self._to_extract = to_extract
         self._allowed_fuzzy_match_score = allowed_fuzzy_match_score
+        self._keep_chunks_without_identified_thesaurus = (
+            keep_chunks_without_identified_thesaurus
+        )
 
     def transform(
         self, X: DataFrame[ChunksWithEntities]
@@ -51,6 +59,17 @@ which a thesaurus match is kept
         output["identified_thesaurus"] = [
             list(r) if r is not None else None for r in result
         ]
-        return ChunksWithThesaurus.validate(
+        filtered_chunks = ChunksWithThesaurus.validate(
             output[output["identified_thesaurus"].notnull()]
         )
+        # keep only the chunks with thesaurus if needed
+        if self._keep_chunks_without_identified_thesaurus:
+            return filtered_chunks
+        chunks_with_thesaurus = filtered_chunks[
+            filtered_chunks["identified_thesaurus"].apply(
+                lambda lst: len(lst) > 0
+            )
+        ]
+        if len(chunks_with_thesaurus) > 0:
+            return chunks_with_thesaurus
+        return filtered_chunks

@@ -74,7 +74,7 @@ class ComuneExtractor(
     FieldExtractor[
         ComuneInputData,
         ComuneOutputData,
-        ChunksWithThesaurus,
+        int,
         ComuneFeatSchema,
     ]
 ):
@@ -101,13 +101,12 @@ L'evento si è svolto a Lucca.""",
     @override
     @classmethod
     def _to_dspy_input(cls, X):
-        return super()._to_dspy_input(X)
+        # TODO: load the thesaurus
+        pass
+        
 
     @override
     @classmethod
     def _compare_values(cls, predicted, expected):
-        return super()._compare_values(predicted, expected)
-
-    @override
-    def transform(self, X):
-        return super().transform(X)
+        # TODO:
+        pass

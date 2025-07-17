@@ -11,6 +11,7 @@ import pandas as pd
 import dspy
 
 from ..entity_extractor.types import ChunksWithThesaurus
+from .types import InputForExtraction
 
 
 class TypedDspyModule[DInput, DOutput](dspy.Module):
@@ -21,7 +22,7 @@ class TypedDspyModule[DInput, DOutput](dspy.Module):
         return cast(DOutput, cast(dspy.Prediction, self(**inpt)).to_dict())
 
 
-class FieldExtractor[DInput, DOutput, DFInput, DFOutput](
+class FieldExtractor[DInput, DOutput, SuggestedOutputType, DFOutput](
     ClassifierMixin, BaseEstimator, TransformerMixin, ABC
 ):
     """Abstract class for extracting one field from featured chunks.
@@ -61,7 +62,7 @@ runtime the genericity and also to be able to log the model in mlflow
 
     @abstractmethod
     @classmethod
-    def _to_dspy_input(cls, X: DataFrame[DFInput]) -> DInput:
+    def _to_dspy_input(cls, X: DataFrame[InputForExtraction[SuggestedOutputType]]) -> DInput:
         """Convert all the rows related to one intervention into one dict input."""
         pass
 
@@ -70,25 +71,16 @@ runtime the genericity and also to be able to log the model in mlflow
     def _compare_values(cls, predicted: DOutput, expected: DOutput):
         pass
 
-    def fit(self, X: DataFrame[DFInput], y):
+    def fit(self, X: DataFrame[InputForExtraction[SuggestedOutputType]], y):
         """Optimize the dspy model according to the given dataset."""
         # TODO:
         return self
 
-    @abstractmethod
-    def transform(self, X: DataFrame[DFInput]) -> DataFrame[DFOutput]:
-        """Custom inference according to the input schema and the field.
-
-        When the dspy model needs to be called, call the llm_extract function
-        inside this function.
-        """
-        pass
-
-    def llm_extract(self, X: DataFrame[DFInput]) -> DataFrame[DFOutput]:
+    def transform(self, X: DataFrame[InputForExtraction[SuggestedOutputType]]) -> DataFrame[DFOutput]:
         """Generic transform operation."""
         inputs = {
             cast(int, id_): self._to_dspy_input(
-                cast(DataFrame[DFInput], source)
+                cast(DataFrame[InputForExtraction[SuggestedOutputType]], source)
             )
             for id_, source in X.groupby("id")
         }
@@ -107,4 +99,5 @@ runtime the genericity and also to be able to log the model in mlflow
 
     @override
     def score(self, X: ChunksWithThesaurus, y, sample_weight=None):
+        # TODO: set the local dspy evaluation
         return super().score(X, y, sample_weight)
