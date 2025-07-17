@@ -7,11 +7,11 @@ from ..utils.cache import get_cache_dir_for
 
 
 def _get_comune_file():
-    return get_cache_dir_for("raw", "thesaurus/comune.csv")
+    return get_cache_dir_for("raw", "thesaurus") / "comune.csv"
 
 
 def _get_provincie_file():
-    return get_cache_dir_for("raw", "thesaurus/provincie.csv")
+    return get_cache_dir_for("raw", "thesaurus") / "provincie.csv"
 
 
 def load_comune() -> list[tuple[int, str]]:
