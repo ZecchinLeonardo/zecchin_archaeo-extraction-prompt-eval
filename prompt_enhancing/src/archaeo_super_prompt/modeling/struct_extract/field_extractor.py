@@ -4,7 +4,6 @@ This transformer is a classifier which scorable and trainable.
 """
 
 from abc import ABC, abstractmethod
-from sklearn.base import ClassifierMixin, BaseEstimator, TransformerMixin
 from typing import cast, override
 from pandera.typing.pandas import DataFrame
 import pandas as pd
@@ -14,6 +13,7 @@ from archaeo_super_prompt.dataset.load import MagohDataset
 from archaeo_super_prompt.types.intervention_id import InterventionId
 
 from . import types as extract_input_type
+from ..types.detailed_evaluator import DetailedEvaluatorMixin
 
 
 class TypedDspyModule[DInput, DOutput](dspy.Module):
@@ -25,7 +25,11 @@ class TypedDspyModule[DInput, DOutput](dspy.Module):
 
 
 class FieldExtractor[DInput, DOutput, SuggestedOutputType, DFOutput](
-    ClassifierMixin, BaseEstimator, TransformerMixin, ABC
+    DetailedEvaluatorMixin[
+        DataFrame[extract_input_type.InputForExtraction[SuggestedOutputType]],
+        MagohDataset,
+    ],
+    ABC,
 ):
     """Abstract class for extracting one field from featured chunks.
 
@@ -76,8 +80,9 @@ runtime the genericity and also to be able to log the model in mlflow
 
     @abstractmethod
     @classmethod
-    def _compare_values(cls, predicted: DOutput, expected: DOutput) -> tuple[float,
-        float]:
+    def _compare_values(
+        cls, predicted: DOutput, expected: DOutput
+    ) -> tuple[float, float]:
         """Compute a metric to compare the expected output with the predicted one.
 
         Return:
@@ -86,6 +91,7 @@ runtime the genericity and also to be able to log the model in mlflow
         """
         pass
 
+    @override
     def fit(
         self,
         X: DataFrame[
@@ -99,6 +105,7 @@ runtime the genericity and also to be able to log the model in mlflow
         y = y  # unused
         return self
 
+    @override
     def transform(
         self,
         X: DataFrame[
@@ -195,19 +202,22 @@ runtime the genericity and also to be able to log the model in mlflow
         )
         score = cast(float, evaluator(self._model))
         return score
-        # TODO: write a function for the evaluation with the vizualisation
-        # evaluator = dspy.Evaluate(
-        #     devset=devset,
-        #     metric=self._dspy_metric,
-        #     return_outputs=True,
-        #     provide_traceback=True,  # TODO: remove it for traceback
-        #     num_threads=1,  # TODO: set it
-        #     display_progress=True,
-        #     display_table=5,
-        # )
-        # results = cast(
-        #     tuple[float, list[tuple[dspy.Example, dspy.Prediction, float]]],
-        #     evaluator(self._model),
-        # )
-        # TODO: return somewhere the results for the vizualization
-        # return results[0]
+
+    @override
+    def score_and_transform(self, X, y):
+        devset = self._compute_devset(X, y)
+        evaluator = dspy.Evaluate(
+            devset=devset,
+            metric=self._dspy_metric,
+            return_outputs=True,
+            provide_traceback=True,  # TODO: remove it for traceback
+            num_threads=1,  # TODO: set it
+            display_progress=True,
+            display_table=5,
+        )
+        results = cast(
+            tuple[float, list[tuple[dspy.Example, dspy.Prediction, float]]],
+            evaluator(self._model),
+        )
+        # TODO: return a df after the score
+        return results
