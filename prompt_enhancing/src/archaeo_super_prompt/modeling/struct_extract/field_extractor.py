@@ -11,7 +11,7 @@ import pandas as pd
 import dspy
 
 from ..entity_extractor.types import ChunksWithThesaurus
-from .types import InputForExtraction
+from . import types as extract_input_type
 
 
 class TypedDspyModule[DInput, DOutput](dspy.Module):
@@ -61,28 +61,41 @@ runtime the genericity and also to be able to log the model in mlflow
         self._example = example
 
     @abstractmethod
-    @classmethod
-    def _to_dspy_input(cls, X: DataFrame[InputForExtraction[SuggestedOutputType]]) -> DInput:
-        """Convert all the rows related to one intervention into one dict input."""
+    def _to_dspy_input(
+        self,
+        x: extract_input_type.InputForExtractionRowSchema[
+            SuggestedOutputType
+        ],
+    ) -> DInput:
+        """Convert the uniformized extraction input for one intervention into one dict input for the dspy model."""
         pass
 
     @abstractmethod
     @classmethod
-    def _compare_values(cls, predicted: DOutput, expected: DOutput):
+    def _compare_values(cls, predicted: DOutput, expected: DOutput) -> float:
         pass
 
-    def fit(self, X: DataFrame[InputForExtraction[SuggestedOutputType]], y):
+    def fit(
+        self,
+        X: DataFrame[
+            extract_input_type.InputForExtraction[SuggestedOutputType]
+        ],
+        y,
+    ):
         """Optimize the dspy model according to the given dataset."""
         # TODO:
         return self
 
-    def transform(self, X: DataFrame[InputForExtraction[SuggestedOutputType]]) -> DataFrame[DFOutput]:
+    def transform(
+        self,
+        X: DataFrame[
+            extract_input_type.InputForExtraction[SuggestedOutputType]
+        ],
+    ) -> DataFrame[DFOutput]:
         """Generic transform operation."""
         inputs = {
-            cast(int, id_): self._to_dspy_input(
-                cast(DataFrame[InputForExtraction[SuggestedOutputType]], source)
-            )
-            for id_, source in X.groupby("id")
+            row.id: self._to_dspy_input(row)
+            for row in extract_input_type.itertuples(X)
         }
         return cast(
             DataFrame[DFOutput],

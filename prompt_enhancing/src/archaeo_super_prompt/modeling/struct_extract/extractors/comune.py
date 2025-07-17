@@ -1,10 +1,12 @@
 """Comune LLM extractor."""
 
+from math import exp
 from typing import TypedDict, override
 import dspy
 import pydantic
 
-from ....modeling.entity_extractor.types import ChunksWithThesaurus
+from archaeo_super_prompt.dataset.thesaurus import load_comune_with_provincie
+
 from ....types.per_intervention_feature import BasePerInterventionFeatureSchema
 
 from ..field_extractor import FieldExtractor, TypedDspyModule
@@ -12,10 +14,11 @@ from ..field_extractor import FieldExtractor, TypedDspyModule
 # -- DSPy part
 
 
+# TODO: describe the model in Italian for the dspy model
 class Comune(pydantic.BaseModel):
     citta_nome: str
     provicia_nome: str
-    provincia_siglo: str
+    provincia_sigla: str
 
 
 class IdentificaComune(dspy.Signature):
@@ -87,26 +90,39 @@ L'evento si è svolto a Lucca.""",
                     Comune(
                         citta_nome="Lucca",
                         provicia_nome="Lucca",
-                        provincia_siglo="LU",
+                        provincia_sigla="LU",
                     )
                 ],
             ),
             ComuneOutputData(comune="Lucca", provincia="Lucca"),
         )
+        # TODO: load this more lazily
+        self._thesaurus = load_comune_with_provincie()
         super().__init__(
             FindComune(),
             example,
         )
 
     @override
-    @classmethod
-    def _to_dspy_input(cls, X):
-        # TODO: load the thesaurus
-        pass
-        
+    def _to_dspy_input(self, x) -> ComuneInputData:
+        possible_comuni = [
+            self._thesaurus[th_id] for th_id in x.suggested_extraction_outputs
+        ]
+        return ComuneInputData(
+            fragmenti_relazione=x.merged_chunks,
+            possibili_comuni=[
+                Comune(
+                    citta_nome=c.comune,
+                    provicia_nome=c.provincia.name,
+                    provincia_sigla=c.provincia.sigla,
+                )
+                for c in possible_comuni
+            ],
+        )
 
     @override
     @classmethod
     def _compare_values(cls, predicted, expected):
-        # TODO:
-        pass
+        return 0.7 * int(
+            predicted["comune"] == expected["comune"]
+        ) + 0.3 * int(predicted["provincia"] == expected["provincia"])

@@ -29,16 +29,16 @@ class Provincia(NamedTuple):
 
 
 class ComuneProvincia(NamedTuple):
-    comune: tuple[int, str]  # the name and the id
+    comune: str  # the name and the id
     provincia: Provincia
 
 
-def load_comune_with_provincie() -> list[ComuneProvincia]:
+def load_comune_with_provincie() -> dict[int, ComuneProvincia]:
     comune = pd.read_csv(_get_comune_file())
     provincie = pd.read_csv(_get_provincie_file())
-    return [
-        ComuneProvincia(
-            (cast(int, row.id), cast(str, row.nome_x)),
+    return {
+        cast(int, row.id): ComuneProvincia(
+            cast(str, row.nome_x),
             Provincia(
                 cast(int, row.id_prov),
                 cast(str, row.nome_y),
@@ -48,4 +48,4 @@ def load_comune_with_provincie() -> list[ComuneProvincia]:
         for row in comune.merge(
             provincie, "right", left_on="provincia", right_on="id_prov"
         ).itertuples()
-    ]
+    }
