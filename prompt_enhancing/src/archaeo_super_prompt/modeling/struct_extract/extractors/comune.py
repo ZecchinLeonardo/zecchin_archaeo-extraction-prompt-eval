@@ -5,7 +5,9 @@ from typing import TypedDict, override
 import dspy
 import pydantic
 
+from archaeo_super_prompt.dataset.load import MagohDataset
 from archaeo_super_prompt.dataset.thesaurus import load_comune_with_provincie
+from archaeo_super_prompt.types.intervention_id import InterventionId
 
 from ....types.per_intervention_feature import BasePerInterventionFeatureSchema
 
@@ -81,7 +83,7 @@ class ComuneExtractor(
         ComuneFeatSchema,
     ]
 ):
-    def __init__(self) -> None:
+    def __init__(self, llm_model: dspy.LM) -> None:
         example = (
             ComuneInputData(
                 fragmenti_relazione=""""Relazione_scavo.pdf, Pagina 1 :
@@ -99,6 +101,7 @@ L'evento si è svolto a Lucca.""",
         # TODO: load this more lazily
         self._thesaurus = load_comune_with_provincie()
         super().__init__(
+            llm_model,
             FindComune(),
             example,
         )
@@ -126,3 +129,9 @@ L'evento si è svolto a Lucca.""",
         return 0.7 * int(
             predicted["comune"] == expected["comune"]
         ) + 0.3 * int(predicted["provincia"] == expected["provincia"])
+
+    @override
+    @classmethod
+    def select_answer(cls, y: MagohDataset, id: InterventionId) -> ComuneOutputData:
+        # TODO:
+        pass

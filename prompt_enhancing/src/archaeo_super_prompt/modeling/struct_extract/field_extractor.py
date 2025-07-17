@@ -10,7 +10,12 @@ from pandera.typing.pandas import DataFrame
 import pandas as pd
 import dspy
 
-from ..entity_extractor.types import ChunksWithThesaurus
+from archaeo_super_prompt.dataset.load import MagohDataset
+from archaeo_super_prompt.modeling.struct_extract.evaluation.evaluate import (
+    get_evaluator,
+)
+from archaeo_super_prompt.types.intervention_id import InterventionId
+
 from . import types as extract_input_type
 
 
@@ -37,6 +42,7 @@ class FieldExtractor[DInput, DOutput, SuggestedOutputType, DFOutput](
 
     def __init__(
         self,
+        llm_model: dspy.LM,
         model: TypedDspyModule[DInput, DOutput],
         example: tuple[DInput, DOutput],
     ) -> None:
@@ -50,6 +56,7 @@ inference
 runtime the genericity and also to be able to log the model in mlflow
         """
         super().__init__()
+        self.__llm_model = llm_model
         self._model = model
         # check at initialization at runtime if DInput and DOutput are subtypes
         # of dict
@@ -63,9 +70,7 @@ runtime the genericity and also to be able to log the model in mlflow
     @abstractmethod
     def _to_dspy_input(
         self,
-        x: extract_input_type.InputForExtractionRowSchema[
-            SuggestedOutputType
-        ],
+        x: extract_input_type.InputForExtractionRowSchema[SuggestedOutputType],
     ) -> DInput:
         """Convert the uniformized extraction input for one intervention into one dict input for the dspy model."""
         pass
@@ -110,7 +115,58 @@ runtime the genericity and also to be able to log the model in mlflow
             ),
         )
 
+    @abstractmethod
+    @classmethod
+    def select_answer(cls, y: MagohDataset, id: InterventionId) -> DOutput:
+        pass
+
+    def compute_devset(
+        self,
+        X: DataFrame[
+            extract_input_type.InputForExtraction[SuggestedOutputType]
+        ],
+        y: MagohDataset,
+    ):
+        inputs = {
+            row.id: self._to_dspy_input(row)
+            for row in extract_input_type.itertuples(X)
+        }
+        return [
+            dspy.Example(
+                **model_input,
+                # TODO: select only one field with an abstract
+                **self.select_answer(y, InterventionId(cast(int, id_))),
+            ).with_inputs(*cast(dict, model_input).keys())
+            for id_, model_input in inputs.items()
+        ]
+
     @override
-    def score(self, X: ChunksWithThesaurus, y, sample_weight=None):
-        # TODO: set the local dspy evaluation
-        return super().score(X, y, sample_weight)
+    def score(
+        self,
+        X: DataFrame[
+            extract_input_type.InputForExtraction[SuggestedOutputType]
+        ],
+        y: MagohDataset,
+        sample_weight=None,
+    ):
+        """Run a local evaluation of the dpsy model over the given X dataset.
+
+        Also save the per-field results for each test record in a cached
+        dataframe, accessible after the function call with the score_results
+        property (it will not equal None after a sucessful run of this method)
+
+        To fit the sklearn Classifier interface, this method return a reduced
+        floating metric value for the model.
+        """
+        sample_weight = sample_weight  # unused
+
+        devset = self.compute_devset(X, y)
+
+        eval_model = self.__llm_model
+        dspy.configure(lm=eval_model)
+        evaluate = get_evaluator(devset, return_outputs=True)
+        results = cast(
+            tuple[float, list[tuple[dspy.Example, dspy.Prediction, float]]],
+            evaluate(self._model),
+        )
+        return results[0]
