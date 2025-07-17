@@ -144,4 +144,3 @@ def test_manual_batch_cache():
             assert f.read() == "*" * inpt
         file.unlink()
     assert len(list(get_cache_dir_for("raw", "test").iterdir())) == 0
-test_manual_batch_cache()
