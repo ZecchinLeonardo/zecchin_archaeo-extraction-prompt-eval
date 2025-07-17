@@ -8,9 +8,10 @@ from sklearn.base import BaseEstimator, ClassifierMixin, TransformerMixin
 from .types import ChunksWithEntities, ChunksWithThesaurus, NamedEntityField
 from . import model as ner_module
 
+# TODO: inherit it from a DetailedEvaluatorMixin when evaluation will be needed
 
 class NeSelector(ClassifierMixin, BaseEstimator, TransformerMixin):
-    """Abstract class to select only chunks in which named thesaurus occur."""
+    """A Transformer to select only chunks in which named thesaurus occur."""
 
     def __init__(
         self,
@@ -55,7 +56,7 @@ which a thesaurus match is kept
             thesaurus,
             self._allowed_fuzzy_match_score,
         )
-        output = cast(pandas.DataFrame, X.copy().drop("named_entities"))
+        output = cast(pandas.DataFrame, X.copy().drop(columns="named_entities"))
         output["identified_thesaurus"] = [
             list(r) if r is not None else None for r in result
         ]

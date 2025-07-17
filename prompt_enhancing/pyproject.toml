@@ -45,6 +45,7 @@ nest-asyncio = "^1.6.0"
 tqdm-stubs = "^0.2.1"
 pandas-stubs = ">=2.2.3.250527,<3.0.0.0"
 ruff = "^0.12.3"
+pytest = "^8.4.1"
 
 
 [[tool.poetry.source]]

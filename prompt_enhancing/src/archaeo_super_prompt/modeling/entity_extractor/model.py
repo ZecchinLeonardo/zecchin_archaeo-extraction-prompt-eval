@@ -162,7 +162,9 @@ same group of entity types
             complete_entity_set: a not empty list of entities identified in \
 the chunk
         """
-        wanted = { k: v for k, v in wanted_entities()}
+        def normalize_text(txt: str):
+            return txt.strip().lower()
+        wanted = { k: normalize_text(v) for k, v in wanted_entities()}
 
         def extract(content: str):
             return [
@@ -170,7 +172,7 @@ the chunk
                 for _, _, matched_thesaurus_id in cast(
                     Generator[tuple[str, int, int]],
                     fzwz_p.extractWithoutOrder(
-                        content,
+                        normalize_text(content),
                         wanted,
                         scorer=fzwz.partial_ratio,
                         score_cutoff=int(distance_treshold * 100),

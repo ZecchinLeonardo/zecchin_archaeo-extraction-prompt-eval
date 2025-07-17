@@ -42,7 +42,7 @@ try_pipeline:
 
 [group("test")]
 test:
-  poetry run python tests/magoh_transform.py
+  poetry run pytest tests/
 
 [group("monitor")]
 serve-tracer:
