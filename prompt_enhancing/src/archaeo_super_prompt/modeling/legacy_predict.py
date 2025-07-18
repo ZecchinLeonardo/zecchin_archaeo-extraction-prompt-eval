@@ -40,6 +40,6 @@ def get_legacy_model():
                         embedding_model_hf_id="nomic-ai/nomic-embed-text-v1.5",
                     ),
                 ),
-                ("extract-comune", MagohDataExtractor()),
+                ("extractor", MagohDataExtractor()),
             ],
         )
