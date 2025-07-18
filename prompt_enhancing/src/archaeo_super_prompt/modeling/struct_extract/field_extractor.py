@@ -21,7 +21,7 @@ class TypedDspyModule[DInput, DOutput](dspy.Module):
 
     def typed_forward(self, inpt: DInput) -> DOutput:
         """Carry out a type safe forward on the module."""
-        return cast(DOutput, cast(dspy.Prediction, self(**inpt)).to_dict())
+        return cast(dspy.Prediction, self(**inpt)).toDict() # type: ignore
 
 
 class FieldExtractor[DInput, DOutput, SuggestedOutputType, DFOutput](
@@ -77,8 +77,8 @@ runtime the genericity and also to be able to log the model in mlflow
         """Convert the uniformized extraction input for one intervention into one dict input for the dspy model."""
         pass
 
-    @abstractmethod
     @classmethod
+    @abstractmethod
     def _compare_values(
         cls, predicted: DOutput, expected: DOutput
     ) -> tuple[float, float]:
@@ -130,8 +130,8 @@ runtime the genericity and also to be able to log the model in mlflow
                 ),
             )
 
-    @abstractmethod
     @classmethod
+    @abstractmethod
     def _select_answers(
         cls, y: MagohDataset, ids: set[InterventionId]
     ) -> dict[InterventionId, DOutput]:

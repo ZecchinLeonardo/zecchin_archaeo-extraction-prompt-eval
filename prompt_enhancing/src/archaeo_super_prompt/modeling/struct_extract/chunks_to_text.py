@@ -29,7 +29,7 @@ def ChunksToText():
         return msg
 
     def unify_thesaurus(X: DataFrame[ChunksWithThesaurus]):
-        return set().union(X["identified_thesaurus"].tolist())
+        return set().union(*X["identified_thesaurus"].tolist())
 
     def transform(
         X: DataFrame[ChunksWithThesaurus],
@@ -42,9 +42,9 @@ def ChunksToText():
                         "merged_chunks": to_readable_context_string(
                             filtered_chunks
                         ),
-                        "suggested_extraction_outputs": unify_thesaurus(
+                        "suggested_extraction_outputs": list(unify_thesaurus(
                             filtered_chunks
-                        ),
+                        )),
                     }
                 )(cast(DataFrame[ChunksWithThesaurus], filtered_chunks))
                 for id_, filtered_chunks in X.groupby("id")

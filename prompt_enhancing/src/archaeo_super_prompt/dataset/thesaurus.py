@@ -18,7 +18,10 @@ def load_comune() -> list[tuple[int, str]]:
     """Load the thesarus values for the "Comune" field."""
     df = pd.read_csv(_get_comune_file())
     return list(
-        (id_, nome) for _, id_, nome in df[["id", "nome"]].itertuples()
+        (id_, nome)
+        for _, id_, nome in df[["id", "nome"]][
+            df["nome"].notnull()
+        ].itertuples()
     )
 
 

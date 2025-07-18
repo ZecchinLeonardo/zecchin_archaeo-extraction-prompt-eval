@@ -3,9 +3,13 @@ from pandera.typing.pandas import DataFrame
 from sklearn.pipeline import FunctionTransformer, Pipeline, FeatureUnion
 import sklearn
 
+
 from .pdf_to_text import VLLM_Preprocessing
 from ..dataset.thesaurus import load_comune
 from .entity_extractor import NamedEntityField, NerModel, NeSelector
+from .struct_extract.chunks_to_text import ChunksToText
+from .struct_extract.extractors.comune import ComuneExtractor
+from .struct_extract.language_model import load_model
 
 def identity():
     """Set an identity pipeline Transformer."""
@@ -18,6 +22,7 @@ def identity():
 
 def get_pipeline():
     """Return the main pipeline as a Directed Acyclic Graph."""
+    llm_model = load_model(0.05)
     with sklearn.config_context(transform_output="pandas"):
         return Pipeline(
             [
@@ -52,5 +57,7 @@ def get_pipeline():
                         )
                     ),
                 ),
+                ("merge",  ChunksToText()),
+                ("extract-comune", ComuneExtractor(llm_model))
             ],
         )
