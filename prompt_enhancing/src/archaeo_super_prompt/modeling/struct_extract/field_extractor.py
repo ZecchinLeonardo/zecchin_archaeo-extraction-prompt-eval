@@ -60,7 +60,6 @@ runtime the genericity and also to be able to log the model in mlflow
         super().__init__()
         self.__llm_model = llm_model
         self._model = model
-        self._model.set_lm(self.__llm_model)
         # check at initialization at runtime if DInput and DOutput are subtypes
         # of dict
         i, o = example
@@ -117,18 +116,19 @@ runtime the genericity and also to be able to log the model in mlflow
             row.id: self._to_dspy_input(row)
             for row in extract_input_type.itertuples(X)
         }
-        return cast(
-            DataFrame[DFOutput],
-            pd.DataFrame(
-                [
-                    {
-                        "id": intervention_id,
-                        **cast(dict, self._model.typed_forward(inpt)),
-                    }
-                    for intervention_id, inpt in inputs.items()
-                ]
-            ),
-        )
+        with dspy.settings.context(lm=self.__llm_model):
+            return cast(
+                DataFrame[DFOutput],
+                pd.DataFrame(
+                    [
+                        {
+                            "id": intervention_id,
+                            **cast(dict, self._model.typed_forward(inpt)),
+                        }
+                        for intervention_id, inpt in inputs.items()
+                    ]
+                ),
+            )
 
     @abstractmethod
     @classmethod
@@ -191,16 +191,17 @@ runtime the genericity and also to be able to log the model in mlflow
 
         devset = self._compute_devset(X, y)
 
-        evaluator = dspy.Evaluate(
-            devset=devset,
-            metric=self._dspy_metric,
-            return_outputs=False,
-            provide_traceback=True,  # TODO: remove it for traceback
-            num_threads=1,  # TODO: set it
-            display_progress=True,
-            display_table=5,
-        )
-        score = cast(float, evaluator(self._model))
+        with dspy.settings.context(lm=self.__llm_model):
+            evaluator = dspy.Evaluate(
+                devset=devset,
+                metric=self._dspy_metric,
+                return_outputs=False,
+                provide_traceback=True,  # TODO: remove it for traceback
+                num_threads=1,  # TODO: set it
+                display_progress=True,
+                display_table=5,
+            )
+            score = cast(float, evaluator(self._model))
         return score
 
     @override
