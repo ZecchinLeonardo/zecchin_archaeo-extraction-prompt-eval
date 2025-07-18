@@ -41,14 +41,6 @@ class PDFChunkPerInterventionDataset:
     such as mlflow
     """
 
-    TAG_TO_STRING = {
-        "para": "Paragraph",
-        "list_item": "List item",
-        "table": "Table",
-        "header": "Header",
-    }
-    DEFAULT_ITEM = "Unknown pdf item"
-
     def __init__(
         self,
         data: DataFrame[PDFChunkSetPerInterventionSchema],
@@ -75,12 +67,7 @@ class PDFChunkPerInterventionDataset:
         def items_for_pdf_source(fileChunks: PDFChunkDataset):
             def process_row(row_):
                 row = PDFChunk(cast(PDFChunk, row_.to_dict()))
-                tag_description = (
-                    PDFChunkPerInterventionDataset.TAG_TO_STRING.get(
-                        row["chunk_type"],
-                        PDFChunkPerInterventionDataset.DEFAULT_ITEM,
-                    )
-                )
+                tag_description = (row["chunk_type"])
                 description = ChunkHumanDescription(
                     f"Chunk {row['chunk_index']} ({tag_description} page {row['chunk_page_position']})"
                 )
@@ -98,7 +85,7 @@ class PDFChunkPerInterventionDataset:
     def to_readable_context_string(self) -> PDFChunkEnumeration:
         msg: str = ""
         for _, chunk in self.data.iterrows():
-            msg += f"`%% {chunk['filename']} | Page {chunk['chunk_page_position']} ({PDFChunkPerInterventionDataset.TAG_TO_STRING.get(chunk['chunk_type'], PDFChunkPerInterventionDataset.DEFAULT_ITEM)}) %%`\n\n"
+            msg += f"`%% {chunk['filename']} | Page {chunk['chunk_page_position']} ({chunk['chunk_type']}) %%`\n\n"
             msg += chunk["chunk_content"] + "\n" * 2
             msg += "`" + "-" * 60 + "`\n\n"
         return PDFChunkEnumeration(msg)

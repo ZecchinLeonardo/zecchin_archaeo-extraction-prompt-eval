@@ -1,7 +1,7 @@
 """Types related to the wanted structured data in the dataset."""
 
 from collections.abc import Iterator
-from typing import Any, NamedTuple, cast
+from typing import Any, NamedTuple, Optional, cast
 import pandera.pandas as pa
 from pandera.typing.pandas import DataFrame, Series
 import pandas as pd
@@ -56,28 +56,28 @@ class OutputStructuredDataSchema(pa.DataFrameModel):
     """Schema of the intervention target metadata in the dataset."""
     
     id: Series[int]
-    university__Sigla: Series[str | None]
-    university__Comune: Series[str | None]
-    university__Ubicazione: Series[str | None]
-    university__Indirizzo: Series[str | None]
-    university__Località: Series[str | None]
-    university__Data_intervento: Series[str | None]
-    university__Tipo_di_intervento: Series[str | None]
-    university__Durata: Series[str | None]
-    university__Eseguito_da: Series[str | None]
-    university__Direzione_scientifica: Series[str | None]
-    university__Estensione: Series[str | None]
-    university__Numero_di_saggi: Series[pd.UInt32Dtype | None]
-    university__Profondità_massima: Series[float | None]
-    university__Geologico: Series[bool | None]
-    university__OGD: Series[str | None]
-    university__OGM: Series[str | None]
-    university__Profondità_falda: Series[float | None]
-    building__Istituzione: Series[str | None]
-    building__Funzionario_competente: Series[str | None]
-    building__Tipo_di_documento: Series[str | None]
-    building__Protocollo: Series[str | None]
-    building__Data_Protocollo: Series[str | None]
+    university__Sigla: Optional[Series[str]] = pa.Field(nullable=True)  # noqa: UP045
+    university__Comune: Optional[Series[str]] = pa.Field(nullable=True)  # noqa: UP045
+    university__Ubicazione: Optional[Series[str]] = pa.Field(nullable=True)  # noqa: UP045
+    university__Indirizzo: Optional[Series[str]] = pa.Field(nullable=True)  # noqa: UP045
+    university__Località: Optional[Series[str]] = pa.Field(nullable=True)  # noqa: UP045
+    university__Data_intervento: Optional[Series[str]] = pa.Field(nullable=True)  # noqa: UP045
+    university__Tipo_di_intervento: Optional[Series[str]] = pa.Field(nullable=True)  # noqa: UP045
+    university__Durata: Optional[Series[str]] = pa.Field(nullable=True)  # noqa: UP045
+    university__Eseguito_da: Optional[Series[str]] = pa.Field(nullable=True)  # noqa: UP045
+    university__Direzione_scientifica: Optional[Series[str]] = pa.Field(nullable=True)  # noqa: UP045
+    university__Estensione: Optional[Series[str]] = pa.Field(nullable=True)  # noqa: UP045
+    university__Numero_di_saggi: Optional[Series[pd.UInt32Dtype]] = pa.Field(nullable=True)  # noqa: UP045
+    university__Profondità_massima: Optional[Series[pd.Float64Dtype]] = pa.Field(nullable=True)  # noqa: UP045
+    university__Geologico: Optional[Series[pd.BooleanDtype]] = pa.Field(nullable=True)  # noqa: UP045
+    university__OGD: Optional[Series[str]] = pa.Field(nullable=True)  # noqa: UP045
+    university__OGM: Optional[Series[str]] = pa.Field(nullable=True)  # noqa: UP045
+    university__Profondità_falda: Optional[Series[pd.Float64Dtype]] = pa.Field(nullable=True)  # noqa: UP045
+    building__Istituzione: Optional[Series[str]] = pa.Field(nullable=True)  # noqa: UP045
+    building__Funzionario_competente: Optional[Series[str]] = pa.Field(nullable=True)  # noqa: UP045
+    building__Tipo_di_documento: Optional[Series[str]] = pa.Field(nullable=True)  # noqa: UP045
+    building__Protocollo: Optional[Series[str]] = pa.Field(nullable=True)  # noqa: UP045
+    building__Data_Protocollo: Optional[Series[str]] = pa.Field(nullable=True)  # noqa: UP045
 
 
 class DatasetAnswerSchema(NamedTuple):

@@ -93,7 +93,16 @@ class MagohDataExtractor:
                 cast(list[dict], list(output_structured_data))
             )
             answer_df["id"] = cast(list[InterventionId], list(ids))
-            return OutputStructuredDataSchema.validate(answer_df)
+            return OutputStructuredDataSchema.validate(
+                answer_df.astype(
+                    {
+                        "university__Numero_di_saggi": "UInt32",
+                        "university__Geologico": "boolean",
+                        "university__Profondità_falda": "Float64",
+                        "university__Profondità_massima": "Float64"
+                    }
+                )
+            )
 
     def score(self, X: PDFChunkDataset, targets: MagohDataset):
         """Run an evaluation of the dpsy model over the given X dataset.
@@ -107,7 +116,7 @@ class MagohDataExtractor:
         """
         devset = self.compute_devset(X, targets)
 
-    # The evaluator only enable to automate the standard workflow of dspy
+        # The evaluator only enable to automate the standard workflow of dspy
         # for running evaluation inferences but this workflow is not suitable
         # for a per-field evaluation
         evaluate = get_evaluator(devset, return_outputs=True)
