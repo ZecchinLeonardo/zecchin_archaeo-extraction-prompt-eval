@@ -1,3 +1,5 @@
+"""PDF Ingestion layer with vision llm and chunking model."""
+
 from pathlib import Path
 from sklearn.pipeline import FunctionTransformer
 
@@ -17,8 +19,19 @@ def VLLM_Preprocessing(
     max_chunk_size: int = 512,
     allowed_timeout: int = 60 * 5,
 ):
-    """Arguments:
-    * embedding_model_hf_id: the identifier on HuggingFace API of the embedding model, so its tokenizer can be fetched
+    """First PDF ingestion layer for the pipeline. Include vision-llm scan and text chunking.
+
+    This pipeline FunctionTransformer directly takes in input a batch of paths
+    of PDF files to be ingested. It read the text with a vision-llm and output
+    text chunks with being aware to the layout and a tokenization method to be
+    provided.
+
+    Arguments:
+        model: the reference of the vision-llm to be called on the Ollama server
+        prompt: a string to contextualize the ocr operation of the vision llm
+        embedding_model_hf_id: the identifier on HuggingFace API of the embedding model, so its tokenizer can be fetched
+        max_chunk_size: the maximum size of all text chunks
+        allowed_timeout: the maximum duration for scanning text from one PDF page
     """
     allowed_timeout = allowed_timeout
     converter = vllm_scan_mod.converter(

@@ -1,3 +1,6 @@
+"""Scanned document splitting into text chunks with layout metadata."""
+
+from collections.abc import Sequence
 from typing import cast
 from docling_core.transforms.chunker.base import BaseChunk
 from docling_core.transforms.chunker.tokenizer.huggingface import (
@@ -19,6 +22,11 @@ EMBED_MODEL_ID = "nomic-ai/nomic-embed-text-v1.5"
 
 
 def get_chunker(embed_model_id: str, max_chunk_size: int):
+    """Return a Docling Chunker model according to the tokenizer of one embedding model.
+
+    This tokenizer is fast even on the CPU, but must be fetch from the
+    HuggingFace's repositories.
+    """
     # the tokenizer must be the same as the embedding model
     tokenizer = HuggingFaceTokenizer(
         tokenizer=AutoTokenizer.from_pretrained(embed_model_id),
@@ -37,12 +45,21 @@ def _set_doc_items(chunk: BaseChunk, doc_items: list[DocItem]):
 
 
 def get_chunks(
-    chunker: HybridChunker, documents: list[CorrectlyConvertedDocument]
+    chunker: HybridChunker,
+    document: CorrectlyConvertedDocument
+    | Sequence[CorrectlyConvertedDocument | None],
 ) -> list[BaseChunk]:
-    if not documents:
+    """Extracts a list of labeled chunks through all the pages of the document.
+
+    Arguments:
+        chunker: the chunker model to chunk according to the layout and the \
+tokenization
+        document: the document or a list of documents for each page
+    """ 
+    if not isinstance(document, Sequence):
+        return list(chunker.chunk(dl_doc=document))
+    if not document:
         return []
-    if len(documents) == 1:
-        return list(chunker.chunk(dl_doc=documents[0]))
 
     def adapt_page_numbers(chunk: BaseChunk, page_number: int):
         new_chunk = chunk.model_copy(deep=True)
@@ -72,8 +89,10 @@ def get_chunks(
 
     per_page_chunk_packs = (
         [adapt_page_numbers(chunk, page_nb) for chunk in chunks]
-        for page_nb, chunks in enumerate(
-            map(lambda d: chunker.chunk(dl_doc=d), documents)
+        for page_nb, chunks in (
+            (pnb, chunker.chunk(dl_doc=d))
+            for pnb, d in enumerate(document)
+            if d is not None
         )
     )
     chunks = fnt.reduce(
@@ -103,6 +122,7 @@ def chunk_to_ds(
     pairs: list[tuple[tuple[InterventionId, Path], list[BaseChunk]]],
     chunker: HybridChunker,
 ) -> PDFChunkDataset:
+    """Gather the list of labeled chunks into a dataframe for all the document batch."""
     return PDFChunkDataset(
         PDFChunkDatasetSchema.validate(
             pd.concat(
