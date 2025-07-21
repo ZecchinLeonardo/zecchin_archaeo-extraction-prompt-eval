@@ -1,4 +1,4 @@
-"""Module for abstract base Named Entities Selector class."""
+"""Module for Named Entities Selector class with thesaurus-fuzzymatching."""
 
 from typing import cast
 import pandas
@@ -17,7 +17,7 @@ class NeSelector(ClassifierMixin, BaseEstimator, TransformerMixin):
         self,
         to_extract: NamedEntityField,
         keep_chunks_without_identified_thesaurus=False,
-        allowed_fuzzy_match_score=0.95,
+        allowed_fuzzy_match_score=0.75,
     ) -> None:
         """Initialize the Named Entity Selector from the data about the field.
 
@@ -64,7 +64,7 @@ which a thesaurus match is kept
             output[output["identified_thesaurus"].notnull()]
         )
         # keep only the chunks with thesaurus if needed
-        if self._keep_chunks_without_identified_thesaurus:
+        if not self._keep_chunks_without_identified_thesaurus:
             return filtered_chunks
         chunks_with_thesaurus = filtered_chunks[
             filtered_chunks["identified_thesaurus"].apply(

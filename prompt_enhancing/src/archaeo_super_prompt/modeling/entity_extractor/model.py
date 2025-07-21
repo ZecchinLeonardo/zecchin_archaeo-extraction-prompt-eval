@@ -1,10 +1,13 @@
 """Core functions for inferring and filtering named entities in chunks."""
+
+from logging import warning
 from typing import cast
 from collections.abc import Generator
 import requests
 import functools as fnt
 import thefuzz.process as fzwz_p
 import thefuzz.fuzz as fzwz
+import re
 
 from archaeo_super_prompt.types.thesaurus import ThesaurusProvider
 
@@ -151,6 +154,8 @@ same group of entity types
     The empty set means that the chunk contains entities that match the group
     of entities of interests but these entities does not match the thesaurus.
     """
+    if distance_treshold > 0.75:
+        warning("The selector might be very untolerant.")
 
     def aux(chunk_content: str, complete_entity_set: list[CompleteEntity]):
         """Auxiliary function for processing the entities of one chunk.
@@ -162,9 +167,33 @@ same group of entity types
             complete_entity_set: a not empty list of entities identified in \
 the chunk
         """
+
         def normalize_text(txt: str):
             return txt.strip().lower()
-        wanted = { k: normalize_text(v) for k, v in wanted_entities()}
+
+        def anti_small_words_filter(txt: str):
+            """Filter to not include wrong small words in partial ratio selection.
+
+            Expect the text to be already normalized. Augment the size of
+            spaces between words so the levenstein distance between a small
+            wanted word and expressions which can have this small word as
+            prefix is higher.
+            """
+            MAX_SIZE = 50
+
+            def repeat_until(word: str, n: int):
+                return (word * ((n + len(word) - 1) // len(word)))[:n]
+
+            result = re.sub(
+                r"\b(\w+)\b", lambda m: repeat_until(m.group(1), MAX_SIZE), txt
+            )
+            return result
+
+        def pre_tranform(txt: str):
+            r = anti_small_words_filter(normalize_text(txt))
+            return r
+
+        wanted = {k: pre_tranform(v) for k, v in wanted_entities()}
 
         def extract(content: str):
             return [
@@ -172,10 +201,10 @@ the chunk
                 for _, _, matched_thesaurus_id in cast(
                     Generator[tuple[str, int, int]],
                     fzwz_p.extractWithoutOrder(
-                        normalize_text(content),
+                        pre_tranform(content),
                         wanted,
                         scorer=fzwz.partial_ratio,
-                        score_cutoff=int(distance_treshold * 100),
+                        score_cutoff=int(distance_treshold*100),
                     ),
                 )
             ]
