@@ -34,6 +34,8 @@ from . import cache_docling_documents as cache_dd
 
 _PARALLEL_PAGE_NB = 2
 
+INCIPIT_MAX_PAGES = 5
+
 
 def _document_page_number(file: Path) -> int:
     source_doc = pymupdf.open(file)
@@ -42,8 +44,31 @@ def _document_page_number(file: Path) -> int:
     return page_count
 
 
+def get_incipit(file: Path):
+    """Return a stream of the document incipit, so less pages are processed."""
+    source_doc = pymupdf.open(file)
+    incipit_document = pymupdf.open()
+    incipit_document.insert_pdf(
+        source_doc,
+        from_page=0,
+        to_page=min(INCIPIT_MAX_PAGES, source_doc.page_count)-1,
+    )
+    intervention_id = file.parent.name
+    filestem = file.stem
+    return cache_dd.ArtificialPDFData(
+        intervention_id=InterventionId(int(intervention_id)),
+        filestem=filestem,
+        page_number=INCIPIT_MAX_PAGES
+        + 1,  # artificial page number for the whole incipit
+    ), DocumentStream(
+        # intervention_id + fileanme + page_number + .pdf
+        name=f"{intervention_id}__{filestem}__incipit.pdf",
+        stream=BytesIO(incipit_document.tobytes()),
+    )
+
+
 def stream_document_pages(
-    file: Path,
+    file: Path, incipit_only: bool
 ) -> tuple[Iterator[tuple[cache_dd.ArtificialPDFData, DocumentStream]], int]:
     """Load a pdf document and split it into an iterable of buffer for each page.
 
@@ -72,7 +97,12 @@ def stream_document_pages(
         )
 
     pages = (
-        create_smaller_pdf_for_page(pn) for pn in range(source_doc.page_count)
+        create_smaller_pdf_for_page(pn)
+        for pn in range(
+            source_doc.page_count
+            if not incipit_only
+            else min(INCIPIT_MAX_PAGES, source_doc.page_count)
+        )
     )
     return pages, source_doc.page_count
 
@@ -136,14 +166,14 @@ def converter(ollama_vlm_options: ApiVlmOptions):
 
 
 def _retry_scanning_failed_document(
-    doc: Path, docConverter: DocumentConverter
+    doc: Path, docConverter: DocumentConverter, incipit_only: bool
 ) -> list[CorrectlyConvertedDocument | None]:
     print_log("Retry scanning the document page per page...")
-    pages_iter, page_number = stream_document_pages(doc)
+    pages_iter, page_number = stream_document_pages(doc, incipit_only)
     return [
         page_doc
         for _, page_doc in cache.manualy_cache_batch_processing(
-            lambda t: cache_dd.get_yaml_file_for_artificial_pdf(t[0]),
+            lambda t: cache_dd.get_yaml_file_for_pdf(t[0]),
             cache_dd.cache_docling_doc_on_disk,
             cache_dd.load_docling_doc_from_cache,
             lambda tpit: iter(
@@ -170,6 +200,7 @@ def process_documents(
     file_inputs: list[tuple[InterventionId, Path]],
     documentConvertor: DocumentConverter,
     timeout_per_page: int,
+    incipit_only=True,
 ) -> list[
     tuple[
         tuple[InterventionId, Path],
@@ -195,19 +226,26 @@ def process_documents(
                 p,
                 result
                 if result is not None
-                else _retry_scanning_failed_document(p, documentConvertor),
+                else _retry_scanning_failed_document(
+                    p, documentConvertor, incipit_only
+                ),
             )
-            for p, result in cache.manualy_cache_batch_processing(
-                cache_dd.get_yaml_file_for_pdf,
+            for (p, _), result in cache.manualy_cache_batch_processing(
+                lambda t: cache_dd.get_yaml_file_for_pdf(t[1][0]),
                 cache_dd.cache_docling_doc_on_disk,
                 cache_dd.load_docling_doc_from_cache,
                 lambda it: map(
                     has_document_been_well_scanned,
                     documentConvertor.convert_all(
-                        it, max_num_pages=150, raises_on_error=False
+                        (inpt for _, (_, inpt) in it),
+                        max_num_pages=150,
+                        raises_on_error=False,
                     ),
                 ),
-                iter(files),
+                (
+                    (f, get_incipit(f) if incipit_only else (f, f))
+                    for f in files
+                ),
             )
         )
 

@@ -85,7 +85,7 @@ class PDFChunkPerInterventionDataset:
     def to_readable_context_string(self) -> PDFChunkEnumeration:
         msg: str = ""
         for _, chunk in self.data.iterrows():
-            msg += f"`%% {chunk['filename']} | Page {chunk['chunk_page_position']} ({chunk['chunk_type']}) %%`\n\n"
+            msg += f"`%% {chunk['filename']} | Page {chunk['chunk_page_position']} ({[str(label) for label in chunk['chunk_type']]}) %%`\n\n"
             msg += chunk["chunk_content"] + "\n" * 2
             msg += "`" + "-" * 60 + "`\n\n"
         return PDFChunkEnumeration(msg)

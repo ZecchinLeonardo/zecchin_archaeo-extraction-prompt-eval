@@ -1,3 +1,5 @@
+"""Global results comparison, field per field."""
+
 from typing import Any, TypeVar, cast
 from collections.abc import Callable
 from ....types.structured_data import (
@@ -46,9 +48,7 @@ def _validate_magoh_data(
 
     def iterate_if_needed[U](func: Callable[[U, U], bool]):
         @validate_type
-        def inner(
-            e: U | list[U] | tuple[U], p: U | list[U] | tuple[U]
-        ):
+        def inner(e: U | list[U] | tuple[U], p: U | list[U] | tuple[U]):
             if isinstance(e, list) or isinstance(e, tuple):
                 print(f"{e=}")
                 e_list = cast(list[U] | tuple[U], e)
@@ -135,6 +135,7 @@ def reduce_magoh_data_eval(
     metric_values: dict[str, bool] | dict[str, float],
     trace=None,
 ) -> float | bool:
+    """Sum the per-field results into one global metric value."""
     vals = metric_values.values()
     if trace is None:
         # for now, compute the fraction of the number of valid fields over all
@@ -184,19 +185,15 @@ def _worst_metric_values(trace=None):
 
 
 def _is_prediction_valid(pred: Prediction) -> bool:
-    """Reutrn None if the prediction is valid, else a metric with the worst
-    value.
-    """
-    required_keys = set(OutputStructuredDataSchema.columns.keys())
+    """Return None if the prediction is valid, else a metric with the worst value."""
+    required_keys = set(OutputStructuredDataSchema.to_schema().columns.keys())
     required_keys.remove("id")
     is_valid = required_keys.issubset(set(pred.keys()))
     return is_valid
 
 
 def validate_magoh_data(example: Example, pred: Prediction, trace=None):
-    """If the prediction is not valid, then return the dict with all metric values
-    at MIN_VALUE or False
-    """
+    """If the prediction is not valid, then return the dict with all metric values at MIN_VALUE or False."""
     if not _is_prediction_valid(pred):
         return _worst_metric_values(trace)
     return _validate_magoh_data(

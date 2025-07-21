@@ -9,13 +9,14 @@ from ...types.pdfpaths import (
 )
 
 from .chunking import get_chunker, get_chunks, chunk_to_ds
-from . import stream_ocr as vllm_scan_mod
+from . import stream_ocr_manual as vllm_scan_mod
 
 
 def VLLM_Preprocessing(
     model: str,
     prompt: str,
     embedding_model_hf_id: str,
+    incipit_only: bool,
     max_chunk_size: int = 512,
     allowed_timeout: int = 60 * 5,
 ):
@@ -30,6 +31,7 @@ def VLLM_Preprocessing(
         model: the reference of the vision-llm to be called on the Ollama server
         prompt: a string to contextualize the ocr operation of the vision llm
         embedding_model_hf_id: the identifier on HuggingFace API of the embedding model, so its tokenizer can be fetched
+        incipit_only: if only the first pages are scanned or all the document
         max_chunk_size: the maximum size of all text chunks
         allowed_timeout: the maximum duration for scanning text from one PDF page
     """
@@ -46,6 +48,7 @@ def VLLM_Preprocessing(
             [(line["id"], Path(line["filepath"])) for _, line in X.iterrows()],
             converter,
             allowed_timeout,
+            incipit_only
         )
         chunked_results = [
             (f, get_chunks(chunker, r)) for f, r in conversion_results

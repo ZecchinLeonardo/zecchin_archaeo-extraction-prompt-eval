@@ -18,16 +18,6 @@ from ...utils import cache
 DOC_DOC_SUBDIR = "pdf_scans"
 
 
-def get_yaml_file_for_pdf(source_pdf_path: Path) -> Path:
-    """Return a yaml file to in which the extracted docling document can be cached."""
-    cache_docling_doc_path = (
-        Path(source_pdf_path.parent.name)
-        / f"{source_pdf_path.stem}.docling.yaml"
-    )
-    return (
-        cache.get_cache_dir_for("interim", DOC_DOC_SUBDIR)
-        / cache_docling_doc_path
-    )
 
 
 class ArtificialPDFData(NamedTuple):
@@ -38,13 +28,28 @@ class ArtificialPDFData(NamedTuple):
     page_number: int
 
 
-def get_yaml_file_for_artificial_pdf(pdf_data: ArtificialPDFData) -> Path:
+def _get_yaml_file_for_artificial_pdf(pdf_data: ArtificialPDFData) -> Path:
     """Return a yaml file to cache the extracted document from a pdf buffer."""
     return (
         cache.get_cache_dir_for("interim", DOC_DOC_SUBDIR)
         / str(pdf_data.intervention_id)
     ) / f"{pdf_data.filestem}.{pdf_data.page_number}.docling.yaml"
 
+def _get_yaml_file_for_saved_pdf(source_pdf_path: Path) -> Path:
+    cache_docling_doc_path = (
+        Path(source_pdf_path.parent.name)
+        / f"{source_pdf_path.stem}.docling.yaml"
+    )
+    return (
+        cache.get_cache_dir_for("interim", DOC_DOC_SUBDIR)
+        / cache_docling_doc_path
+    )
+
+def get_yaml_file_for_pdf(source_pdf_path: Path | ArtificialPDFData) -> Path:
+    """Return a yaml file in which the extracted docling document can be cached."""
+    if isinstance(source_pdf_path, ArtificialPDFData):
+        return _get_yaml_file_for_artificial_pdf(source_pdf_path)
+    return _get_yaml_file_for_saved_pdf(source_pdf_path)
 
 def cache_docling_doc_on_disk(
     docling_document: CorrectlyConvertedDocument | None, file_path: Path
@@ -67,10 +72,12 @@ def load_docling_doc_from_cache(
     file_path_in_cache: Path,
 ) -> CorrectlyConvertedDocument | None:
     """Reload a cached docling document from its cached yaml file."""
+
     def is_file_empty(fp: Path):
         return fp.stat().st_size == 0
+
     if is_file_empty(file_path_in_cache):
-        return None # empty file: the document creation failed
+        return None  # empty file: the document creation failed
     return CorrectlyConvertedDocument(
         DoclingDocument.load_from_yaml(file_path_in_cache)
     )

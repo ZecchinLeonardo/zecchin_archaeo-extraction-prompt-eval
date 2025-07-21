@@ -54,15 +54,7 @@ def get_evaluator(devset: DevSet, return_outputs=False):
     )
 
     def evaluate(program: dspy.Module):
-        metric, run = measure_and_plot(None)
-        lm = program.get_lm()
-        if lm is None:
-            raise Exception(
-                "Cannot evaluate without a set language model for the given module"
-            )
-        # temperature = int(lm.kwargs["temperature"] * 1000)
-        # TODO: put the model logging in another place
-        # mlflow.dspy.log_model(dspy_model=program, artifact_path=str(Path(f"./outputs/model_temp__{temperature}_x1000")), input_example=devset[0].inputs().toDict()) # type: ignore
+        metric, _ = measure_and_plot(None)
         results = evaluator(program, metric=metric)
         return results
 

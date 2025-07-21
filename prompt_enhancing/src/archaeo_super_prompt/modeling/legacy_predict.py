@@ -38,6 +38,7 @@ def get_legacy_model():
                         model="granite3.2-vision:latest",
                         prompt="OCR this part of Italian document for markdown-based processing.",
                         embedding_model_hf_id="nomic-ai/nomic-embed-text-v1.5",
+                        incipit_only=True,
                     ),
                 ),
                 ("extractor", MagohDataExtractor()),
