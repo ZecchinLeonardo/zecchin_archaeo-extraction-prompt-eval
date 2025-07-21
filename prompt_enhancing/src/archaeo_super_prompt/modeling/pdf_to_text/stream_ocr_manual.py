@@ -96,15 +96,17 @@ def stream_document_pages(
             stream=BytesIO(per_page_pdf.tobytes()),
         )
 
+    page_number = min(INCIPIT_MAX_PAGES, source_doc.page_count)
+
     pages = (
         create_smaller_pdf_for_page(pn)
         for pn in range(
             source_doc.page_count
             if not incipit_only
-            else min(INCIPIT_MAX_PAGES, source_doc.page_count)
+            else page_number
         )
     )
-    return pages, source_doc.page_count
+    return pages, page_number 
 
 
 def ollama_vlm_options(
