@@ -1,16 +1,16 @@
 """Comune LLM extractor."""
 
-from typing import TypedDict, override
+from typing import Literal, Optional, TypedDict, cast, override
+
 import dspy
-import re
+import pandera.pandas as pa
 import pydantic
+from pandera.typing.pandas import Series
 
 from archaeo_super_prompt.dataset.load import MagohDataset
-from archaeo_super_prompt.dataset.thesaurus import load_comune_with_provincie
 from archaeo_super_prompt.types.intervention_id import InterventionId
 
 from ....types.per_intervention_feature import BasePerInterventionFeatureSchema
-
 from ..field_extractor import FieldExtractor, TypedDspyModule
 
 # -- DSPy part
@@ -25,71 +25,111 @@ class Comune(pydantic.BaseModel):
     provincia_sigla: str
 
 
-class IdentificaComune(dspy.Signature):
-    """Identifica il comune in cui si sono svolti i lavori archeologici descritti in questi frammenti di relazione. I comuni possibili sono indicati."""
+MONTHS = [
+    "Gennaio",
+    "Febbraio",
+    "Marzo",
+    "Aprile",
+    "Maggio",
+    "Giugno",
+    "Luglio",
+    "Agosto",
+    "Settembre",
+    "Ottobre",
+    "Novembre",
+    "Dicembre",
+]
+
+type Month = Literal[
+    "Gennaio",
+    "Febbraio",
+    "Marzo",
+    "Aprile",
+    "Maggio",
+    "Giugno",
+    "Luglio",
+    "Agosto",
+    "Settembre",
+    "Ottobre",
+    "Novembre",
+    "Dicembre",
+]
+
+
+class StimareDataDellIntervento(dspy.Signature):
+    """Stima il momento di partenza dell'intervento con un'accurata data o un approssimato massimo meso di un anno."""
 
     fragmenti_relazione: str = dspy.InputField(
         desc="In ogni frammento sono indicati il nome del file pdf e la sua posizione nel file."
     )
-    possibili_comuni: list[Comune] = dspy.InputField(
-        desc="Scegliete un di questi comuni"
+    mese: Month = dspy.OutputField(
+        desc='Rispondere "Dicembre" se non so il mese.'
     )
-    comune: str = dspy.OutputField(desc="Il nome completo del comune")
-    provincia: str = dspy.OutputField(desc="Il nome completo della provincia")
+    anno: int = dspy.OutputField()
+    giorno: Optional[int] = dspy.OutputField()  # noqa: UP045
 
 
-class ComuneInputData(TypedDict):
-    """Chunks of reports of an archaeological intervention with supposed information about the comune where the operations took place.
-
-    Identified likely comuni with their province are also provided to help in the extraction.
-    """
+class DataInterventoInputData(TypedDict):
+    """Chunks of reports of an archaeological intervention with supposed information about the date of the intervention."""
 
     fragmenti_relazione: str
-    possibili_comuni: list[Comune]
 
 
-class ComuneOutputData(TypedDict):
-    """A predicted comune where the intervention took place, with its provincia."""
+class DataInterventoOutputData(TypedDict):
+    """A predicted maximum date for the intervention."""
 
-    comune: str
-    provincia: str
+    day: int | None
+    month: int  # between 1 and 12
+    year: int
 
 
-class FindComune(TypedDspyModule[ComuneInputData, ComuneOutputData]):
-    """DSPy model for the extraction of the comune."""
+class EstimateInterventionDate(
+    TypedDspyModule[DataInterventoInputData, DataInterventoOutputData]
+):
+    """DSPy model for the extraction of the date of the intervention."""
 
     def __init__(self, callbacks=None):
         """Initialize only a chain of thought."""
         super().__init__(callbacks)
-        self._estrattore_di_comune = dspy.ChainOfThought(IdentificaComune)
+        self._estrattore_della_data = dspy.ChainOfThought(
+            StimareDataDellIntervento
+        )
 
-    def forward(
-        self, fragmenti_relazione: str, possibili_comuni: list[Comune]
-    ):
-        """Direct forward."""
-        # the signature's output is the same output; so we directly return
-        return self._estrattore_di_comune(
-            fragmenti_relazione=fragmenti_relazione,
-            possibili_comuni=possibili_comuni,
+    def forward(self, fragmenti_relazione: str):
+        """Simple date parsing."""
+        result = cast(
+            dspy.Prediction,
+            self._estrattore_della_data(
+                fragmenti_relazione=fragmenti_relazione,
+            ),
+        )
+        got_mese = cast(str | None, result.get("mese"))
+        if got_mese is None or got_mese not in MONTHS:
+            got_mese = "Dicembre"
+        return dspy.Prediction(
+            **DataInterventoOutputData(
+                day=result.get("giorno"),
+                month=MONTHS.index(got_mese),
+                year=cast(int, result.get("anno", 0)),
+            )
         )
 
 
 # -- SKlearn part
 
 
-class ComuneFeatSchema(BasePerInterventionFeatureSchema):
-    """Extracted data about the Comune."""
+class DateFeatSchema(BasePerInterventionFeatureSchema):
+    """Extracted data about the intervention start date."""
 
-    comune_id: int
-    provincia_id: int
+    intervention_date: Series[pa.DateTime]
 
 
 class ComuneExtractor(
     FieldExtractor[
-        ComuneInputData,
-        ComuneOutputData,
-        int,
-        ComuneFeatSchema,
+        DataInterventoInputData,
+        DataInterventoOutputData,
+        str,
+        DateFeatSchema,
     ]
 ):
     """Dspy-LLM-based extractor of the comune data."""
@@ -97,60 +137,46 @@ class ComuneExtractor(
     def __init__(self, llm_model: dspy.LM) -> None:
         """Initialize the extractor with providing it the llm which will be used."""
         example = (
-            ComuneInputData(
+            DataInterventoInputData(
                 fragmenti_relazione=""""Relazione_scavo.pdf, Pagina 1 :
-L'evento si è svolto a Lucca.""",
-                possibili_comuni=[
-                    Comune(
-                        citta_nome="Lucca",
-                        provicia_nome="Lucca",
-                        provincia_sigla="LU",
-                    )
-                ],
+Lo scavo è iniziato il 18 marzo 1985 ed è terminato il 20 marzo.""",
             ),
-            ComuneOutputData(comune="Lucca", provincia="Lucca"),
+            DataInterventoOutputData(day=18, month=3, year=1985),
         )
-        # TODO: load this more lazily
-        self._thesaurus = load_comune_with_provincie()
         super().__init__(
             llm_model,
-            FindComune(),
+            EstimateInterventionDate(),
             example,
         )
 
     @override
-    def _to_dspy_input(self, x) -> ComuneInputData:
-        possible_comuni = [
-            self._thesaurus[th_id] for th_id in x.suggested_extraction_outputs
-        ]
-        return ComuneInputData(
+    def _to_dspy_input(self, x) -> DataInterventoInputData:
+        return DataInterventoInputData(
             fragmenti_relazione=x.merged_chunks,
-            possibili_comuni=[
-                Comune(
-                    citta_nome=c.comune,
-                    provicia_nome=c.provincia.name,
-                    provincia_sigla=c.provincia.sigla,
-                )
-                for c in possible_comuni
-            ],
         )
 
     @override
     @classmethod
     def _compare_values(cls, predicted, expected):
         TRESHOLD = 0.95
-        return 0.7 * int(
-            predicted["comune"] == expected["comune"]
-        ) + 0.3 * int(
-            predicted["provincia"] == expected["provincia"]
-        ), TRESHOLD
+        if predicted == expected:
+            return 1, TRESHOLD
+        if predicted["month"] == expected["month"] and predicted["year"] == expected["year"]:
+            if expected["day"] is None:
+                return 0.9, TRESHOLD
+            if predicted["day"] is None:
+                return 0.7, TRESHOLD
+            return 0.7 if predicted["day"] > expected["day"] else 0.6, TRESHOLD
+        # TODO: if an approximated period under 3 months after the actual date
+        # is predicted, then we give 0.5. Else, we return 0
+        return 0, TRESHOLD
 
     @override
     @classmethod
     def _select_answers(
         cls, y: MagohDataset, ids: set[InterventionId]
-    ) -> dict[InterventionId, ComuneOutputData]:
-        def to_comune_data(comune_string: str | None) -> ComuneOutputData:
+    ) -> dict[InterventionId, DataInterventoOutputData]:
+        def to_date_intervento(comune_string: str | None) -> ComuneOutputData:
             default_output = ComuneOutputData(comune="", provincia="")
             if comune_string is None:
                 return default_output
