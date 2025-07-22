@@ -1,3 +1,4 @@
+from typing import NamedTuple, overload
 import pandas as pd
 from tqdm import tqdm
 
@@ -7,10 +8,10 @@ from ..types.structured_data import (
     ExtractedStructuredDataSeries,
     structuredDataSchema,
     OutputStructuredDataSchema,
-    outputStructuredDataSchema_itertuples
+    outputStructuredDataSchema_itertuples,
 )
 
-from .postgresql_engine import get_entries
+from .postgresql_engine import get_entries, get_entries_with_ids
 from .minio_engine import download_files
 from ..utils.cache import get_memory_for
 from ..utils.norm import variabilize_column_name
@@ -29,9 +30,7 @@ def parse_intervention_data(intervention_data__df: pd.DataFrame):
     return structuredDataSchema.validate(filtered_df)
 
 
-@get_memory_for("external").cache
-def _init_with_cache(size: int, seed: float, only_recent_entries=False):
-    intervention_data, findings = get_entries(size, seed, only_recent_entries)
+def parse_and_get_files(intervention_data: pd.DataFrame):
     intervention_data = parse_intervention_data(intervention_data)
     files = PDFPathSchema.validate(
         pd.concat(
@@ -51,7 +50,30 @@ def _init_with_cache(size: int, seed: float, only_recent_entries=False):
             ignore_index=True,
         )
     )
+    return intervention_data, files
+
+
+@get_memory_for("external").cache
+def _init_with_cache(size: int, seed: float, only_recent_entries=False):
+    intervention_data, findings = get_entries(size, seed, only_recent_entries)
+    intervention_data, files = parse_and_get_files(intervention_data)
     return intervention_data, findings, files
+
+
+@get_memory_for("external").cache
+def _init_with_cache_for_ids(ids: set[int]):
+    intervention_data, findings = get_entries_with_ids(ids)
+    intervention_data, files = parse_and_get_files(intervention_data)
+    return intervention_data, findings, files
+
+
+class SamplingParams(NamedTuple):
+    size: int
+    seed: float
+    only_recent_entries: bool
+
+
+type IdSet = set[int]
 
 
 class MagohDataset:
@@ -61,11 +83,17 @@ class MagohDataset:
     dataset if needed.
     """
 
-    def __init__(self, size: int, seed: float, only_recent_entries=False):
+    def __init__(self, params: IdSet | SamplingParams):
         """Fetch a maximum of `size` samples from the Magoh training database."""
-        self._intervention_data, self._findings, self._files = (
-            _init_with_cache(size, seed, only_recent_entries)
-        )
+        if isinstance(params, SamplingParams):
+            size, seed, only_recent_entries = params
+            self._intervention_data, self._findings, self._files = (
+                _init_with_cache(size, seed, only_recent_entries)
+            )
+        else:
+            self._intervention_data, self._findings, self._files = (
+                _init_with_cache_for_ids(params)
+            )
         # TODO: only store the normalized intervention_data
 
     @property
@@ -92,7 +120,9 @@ class MagohDataset:
         records = self._normalize_metadata_df(self._intervention_data)
         filtered = records[records["id"].isin(ids)]
         if len(filtered) != len(ids):
-            raise Exception("All the asked interventions does not have their answers stored in the dataset")
+            raise Exception(
+                "All the asked interventions does not have their answers stored in the dataset"
+            )
         return outputStructuredDataSchema_itertuples(filtered)
 
     @property

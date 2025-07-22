@@ -1,6 +1,12 @@
+"""Structured data loading from a remote dataset.
+
+This module manages the interaction with the postgresql database to load a
+pandas DataFrame. The sqlalchemy library with the psycopg2 engine are used.
+"""
+
 import pandas as pd
 from pathlib import Path
-from sqlalchemy import create_engine
+from sqlalchemy import Engine, create_engine
 
 from ..config.env import getenv_or_throw
 
@@ -20,11 +26,13 @@ def _create_engine_from_credentials():
     )
 
 
-__engine = _create_engine_from_credentials()
+__engine: Engine | None = None
 
 
-def get_engine():
+def _get_engine():
     global __engine
+    if __engine is None:
+        __engine = _create_engine_from_credentials()
     return __engine
 
 
@@ -43,10 +51,18 @@ __sampling_on_recents_request = _import_sql(
 __get_sample_findings_request = _import_sql(
     __module_dir / Path("sql/sample_findings.sql")
 )
+__get_intervention_with_ids = _import_sql(
+    __module_dir / Path("sql/select_ids.sql")
+)
+__get_findings_with_ids = _import_sql(
+    __module_dir / Path("./sql/select_findings_ids.sql")
+)
 
 
 def get_entries(max_number: int, seed: float, only_recent_entries=False):
-    findingds_request = __get_sample_findings_request.replace(
+    """Fetch from the remote database a set of samples of interventions."""
+    engine = _get_engine()
+    findings_request = __get_sample_findings_request.replace(
         "-- sampling-placeholder",
         __sampling_request
         if not only_recent_entries
@@ -56,15 +72,31 @@ def get_entries(max_number: int, seed: float, only_recent_entries=False):
     print("Fetching structured intervention data...")
     intervention_data = pd.read_sql(
         __seed_setting_request + "\n" + __sampling_request,
-        __engine,
+        engine,
         params=deterministic_params,
     )
     print("Fetching done!")
     print("Fetching saved findings for each intervention...")
     findings = pd.read_sql(
-        __seed_setting_request + "\n" + findingds_request,
-        __engine,
+        __seed_setting_request + "\n" + findings_request,
+        engine,
         params=deterministic_params,
     )
     print("Fetching done!")
     return intervention_data, findings
+
+
+def get_entries_with_ids(ids: set[int]):
+    """Fetch on the db the metadata of the intervention with the given ids."""
+    engine = _get_engine()
+    interventions = pd.read_sql(
+        __get_intervention_with_ids,
+        engine,
+        params={"intervention_ids": ",".join(str(id_) for id_ in ids)},
+    )
+    findings = pd.read_sql(
+        __get_findings_with_ids,
+        engine,
+        params={"intervention_ids": ",".join(str(id_) for id_ in ids)}
+    )
+    return interventions, findings
