@@ -21,6 +21,17 @@ place_time_field = entity_extractor.NamedEntityField(
         (10, "Convegno"),
     ],
 )
+
+small_patterns = entity_extractor.NamedEntityField(
+    name="small_wrong_patterns",
+    compatible_entities={"DATA", "LUOGO", "CODICE_POSTALE", "INDIRIZZO"},
+    thesaurus_values=lambda: [
+        (8, "gi"),
+        (5, "giugno"),
+        (6, "giugna"),
+        (12, "Archeo"),
+    ],
+)
 chunks = [
     "Fino al 3 giugno potete iscriveri gratuitamente al Convegno",
     "joe dupont has met JEAN Doe il 3 luglio",
@@ -93,3 +104,28 @@ def test_ne_selector_names():
         list[list[int]], output["identified_thesaurus"].tolist()
     )[0]
     assert set(identified_names) == {0, 1, 3}
+
+def test_ne_selector_prefix_filter():
+    """Test if the ne selector filter the small patterns likely to prefix other ones."""
+    input = entity_extractor.types.ChunksWithEntities.validate(
+        pd.DataFrame(
+            {
+                "id": [455, 455],
+                "filename": ["f1.pdf", "f2.pdf"],
+                "chunk_type": [["table"], ["table"]],
+                "chunk_page_position": [[1], [2]],
+                "chunk_index": [0, 1],
+                "chunk_embedding_content": chunks,
+                "chunk_content": chunks,
+                "named_entities": entities,
+            }
+        )
+    )
+    name_extractor = entity_extractor.NeSelector(to_extract=small_patterns,
+                                                 allowed_fuzzy_match_score=0.75)
+    output = name_extractor.transform(input)
+    identified_names = cast(
+        list[list[int]], output["identified_thesaurus"].tolist()
+    )[0]
+    assert set(identified_names) == {5, 6}
+
