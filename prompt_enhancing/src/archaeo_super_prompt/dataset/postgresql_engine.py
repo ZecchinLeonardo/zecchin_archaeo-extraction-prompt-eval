@@ -89,14 +89,15 @@ def get_entries(max_number: int, seed: float, only_recent_entries=False):
 def get_entries_with_ids(ids: set[int]):
     """Fetch on the db the metadata of the intervention with the given ids."""
     engine = _get_engine()
+    id_set_for_request = tuple(ids)
     interventions = pd.read_sql(
         __get_intervention_with_ids,
         engine,
-        params={"intervention_ids": ",".join(str(id_) for id_ in ids)},
+        params={"intervention_ids": id_set_for_request},
     )
     findings = pd.read_sql(
         __get_findings_with_ids,
         engine,
-        params={"intervention_ids": ",".join(str(id_) for id_ in ids)}
+        params={"intervention_ids": id_set_for_request}
     )
     return interventions, findings
