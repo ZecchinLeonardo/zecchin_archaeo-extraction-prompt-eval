@@ -20,7 +20,9 @@ from pandera.typing.pandas import Series
 import re
 
 from archaeo_super_prompt.dataset.load import MagohDataset
-from archaeo_super_prompt.modeling.struct_extract.types import BaseKnowledgeDataScheme
+from archaeo_super_prompt.modeling.struct_extract.types import (
+    BaseKnowledgeDataScheme,
+)
 from archaeo_super_prompt.types.intervention_id import InterventionId
 
 from ....types.per_intervention_feature import BasePerInterventionFeatureSchema
