@@ -11,6 +11,9 @@ import dspy
 
 from archaeo_super_prompt.dataset.load import MagohDataset
 from archaeo_super_prompt.types.intervention_id import InterventionId
+from archaeo_super_prompt.types.per_intervention_feature import (
+    BasePerInterventionFeatureSchema,
+)
 
 from . import types as extract_input_type
 from ..types.detailed_evaluator import DetailedEvaluatorMixin
@@ -21,12 +24,17 @@ class TypedDspyModule[DInput, DOutput](dspy.Module):
 
     def typed_forward(self, inpt: DInput) -> DOutput:
         """Carry out a type safe forward on the module."""
-        return cast(dspy.Prediction, self(**inpt)).toDict() # type: ignore
+        return cast(dspy.Prediction, self(**inpt)).toDict()  # type: ignore
 
 
-class FieldExtractor[DInput, DOutput, SuggestedOutputType, DFOutput](
+class FieldExtractor[
+    DSPyInput,
+    DSPyOutput,
+    KnowledgeDataType: extract_input_type.BaseKnowledgeDataScheme,
+    DFOutput: BasePerInterventionFeatureSchema,
+](
     DetailedEvaluatorMixin[
-        DataFrame[extract_input_type.InputForExtraction[SuggestedOutputType]],
+        DataFrame[extract_input_type.InputForExtraction[KnowledgeDataType]],
         MagohDataset,
     ],
     ABC,
@@ -36,7 +44,8 @@ class FieldExtractor[DInput, DOutput, SuggestedOutputType, DFOutput](
     Genericity:
     As Python does not support a lot of type checking features, the genericity
     constraints are explicited here:
-    - DInput is a subtype of TypedDict
+    - DInput is a subtype of TypedDict, whose keys bring semantics used by \
+the DSPy model as input in its forward method.
     - DOutput is a subtype of TypedDict
     - DFOutputType is a subtype of pandera.pandas.DataFrameModel
     """
@@ -44,8 +53,8 @@ class FieldExtractor[DInput, DOutput, SuggestedOutputType, DFOutput](
     def __init__(
         self,
         llm_model: dspy.LM,
-        model: TypedDspyModule[DInput, DOutput],
-        example: tuple[DInput, DOutput],
+        model: TypedDspyModule[DSPyInput, DSPyOutput],
+        example: tuple[DSPyInput, DSPyOutput],
     ) -> None:
         """Initialize the abstract class with the custom dspy module.
 
@@ -72,15 +81,46 @@ runtime the genericity and also to be able to log the model in mlflow
     @abstractmethod
     def _to_dspy_input(
         self,
-        x: extract_input_type.InputForExtractionRowSchema[SuggestedOutputType],
-    ) -> DInput:
+        x: extract_input_type.InputForExtractionRowSchema[KnowledgeDataType],
+    ) -> DSPyInput:
         """Convert the uniformized extraction input for one intervention into one dict input for the dspy model."""
-        pass
+        raise NotImplementedError
+
+    def _identity_output_set_transform_to_df(
+        self, y: dict[InterventionId, DSPyOutput]
+    ) -> pd.DataFrame:
+        """Method to directly transform the set of dspy output into a dataframe.
+
+        Use it if needed in the transform_dspy_output implementation. For a
+        type-safe usage, in your implementation, pass the output of this
+        method in a scheme validation function.
+        """
+        return pd.DataFrame(
+            [
+                {
+                    "id": intervention_id,
+                    **cast(dict, dspy_output),
+                }
+                for intervention_id, dspy_output in y.items()
+            ]
+        )
+
+    @abstractmethod
+    def _transform_dspy_output(
+        self, y: dict[InterventionId, DSPyOutput]
+    ) -> DataFrame[DFOutput]:
+        """Transform the map of outputs into an output DataFrame with the wanted schema.
+
+        If you want to directly use the attributes of the dspy dict output into
+        the dataframe, use the _identity_output_set_transform_to_df method and
+        validate this output from your DataFrameModel.
+        """
+        raise NotImplementedError
 
     @classmethod
     @abstractmethod
     def _compare_values(
-        cls, predicted: DOutput, expected: DOutput
+        cls, predicted: DSPyOutput, expected: DSPyOutput
     ) -> tuple[float, float]:
         """Compute a metric to compare the expected output with the predicted one.
 
@@ -88,14 +128,12 @@ runtime the genericity and also to be able to log the model in mlflow
             a score between 0 and 1
             a treshold score above which the comparison is considered as successful
         """
-        pass
+        raise NotImplementedError
 
     @override
     def fit(
         self,
-        X: DataFrame[
-            extract_input_type.InputForExtraction[SuggestedOutputType]
-        ],
+        X: DataFrame[extract_input_type.InputForExtraction[KnowledgeDataType]],
         y: MagohDataset,
     ):
         """Optimize the dspy model according to the given dataset."""
@@ -107,9 +145,7 @@ runtime the genericity and also to be able to log the model in mlflow
     @override
     def transform(
         self,
-        X: DataFrame[
-            extract_input_type.InputForExtraction[SuggestedOutputType]
-        ],
+        X: DataFrame[extract_input_type.InputForExtraction[KnowledgeDataType]],
     ) -> DataFrame[DFOutput]:
         """Generic transform operation."""
         inputs = {
@@ -117,31 +153,25 @@ runtime the genericity and also to be able to log the model in mlflow
             for row in extract_input_type.itertuples(X)
         }
         with dspy.settings.context(lm=self.__llm_model):
-            return cast(
-                DataFrame[DFOutput],
-                pd.DataFrame(
-                    [
-                        {
-                            "id": intervention_id,
-                            **cast(dict, self._model.typed_forward(inpt)),
-                        }
-                        for intervention_id, inpt in inputs.items()
-                    ]
-                ),
+            return self._transform_dspy_output(
+                {
+                    InterventionId(intervention_id): self._model.typed_forward(
+                        inpt
+                    )
+                    for intervention_id, inpt in inputs.items()
+                }
             )
 
     @classmethod
     @abstractmethod
     def _select_answers(
         cls, y: MagohDataset, ids: set[InterventionId]
-    ) -> dict[InterventionId, DOutput]:
-        pass
+    ) -> dict[InterventionId, DSPyOutput]:
+        raise NotImplementedError
 
     def _compute_devset(
         self,
-        X: DataFrame[
-            extract_input_type.InputForExtraction[SuggestedOutputType]
-        ],
+        X: DataFrame[extract_input_type.InputForExtraction[KnowledgeDataType]],
         y: MagohDataset,
     ):
         inputs = {
@@ -163,7 +193,8 @@ runtime the genericity and also to be able to log the model in mlflow
         cls, example: dspy.Example, prediction: dspy.Prediction, trace=None
     ) -> float | bool:
         result, passable_treshold = cls._compare_values(
-            cast(DOutput, prediction.toDict()), cast(DOutput, example.toDict())
+            cast(DSPyOutput, prediction.toDict()),
+            cast(DSPyOutput, example.toDict()),
         )
         if trace is None:
             return result
@@ -172,9 +203,7 @@ runtime the genericity and also to be able to log the model in mlflow
     @override
     def score(
         self,
-        X: DataFrame[
-            extract_input_type.InputForExtraction[SuggestedOutputType]
-        ],
+        X: DataFrame[extract_input_type.InputForExtraction[KnowledgeDataType]],
         y: MagohDataset,
         sample_weight=None,
     ):

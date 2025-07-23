@@ -7,6 +7,7 @@ import pydantic
 
 from archaeo_super_prompt.dataset.load import MagohDataset
 from archaeo_super_prompt.dataset.thesaurus import load_comune_with_provincie
+from archaeo_super_prompt.modeling.struct_extract.types import BaseKnowledgeDataScheme
 from archaeo_super_prompt.types.intervention_id import InterventionId
 
 from ....types.per_intervention_feature import BasePerInterventionFeatureSchema
@@ -16,7 +17,6 @@ from ..field_extractor import FieldExtractor, TypedDspyModule
 # -- DSPy part
 
 
-# TODO: describe the model in Italian for the dspy model
 class Comune(pydantic.BaseModel):
     """Questo elemento fornisce informazioni su un comune. È possibile trovare questo tipo di informazioni nel testo."""
 
@@ -83,12 +83,15 @@ class ComuneFeatSchema(BasePerInterventionFeatureSchema):
     comune_id: int
     provincia_id: int
 
+class SuggestedComuni(BaseKnowledgeDataScheme):
+    """Pre-detected comuni before the extraction (e.g. from a NER model)."""
+    suggested_comune_id: list[int]
 
 class ComuneExtractor(
     FieldExtractor[
         ComuneInputData,
         ComuneOutputData,
-        int,
+        SuggestedComuni,
         ComuneFeatSchema,
     ]
 ):
@@ -121,7 +124,7 @@ L'evento si è svolto a Lucca.""",
     @override
     def _to_dspy_input(self, x) -> ComuneInputData:
         possible_comuni = [
-            self._thesaurus[th_id] for th_id in x.suggested_extraction_outputs
+            self._thesaurus[th_id] for th_id in x.knowledge["suggested_comune_id"]
         ]
         return ComuneInputData(
             fragmenti_relazione=x.merged_chunks,
@@ -133,6 +136,14 @@ L'evento si è svolto a Lucca.""",
                 )
                 for c in possible_comuni
             ],
+        )
+
+    @override
+    def _transform_dspy_output(self, y):
+        return ComuneFeatSchema.validate(
+            self._identity_output_set_transform_to_df(y),
+            # TODO: add this after tests
+            # lazy=True
         )
 
     @override
