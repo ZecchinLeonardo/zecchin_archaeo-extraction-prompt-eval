@@ -15,7 +15,6 @@ from typing import Literal, TypedDict, cast, override
 import dspy
 import pandas as pd
 import pandera.pandas as pa
-import pydantic
 from pandera.typing.pandas import Series
 import re
 
@@ -25,48 +24,13 @@ from archaeo_super_prompt.modeling.struct_extract.types import (
 )
 from archaeo_super_prompt.types.intervention_id import InterventionId
 
-from ....types.per_intervention_feature import BasePerInterventionFeatureSchema
-from ..field_extractor import FieldExtractor, TypedDspyModule
+from .....types.per_intervention_feature import (
+    BasePerInterventionFeatureSchema,
+)
+from ...field_extractor import FieldExtractor, TypedDspyModule
+from .type_models import ITALIAN_MONTHS, Data, Precision, Precisione
 
 # -- DSPy part
-
-type Month = Literal[
-    "Gennaio",
-    "Febbraio",
-    "Marzo",
-    "Aprile",
-    "Maggio",
-    "Giugno",
-    "Luglio",
-    "Agosto",
-    "Settembre",
-    "Ottobre",
-    "Novembre",
-    "Dicembre",
-]
-
-MONTHS: list[Month] = [
-    "Gennaio",
-    "Febbraio",
-    "Marzo",
-    "Aprile",
-    "Maggio",
-    "Giugno",
-    "Luglio",
-    "Agosto",
-    "Settembre",
-    "Ottobre",
-    "Novembre",
-    "Dicembre",
-]
-
-
-class Data(pydantic.BaseModel):
-    """Un data. A volte, il giorno o il mese possono avere un valore artificiale quando la precisione non consente di prevedere questi campi."""
-
-    giorno: int
-    mese: Month
-    anno: int
 
 
 class StimareDataDellIntervento(dspy.Signature):
@@ -84,7 +48,7 @@ class StimareDataDellIntervento(dspy.Signature):
 
     data_minima_di_inizio: Data = dspy.OutputField()
     data_massima_di_inizio: Data = dspy.OutputField()
-    precisione: Literal["giorno", "mese", "anno"] = dspy.OutputField()
+    precisione: Precisione = dspy.OutputField()
 
 
 class DataInterventoInputData(TypedDict):
@@ -103,7 +67,7 @@ class DataInterventoOutputData(TypedDict):
     end_day: int
     end_month: int  # between 1 and 12
     end_year: int
-    precision: Literal["day", "month", "year"]
+    precision: Precision
 
 
 class EstimateInterventionDate(
@@ -131,9 +95,11 @@ class EstimateInterventionDate(
         DEFAULT_WRONG_DATE = Data(
             giorno=25, mese="Dicembre", anno=-1
         )  # The child was born
-        TO_ENGLISH_PRECISION: dict[
-            Literal["giorno", "mese", "anno"], Literal["day", "month", "year"]
-        ] = {"giorno": "day", "mese": "month", "anno": "year"}
+        TO_ENGLISH_PRECISION: dict[Precisione, Precision] = {
+            "giorno": "day",
+            "mese": "month",
+            "anno": "year",
+        }
 
         data_minima_di_inizio = cast(
             Data, result.get("data_minima_di_inizio", DEFAULT_WRONG_DATE)
@@ -148,10 +114,10 @@ class EstimateInterventionDate(
         return dspy.Prediction(
             **DataInterventoOutputData(
                 start_day=data_minima_di_inizio.giorno,
-                start_month=MONTHS.index(data_minima_di_inizio.mese),
+                start_month=ITALIAN_MONTHS.index(data_minima_di_inizio.mese),
                 start_year=data_minima_di_inizio.anno,
                 end_day=data_massima_di_inizio.giorno,
-                end_month=MONTHS.index(data_massima_di_inizio.mese),
+                end_month=ITALIAN_MONTHS.index(data_massima_di_inizio.mese),
                 end_year=data_massima_di_inizio.anno,
                 precision=TO_ENGLISH_PRECISION[precisione],
             )
@@ -218,7 +184,7 @@ Lo scavo è iniziato il 18 marzo 1985 ed è terminato il 20 marzo.""",
             fragmenti_relazione=x.merged_chunks,
             data_di_archiviazone=Data(
                 giorno=date_of_archiving.day,
-                mese=MONTHS[date_of_archiving.month],
+                mese=ITALIAN_MONTHS[date_of_archiving.month],
                 anno=date_of_archiving.year,
             ),
         )
@@ -305,7 +271,9 @@ Lo scavo è iniziato il 18 marzo 1985 ed è terminato il 20 marzo.""",
             # the window
             def compute_months(val: str):
                 found_months = [
-                    idx + 1 for idx, m in enumerate(MONTHS) if m.lower() in val
+                    idx + 1
+                    for idx, m in enumerate(ITALIAN_MONTHS)
+                    if m.lower() in val
                 ]
                 found_months = found_months
                 raise NotImplementedError
