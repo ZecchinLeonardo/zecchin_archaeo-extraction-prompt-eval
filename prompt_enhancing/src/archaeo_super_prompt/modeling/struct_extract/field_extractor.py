@@ -4,6 +4,7 @@ This transformer is a classifier which scorable and trainable.
 """
 
 from abc import ABC, abstractmethod
+from collections.abc import Iterator
 from typing import cast, override
 from pandera.typing.pandas import DataFrame
 import pandas as pd
@@ -30,11 +31,12 @@ class TypedDspyModule[DInput, DOutput](dspy.Module):
 class FieldExtractor[
     DSPyInput,
     DSPyOutput,
-    KnowledgeDataType: extract_input_type.BaseKnowledgeDataScheme,
+    InputDataFrameWithKnowledge: extract_input_type.InputForExtraction,
+    InputDataFrameWithKnowledgeRowSchema: extract_input_type.InputForExtractionRowSchema,
     DFOutput: BasePerInterventionFeatureSchema,
 ](
     DetailedEvaluatorMixin[
-        DataFrame[extract_input_type.InputForExtraction[KnowledgeDataType]],
+        DataFrame[InputDataFrameWithKnowledge],
         MagohDataset,
     ],
     ABC,
@@ -81,7 +83,7 @@ runtime the genericity and also to be able to log the model in mlflow
     @abstractmethod
     def _to_dspy_input(
         self,
-        x: extract_input_type.InputForExtractionRowSchema[KnowledgeDataType],
+        x: InputDataFrameWithKnowledgeRowSchema,
     ) -> DSPyInput:
         """Convert the uniformized extraction input for one intervention into one dict input for the dspy model."""
         raise NotImplementedError
@@ -133,7 +135,7 @@ runtime the genericity and also to be able to log the model in mlflow
     @override
     def fit(
         self,
-        X: DataFrame[extract_input_type.InputForExtraction[KnowledgeDataType]],
+        X: DataFrame[InputDataFrameWithKnowledge],
         y: MagohDataset,
     ):
         """Optimize the dspy model according to the given dataset."""
@@ -145,12 +147,14 @@ runtime the genericity and also to be able to log the model in mlflow
     @override
     def transform(
         self,
-        X: DataFrame[extract_input_type.InputForExtraction[KnowledgeDataType]],
+        X: DataFrame[InputDataFrameWithKnowledge],
     ) -> DataFrame[DFOutput]:
         """Generic transform operation."""
         inputs = {
             row.id: self._to_dspy_input(row)
-            for row in extract_input_type.itertuples(X)
+            for row in cast(
+                Iterator[InputDataFrameWithKnowledgeRowSchema], X.itertuples()
+            )
         }
         with dspy.settings.context(lm=self.__llm_model):
             return self._transform_dspy_output(
@@ -171,12 +175,12 @@ runtime the genericity and also to be able to log the model in mlflow
 
     def _compute_devset(
         self,
-        X: DataFrame[extract_input_type.InputForExtraction[KnowledgeDataType]],
+        X: DataFrame[InputDataFrameWithKnowledge],
         y: MagohDataset,
     ):
         inputs = {
-            InterventionId(cast(int, row.id)): self._to_dspy_input(row)
-            for row in extract_input_type.itertuples(X)
+            InterventionId(row.id): self._to_dspy_input(row)
+            for row in cast(Iterator[InputDataFrameWithKnowledgeRowSchema], X.itertuples())
         }
         answers = self._select_answers(y, set(inputs.keys()))
         return [
@@ -203,7 +207,7 @@ runtime the genericity and also to be able to log the model in mlflow
     @override
     def score(
         self,
-        X: DataFrame[extract_input_type.InputForExtraction[KnowledgeDataType]],
+        X: DataFrame[InputDataFrameWithKnowledge],
         y: MagohDataset,
         sample_weight=None,
     ):

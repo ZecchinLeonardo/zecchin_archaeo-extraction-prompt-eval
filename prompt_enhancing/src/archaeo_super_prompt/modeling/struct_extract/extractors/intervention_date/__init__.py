@@ -21,6 +21,8 @@ import re
 from archaeo_super_prompt.dataset.load import MagohDataset
 from archaeo_super_prompt.modeling.struct_extract.types import (
     BaseKnowledgeDataScheme,
+    InputForExtraction,
+    InputForExtractionRowSchema,
 )
 from archaeo_super_prompt.types.intervention_id import InterventionId
 
@@ -133,6 +135,14 @@ class ArchivingDateKnowledge(BaseKnowledgeDataScheme):
     data_protocollo: datetime.date
 
 
+class InputForInterventionDate(InputForExtraction):
+    knowledge: ArchivingDateKnowledge  # type: ignore
+
+
+class InputForInterventionDateRowSchema(InputForExtractionRowSchema):
+    knowledge: ArchivingDateKnowledge  # type: ignore
+
+
 class DateFeatSchema(BasePerInterventionFeatureSchema):
     """Extracted data about the intervention start date."""
 
@@ -147,7 +157,8 @@ class ComuneExtractor(
     FieldExtractor[
         DataInterventoInputData,
         DataInterventoOutputData,
-        ArchivingDateKnowledge,
+        InputForInterventionDate,
+        InputForInterventionDateRowSchema,
         DateFeatSchema,
     ]
 ):
