@@ -5,10 +5,16 @@ import pandas
 from pandera.typing.pandas import DataFrame
 from sklearn.base import BaseEstimator, ClassifierMixin, TransformerMixin
 
-from .types import ChunksWithEntities, ChunksWithThesaurus, NamedEntityField
-from . import model as ner_module
+from .types import (
+    ChunksWithEntities,
+    ChunksWithThesaurus,
+    CompleteEntity,
+    NamedEntityField,
+)
+from . import fuzzy_match
 
 # TODO: inherit it from a DetailedEvaluatorMixin when evaluation will be needed
+
 
 class NeSelector(ClassifierMixin, BaseEstimator, TransformerMixin):
     """A Transformer to select only chunks in which named thesaurus occur."""
@@ -17,7 +23,6 @@ class NeSelector(ClassifierMixin, BaseEstimator, TransformerMixin):
         self,
         to_extract: NamedEntityField,
         keep_chunks_without_identified_thesaurus=False,
-        allowed_fuzzy_match_score=0.75,
     ) -> None:
         """Initialize the Named Entity Selector from the data about the field.
 
@@ -33,7 +38,6 @@ which a thesaurus match is kept
         """
         super().__init__()
         self._to_extract = to_extract
-        self._allowed_fuzzy_match_score = allowed_fuzzy_match_score
         self._keep_chunks_without_identified_thesaurus = (
             keep_chunks_without_identified_thesaurus
         )
@@ -50,13 +54,21 @@ which a thesaurus match is kept
         _, compatible_entities, thesaurus = self._to_extract
         chunk_contents = X["chunk_content"].to_list()
         entities = X["named_entities"].to_list()
-        result = ner_module.extract_wanted_entities(
+        result = fuzzy_match.extract_wanted_entities(
             chunk_contents,
-            ner_module.filter_entities(entities, compatible_entities),
+            (
+                [
+                    entity
+                    for entity in cast(list[CompleteEntity], entity_list)
+                    if entity.entity in compatible_entities
+                ]
+                for entity_list in entities
+            ),
             thesaurus,
-            self._allowed_fuzzy_match_score,
         )
-        output = cast(pandas.DataFrame, X.copy().drop(columns="named_entities"))
+        output = cast(
+            pandas.DataFrame, X.copy().drop(columns="named_entities")
+        )
         output["identified_thesaurus"] = [
             list(r) if r is not None else None for r in result
         ]

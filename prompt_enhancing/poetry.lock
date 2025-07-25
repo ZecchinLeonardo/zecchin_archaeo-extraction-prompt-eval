@@ -1652,6 +1652,60 @@ test-full = ["adlfs", "aiohttp (!=4.0.0a0,!=4.0.0a1)", "cloudpickle", "dask", "d
 tqdm = ["tqdm"]
 
 [[package]]
+name = "fuzzysearch"
+version = "0.8.0"
+description = "fuzzysearch is useful for finding approximate subsequence matches"
+optional = false
+python-versions = "*"
+groups = ["main"]
+files = [
+    {file = "fuzzysearch-0.8.0-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:1299c628b07d5f2ca7acba5dc294d67020f722ab23267029762038a8a9cf5787"},
+    {file = "fuzzysearch-0.8.0-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:4cd6439ce44dea9efb0fd96084ca330159109cfcc9ec5f6f4ce0d7e0f46181e0"},
+    {file = "fuzzysearch-0.8.0-cp310-cp310-manylinux_2_5_i686.manylinux1_i686.manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:18e89d84f1481d64c645d337c548845be8b796488af0bb4d9cd544135aa7f146"},
+    {file = "fuzzysearch-0.8.0-cp310-cp310-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:2eaa32f8509fe59f88d8d0cecf09bf99716e8d31fb15517cebba8cf0f62fe796"},
+    {file = "fuzzysearch-0.8.0-cp310-cp310-musllinux_1_2_i686.whl", hash = "sha256:90607558085c075c90005a784263a15a48a461085093ba8d57012a23a3f863b6"},
+    {file = "fuzzysearch-0.8.0-cp310-cp310-musllinux_1_2_x86_64.whl", hash = "sha256:51afc619f8afcc74c8b11baa835378c6bfac301346c83ff0893d8686bd7770f6"},
+    {file = "fuzzysearch-0.8.0-cp310-cp310-win32.whl", hash = "sha256:0cb1652c8667951ec49122f34dfbdcb1d85687078d01f38d4e4d1b55727065e3"},
+    {file = "fuzzysearch-0.8.0-cp310-cp310-win_amd64.whl", hash = "sha256:1d714e49e1d9108fc3d9922872f300aa0c648648b9e64981a11c5fba8494d79a"},
+    {file = "fuzzysearch-0.8.0-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:8fcce0480d1ebcb27d6d5b104901b7f1d478ead28fab8b4e11a5ab2e8c55b41e"},
+    {file = "fuzzysearch-0.8.0-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:98f16a1698321f8103c5889c97595071cb0e8669ccddbf5c6ee953b3e52b7c76"},
+    {file = "fuzzysearch-0.8.0-cp311-cp311-manylinux_2_5_i686.manylinux1_i686.manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:af33b3dfe7347ac92f3a879681f0b91766461de7bd433153a4202120b0b35f74"},
+    {file = "fuzzysearch-0.8.0-cp311-cp311-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:f2ae1619a2e4369170e93d371834fb22c88a208368d29c6851cbc15b3f0e507b"},
+    {file = "fuzzysearch-0.8.0-cp311-cp311-musllinux_1_2_i686.whl", hash = "sha256:5e1d7e7ddf28cf6c6ac36946eaaa7e5d759dd2dfec0653ef9460d2d4ffbd1ad1"},
+    {file = "fuzzysearch-0.8.0-cp311-cp311-musllinux_1_2_x86_64.whl", hash = "sha256:f4c730bdf31675c05a0ce91bb2aa17e871bae1ba441747675f36ef34145bda64"},
+    {file = "fuzzysearch-0.8.0-cp311-cp311-win32.whl", hash = "sha256:c3a0551088b771fd5178128fccdf2ee4977060c7182a580d52375ef2c4724ea7"},
+    {file = "fuzzysearch-0.8.0-cp311-cp311-win_amd64.whl", hash = "sha256:e0ae9f564206a948f2f787800d04842b7b1b35db4d7b9e0a29997976f940ddb3"},
+    {file = "fuzzysearch-0.8.0-cp312-cp312-macosx_10_9_x86_64.whl", hash = "sha256:123bf07d08e3829ba6ebdea0a2dc013797f10ac0348fe94e8ad65789455716d1"},
+    {file = "fuzzysearch-0.8.0-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:45d666f1a1a112f36b8ee8520ee0733267a5573d2ce7e96f944aa2c64b2bde11"},
+    {file = "fuzzysearch-0.8.0-cp312-cp312-manylinux_2_5_i686.manylinux1_i686.manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:84f18de10852914d57212c2d197d978b44f93b051bc83cd10fba08c4aaadced0"},
+    {file = "fuzzysearch-0.8.0-cp312-cp312-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:fb41f628730ef56de01509cadc1c97fac98c73eaa4298099e76522a3f75532a2"},
+    {file = "fuzzysearch-0.8.0-cp312-cp312-musllinux_1_2_i686.whl", hash = "sha256:47b31621c8ebdb92b86d1398116f6bbbcde3863b08c62e69b4d519aa8927f5c5"},
+    {file = "fuzzysearch-0.8.0-cp312-cp312-musllinux_1_2_x86_64.whl", hash = "sha256:263130a42639d0b568a79a909a7ef114ac600c706d4a706b79fbac182dcec604"},
+    {file = "fuzzysearch-0.8.0-cp312-cp312-win32.whl", hash = "sha256:673b61bd19563f8d0998f00695bf14f4aefbef76715e20b1770ddc388b5ff989"},
+    {file = "fuzzysearch-0.8.0-cp312-cp312-win_amd64.whl", hash = "sha256:7ed3a11c26aff3cee6b926a17151b437219f6a819c2aec9f44b8bb3d464d77e0"},
+    {file = "fuzzysearch-0.8.0-cp38-cp38-macosx_10_9_x86_64.whl", hash = "sha256:47cdf5c04633a5fb970d23096b6e753018986e7eabc73ece8cf56fc8cfb0018c"},
+    {file = "fuzzysearch-0.8.0-cp38-cp38-macosx_11_0_arm64.whl", hash = "sha256:416298e92adfd83580e4ad13351c458dc79b273becbfa663b49e5828c74b7588"},
+    {file = "fuzzysearch-0.8.0-cp38-cp38-manylinux_2_5_i686.manylinux1_i686.manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:e86332cfec64530fb44c0b8bc6aced23451f37148dd7618008f3bae4537c4178"},
+    {file = "fuzzysearch-0.8.0-cp38-cp38-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:688376522404e5c532e6975bc8c6c9656815109d361d638239eb86405debaed4"},
+    {file = "fuzzysearch-0.8.0-cp38-cp38-musllinux_1_2_i686.whl", hash = "sha256:073cb01ce04e099d3ce494b352408034b2f7bf9d2948e6215feb1942d6685ca6"},
+    {file = "fuzzysearch-0.8.0-cp38-cp38-musllinux_1_2_x86_64.whl", hash = "sha256:4a7128a38bfdece45823ff271afbf279724a54c918f911def76cde3ec30b8b05"},
+    {file = "fuzzysearch-0.8.0-cp38-cp38-win32.whl", hash = "sha256:68351b130d72babf8add76e6ef9e4ad2169de274ad660d623114457365d8f318"},
+    {file = "fuzzysearch-0.8.0-cp38-cp38-win_amd64.whl", hash = "sha256:d1e9414f55442be2ed277ebede5418cabc41fd93e40e33eae972ca7f80a7ba0e"},
+    {file = "fuzzysearch-0.8.0-cp39-cp39-macosx_10_9_x86_64.whl", hash = "sha256:c3c65df2bfafc1eeeec85deb9bc35f256779ca5b9a9995616e101e976b7ec370"},
+    {file = "fuzzysearch-0.8.0-cp39-cp39-macosx_11_0_arm64.whl", hash = "sha256:5b93f178a3d544ca986247426d22563056602be5e2eb4bf8e50479b61a7400b6"},
+    {file = "fuzzysearch-0.8.0-cp39-cp39-manylinux_2_5_i686.manylinux1_i686.manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:1c5722bdfcfe8905828c71615d0ca4cffef5851fbfac17d12de2b69fb6ba920c"},
+    {file = "fuzzysearch-0.8.0-cp39-cp39-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:2d3a80fecc8c7461b1e06e1bd3f2aeeb4073e771c0fb807f2109c58245451a44"},
+    {file = "fuzzysearch-0.8.0-cp39-cp39-musllinux_1_2_i686.whl", hash = "sha256:cefec6ffcaa29e0f63bf235f2a91b19cb9315051d77e4e948585f017476186a4"},
+    {file = "fuzzysearch-0.8.0-cp39-cp39-musllinux_1_2_x86_64.whl", hash = "sha256:22c203490651e453bbbe4647230f45f0013b01b4197c1a75015405207b4f5a62"},
+    {file = "fuzzysearch-0.8.0-cp39-cp39-win32.whl", hash = "sha256:78d688355ba63b5b36aad87dc8df75dc1ecd5d14c1c4464a64390d501bf93dee"},
+    {file = "fuzzysearch-0.8.0-cp39-cp39-win_amd64.whl", hash = "sha256:75bbabfb4eaab3c317243e0c58af03caa8f117ff5a329bea99fafd3d3e57380b"},
+    {file = "fuzzysearch-0.8.0.tar.gz", hash = "sha256:27e13f7f1ec57c4c335752eb22c378254feb81eb67107ef5e3ab0fde0eba266e"},
+]
+
+[package.dependencies]
+attrs = ">=19.3"
+
+[[package]]
 name = "gitdb"
 version = "4.0.12"
 description = "Git Object Database"
@@ -7735,4 +7789,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.13,<3.14"
-content-hash = "4b4d21f60ae27c9b97c58f542ca652ec8c07aed43e19d025d82e16150cbc20f3"
+content-hash = "fe0855f0e2a370d5d11dd12665583b62857605a99a2cf5dccf80e85db4ce952d"

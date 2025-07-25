@@ -1,17 +1,10 @@
 """Core functions for inferring and filtering named entities in chunks."""
 
-from logging import warning
-from typing import cast
-from collections.abc import Generator
-import requests
-import functools as fnt
-import thefuzz.process as fzwz_p
-import thefuzz.fuzz as fzwz
-import re
 import itertools
-from tqdm import tqdm
+from typing import cast
 
-from archaeo_super_prompt.types.thesaurus import ThesaurusProvider
+import requests
+from tqdm import tqdm
 
 from .types import CompleteEntity, NerOutput, NerXXLEntities
 
@@ -126,99 +119,4 @@ def filter_entities(
     return [
         list(filter(lambda e: e.entity in allowed_entities, s))
         for s in complete_entity_sets
-    ]
-
-
-def extract_wanted_entities(
-    chunk_contents: list[str],
-    complete_entity_sets: list[list[CompleteEntity]],
-    wanted_entities: ThesaurusProvider,
-    distance_treshold: float,
-) -> list[set[int] | None]:
-    """Filter only the entities that fuzzymatch with wanted thesaurus.
-
-    Arguments:
-        chunk_contents: for each chunk, its text content
-        complete_entity_sets: a set for each text chunk of occurring entities \
-only in a group of entity types
-        wanted_entities: a set of wanted string values to be extracted in the \
-same group of entity types
-        distance_treshold: a float between 0 and 1
-
-    ReturnType:
-    A list for each text chunk of the matched thesaurus above the given distance treshold. If there is not any filtered entity for a given chunk, then None is returned for this chunk instead of the empty set.
-    The empty set means that the chunk contains entities that match the group
-    of entities of interests but these entities does not match the thesaurus.
-    """
-    if distance_treshold > 0.75:
-        warning("The selector might be very untolerant.")
-
-    def aux(chunk_content: str, complete_entity_set: list[CompleteEntity]):
-        """Auxiliary function for processing the entities of one chunk.
-
-        To be mapped into an iterable.
-
-        Arguments:
-            chunk_content: the whole chunk's text content
-            complete_entity_set: a not empty list of entities identified in \
-the chunk
-        """
-
-        def normalize_text(txt: str):
-            return txt.strip().lower()
-
-        def anti_small_words_filter(txt: str):
-            """Filter to not include wrong small words in partial ratio selection.
-
-            Expect the text to be already normalized. Augment the size of
-            spaces between words so the levenstein distance between a small
-            wanted word and expressions which can have this small word as
-            prefix is higher.
-            """
-            MAX_SIZE = 50
-
-            def repeat_until(word: str, n: int):
-                return (word * ((n + len(word) - 1) // len(word)))[:n]
-
-            result = re.sub(
-                r"\b(\w+)\b", lambda m: repeat_until(m.group(1), MAX_SIZE), txt
-            )
-            return result
-
-        def pre_tranform(txt: str):
-            r = anti_small_words_filter(normalize_text(txt))
-            return r
-
-        wanted = {k: pre_tranform(v) for k, v in wanted_entities()}
-
-        def extract(content: str):
-            return [
-                matched_thesaurus_id
-                for _, _, matched_thesaurus_id in cast(
-                    Generator[tuple[str, int, int]],
-                    fzwz_p.extractWithoutOrder(
-                        pre_tranform(content),
-                        wanted,
-                        scorer=fzwz.partial_ratio,
-                        score_cutoff=int(distance_treshold * 100),
-                    ),
-                )
-            ]
-
-        matches_from_content = extract(chunk_content)
-        matches_from_entities = fnt.reduce(
-            lambda thesaurus_set,
-            new_extracted_thesaurus_group: thesaurus_set.union(
-                new_extracted_thesaurus_group
-            ),
-            [extract(entity.word) for entity in complete_entity_set],
-            cast(set[int], set()),
-        )
-        return matches_from_entities.union(matches_from_content)
-
-    return [
-        aux(chunk_content, ces) if ces else None
-        for chunk_content, ces in zip(
-            chunk_contents, complete_entity_sets, strict=True
-        )
     ]
