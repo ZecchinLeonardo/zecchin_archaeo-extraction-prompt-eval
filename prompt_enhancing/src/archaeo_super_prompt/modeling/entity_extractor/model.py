@@ -8,11 +8,12 @@ import functools as fnt
 import thefuzz.process as fzwz_p
 import thefuzz.fuzz as fzwz
 import re
+import itertools
+from tqdm import tqdm
 
 from archaeo_super_prompt.types.thesaurus import ThesaurusProvider
 
 from .types import CompleteEntity, NerOutput, NerXXLEntities
-from ...utils import cache
 
 
 def _fetch_entities(chunks: list[str]) -> list[list[NerOutput]]:
@@ -31,24 +32,19 @@ def _fetch_entities(chunks: list[str]) -> list[list[NerOutput]]:
     return entities
 
 
-def cache_remote_ner_results(inpt, output=None):
-    """Dummy identity function for caching the fetched NER resuts."""
-    return cache.identity_function(inpt, output)
-
-
 def fetch_entities(chunks: list[str]):
     """Infer into the remote NER model to find named entities in each chunk."""
-    # TODO: correct these iter-list-iter spaghetti
-    return [
-        ner_result
-        for _, ner_result in cache.escape_expensive_run_when_cached(
-            cache_remote_ner_results,
-            cache.get_memory_for("interim"),
-            lambda txt: txt,
-            lambda cit: iter(_fetch_entities(list(cit))),
-            iter(chunks),
+    return list(
+        itertools.chain.from_iterable(
+            _fetch_entities(list(c))
+            for c in tqdm(
+                itertools.batched(chunks, 50),
+                desc="NER analysing",
+                unit="Fraction of total text chunks",
+                total=len(chunks) // 50 + int(len(chunks) % 50 != 0),
+            )
         )
-    ]
+    )
 
 
 def postrocess_entities(
@@ -204,7 +200,7 @@ the chunk
                         pre_tranform(content),
                         wanted,
                         scorer=fzwz.partial_ratio,
-                        score_cutoff=int(distance_treshold*100),
+                        score_cutoff=int(distance_treshold * 100),
                     ),
                 )
             ]

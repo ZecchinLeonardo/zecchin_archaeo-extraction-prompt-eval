@@ -1,17 +1,11 @@
 """Types for structured data extraction models."""
 
-from typing import NamedTuple, TypedDict
+from typing import NamedTuple
 from pandera.pandas import DataFrameModel
 from pandera.typing.pandas import Series
 
 
-class BaseKnowledgeDataScheme(TypedDict):
-    """Base dictionary representing the knowledge for biasing an extraction task."""
-
-    pass
-
-
-class InputForExtraction(DataFrameModel):
+class BaseInputForExtraction(DataFrameModel):
     """Uniformized base input struct for a FieldExtractor.
 
     The Knowledge Generic type must be a TypedDict. It represents contextual
@@ -21,12 +15,24 @@ class InputForExtraction(DataFrameModel):
 
     id: Series[int]
     merged_chunks: Series[str]
-    knowledge: BaseKnowledgeDataScheme
 
 
-class InputForExtractionRowSchema(NamedTuple):
+class BaseInputForExtractionRowSchema(NamedTuple):
     """Base Schema for typesafely iterating over rows."""
 
     id: int
     merged_chunks: str
-    knowledge: BaseKnowledgeDataScheme
+
+
+class InputForExtractionWithSuggestedThesauri(BaseInputForExtraction):
+    """For each intervention, a list of thesarus identifiers is given."""
+
+    identified_thesaurus: list[int]
+
+
+class InputForExtractionWithSuggestedThesauriRowSchema(
+    BaseInputForExtractionRowSchema
+):
+    """For each intervention, a list of thesarus identifiers is given."""
+
+    identified_thesaurus: list[int]

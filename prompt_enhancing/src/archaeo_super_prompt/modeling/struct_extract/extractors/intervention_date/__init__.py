@@ -20,9 +20,8 @@ import re
 
 from archaeo_super_prompt.dataset.load import MagohDataset
 from archaeo_super_prompt.modeling.struct_extract.types import (
-    BaseKnowledgeDataScheme,
-    InputForExtraction,
-    InputForExtractionRowSchema,
+    BaseInputForExtraction,
+    BaseInputForExtractionRowSchema,
 )
 from archaeo_super_prompt.types.intervention_id import InterventionId
 
@@ -128,19 +127,14 @@ class EstimateInterventionDate(
 
 # -- SKlearn part
 
-
-class ArchivingDateKnowledge(BaseKnowledgeDataScheme):
-    """The already inferred date of archiving."""
-
+class InputForInterventionDate(BaseInputForExtraction):
+    """When indentifying the date of an intervention, we refer first to the date of protocol.""" 
     data_protocollo: datetime.date
 
 
-class InputForInterventionDate(InputForExtraction):
-    knowledge: ArchivingDateKnowledge  # type: ignore
-
-
-class InputForInterventionDateRowSchema(InputForExtractionRowSchema):
-    knowledge: ArchivingDateKnowledge  # type: ignore
+class InputForInterventionDateRowSchema(BaseInputForExtractionRowSchema):
+    """When indentifying the date of an intervention, we refer first to the date of protocol.""" 
+    data_protocollo: datetime.date
 
 
 class DateFeatSchema(BasePerInterventionFeatureSchema):
@@ -190,7 +184,7 @@ Lo scavo è iniziato il 18 marzo 1985 ed è terminato il 20 marzo.""",
 
     @override
     def _to_dspy_input(self, x) -> DataInterventoInputData:
-        date_of_archiving = x.knowledge["data_protocollo"]
+        date_of_archiving = x.data_protocollo
         return DataInterventoInputData(
             fragmenti_relazione=x.merged_chunks,
             data_di_archiviazone=Data(
@@ -207,7 +201,7 @@ Lo scavo è iniziato il 18 marzo 1985 ed è terminato il 20 marzo.""",
                 tuple[InterventionId, ...],
                 tuple[DataInterventoOutputData, ...],
             ],
-            zip(*y.items()),
+            zip(*y),
         )
         return DateFeatSchema.validate(
             pd.DataFrame(

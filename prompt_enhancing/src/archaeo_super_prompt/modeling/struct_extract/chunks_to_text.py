@@ -5,7 +5,7 @@ from pandera.typing.pandas import DataFrame
 import pandas as pd
 from sklearn.pipeline import FunctionTransformer
 from ..entity_extractor.types import ChunksWithThesaurus
-from .types import InputForExtraction
+from .types import InputForExtractionWithSuggestedThesauri
 
 
 def ChunksToText():
@@ -33,8 +33,8 @@ def ChunksToText():
 
     def transform(
         X: DataFrame[ChunksWithThesaurus],
-    ) -> DataFrame[InputForExtraction[int]]:
-        return InputForExtraction[int].validate(
+    ) -> DataFrame[InputForExtractionWithSuggestedThesauri]:
+        return InputForExtractionWithSuggestedThesauri.validate(
             pd.DataFrame(
                 (
                     lambda filtered_chunks: {
@@ -42,7 +42,7 @@ def ChunksToText():
                         "merged_chunks": to_readable_context_string(
                             filtered_chunks
                         ),
-                        "suggested_extraction_outputs": list(unify_thesaurus(
+                        "identified_thesaurus": list(unify_thesaurus(
                             filtered_chunks
                         )),
                     }

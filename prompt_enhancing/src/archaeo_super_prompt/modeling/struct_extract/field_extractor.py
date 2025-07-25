@@ -9,6 +9,7 @@ from typing import cast, override
 from pandera.typing.pandas import DataFrame
 import pandas as pd
 import dspy
+import tqdm
 
 from archaeo_super_prompt.dataset.load import MagohDataset
 from archaeo_super_prompt.types.intervention_id import InterventionId
@@ -31,8 +32,8 @@ class TypedDspyModule[DInput, DOutput](dspy.Module):
 class FieldExtractor[
     DSPyInput,
     DSPyOutput,
-    InputDataFrameWithKnowledge: extract_input_type.InputForExtraction,
-    InputDataFrameWithKnowledgeRowSchema: extract_input_type.InputForExtractionRowSchema,
+    InputDataFrameWithKnowledge: extract_input_type.BaseInputForExtraction,
+    InputDataFrameWithKnowledgeRowSchema: extract_input_type.BaseInputForExtractionRowSchema,
     DFOutput: BasePerInterventionFeatureSchema,
 ](
     DetailedEvaluatorMixin[
@@ -80,6 +81,12 @@ runtime the genericity and also to be able to log the model in mlflow
             )
         self._example = example
 
+    @classmethod
+    def _itertuples(cls, X: DataFrame[InputDataFrameWithKnowledge]):
+        return cast(
+            Iterator[InputDataFrameWithKnowledgeRowSchema], X.itertuples()
+        )
+
     @abstractmethod
     def _to_dspy_input(
         self,
@@ -89,7 +96,7 @@ runtime the genericity and also to be able to log the model in mlflow
         raise NotImplementedError
 
     def _identity_output_set_transform_to_df(
-        self, y: dict[InterventionId, DSPyOutput]
+        self, y: Iterator[tuple[InterventionId, DSPyOutput]]
     ) -> pd.DataFrame:
         """Method to directly transform the set of dspy output into a dataframe.
 
@@ -103,13 +110,13 @@ runtime the genericity and also to be able to log the model in mlflow
                     "id": intervention_id,
                     **cast(dict, dspy_output),
                 }
-                for intervention_id, dspy_output in y.items()
+                for intervention_id, dspy_output in y
             ]
         )
 
     @abstractmethod
     def _transform_dspy_output(
-        self, y: dict[InterventionId, DSPyOutput]
+        self, y: Iterator[tuple[InterventionId, DSPyOutput]]
     ) -> DataFrame[DFOutput]:
         """Transform the map of outputs into an output DataFrame with the wanted schema.
 
@@ -150,20 +157,22 @@ runtime the genericity and also to be able to log the model in mlflow
         X: DataFrame[InputDataFrameWithKnowledge],
     ) -> DataFrame[DFOutput]:
         """Generic transform operation."""
-        inputs = {
-            row.id: self._to_dspy_input(row)
-            for row in cast(
-                Iterator[InputDataFrameWithKnowledgeRowSchema], X.itertuples()
-            )
-        }
+        inputs = (
+            (InterventionId(row.id), self._to_dspy_input(row))
+            for row in self._itertuples(X)
+        )
         with dspy.settings.context(lm=self.__llm_model):
             return self._transform_dspy_output(
-                {
-                    InterventionId(intervention_id): self._model.typed_forward(
-                        inpt
-                    )
-                    for intervention_id, inpt in inputs.items()
-                }
+                (
+                    intervention_id,
+                    self._model.typed_forward(inpt),
+                )
+                for intervention_id, inpt in tqdm.tqdm(
+                    inputs,
+                    total=len(X),
+                    desc="Field extraction",
+                    unit="processed intervention",
+                )
             )
 
     @classmethod
@@ -180,7 +189,7 @@ runtime the genericity and also to be able to log the model in mlflow
     ):
         inputs = {
             InterventionId(row.id): self._to_dspy_input(row)
-            for row in cast(Iterator[InputDataFrameWithKnowledgeRowSchema], X.itertuples())
+            for row in self._itertuples(X)
         }
         answers = self._select_answers(y, set(inputs.keys()))
         return [

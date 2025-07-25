@@ -30,6 +30,7 @@ def get_pipeline():
                     "vllm",
                     VLLM_Preprocessing(
                         model="granite3.2-vision:latest",
+                        incipit_only=True,
                         prompt="OCR this part of Italian document for markdown-based processing.",
                         embedding_model_hf_id="nomic-ai/nomic-embed-text-v1.5",
                     ),

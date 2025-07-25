@@ -8,9 +8,8 @@ import pydantic
 from archaeo_super_prompt.dataset.load import MagohDataset
 from archaeo_super_prompt.dataset.thesaurus import load_comune_with_provincie
 from archaeo_super_prompt.modeling.struct_extract.types import (
-    BaseKnowledgeDataScheme,
-    InputForExtraction,
-    InputForExtractionRowSchema,
+    InputForExtractionWithSuggestedThesauri,
+    InputForExtractionWithSuggestedThesauriRowSchema,
 )
 from archaeo_super_prompt.types.intervention_id import InterventionId
 
@@ -32,7 +31,7 @@ class Comune(pydantic.BaseModel):
 
 
 class IdentificaComune(dspy.Signature):
-    """Identifica il comune in cui si sono svolti i lavori archeologici descritti in questi frammenti di relazione. I comuni possibili sono indicati."""
+    """Identifica il unico comune in cui si sono svolti i lavori archeologici descritti in questi frammenti di relazione. I comuni possibili sono indicati."""
 
     fragmenti_relazione: str = dspy.InputField(
         desc="In ogni frammento sono indicati il nome del file pdf e la sua posizione nel file."
@@ -90,26 +89,12 @@ class ComuneFeatSchema(BasePerInterventionFeatureSchema):
     provincia_id: int
 
 
-class SuggestedComuni(BaseKnowledgeDataScheme):
-    """Pre-detected comuni before the extraction (e.g. from a NER model)."""
-
-    suggested_comune_id: list[int]
-
-
-class InputForComune(InputForExtraction):
-    knowledge: SuggestedComuni  # type: ignore
-
-
-class InputForComuneRowSchema(InputForExtractionRowSchema):
-    knowledge: SuggestedComuni  # type: ignore
-
-
 class ComuneExtractor(
     FieldExtractor[
         ComuneInputData,
         ComuneOutputData,
-        InputForComune,
-        InputForComuneRowSchema,
+        InputForExtractionWithSuggestedThesauri,
+        InputForExtractionWithSuggestedThesauriRowSchema,
         ComuneFeatSchema,
     ]
 ):
@@ -142,8 +127,7 @@ L'evento si è svolto a Lucca.""",
     @override
     def _to_dspy_input(self, x) -> ComuneInputData:
         possible_comuni = [
-            self._thesaurus[th_id]
-            for th_id in x.knowledge["suggested_comune_id"]
+            self._thesaurus[th_id] for th_id in x.identified_thesaurus
         ]
         return ComuneInputData(
             fragmenti_relazione=x.merged_chunks,
@@ -159,6 +143,8 @@ L'evento si è svolto a Lucca.""",
 
     @override
     def _transform_dspy_output(self, y):
+        # DEBUG
+        print("Here we are")
         return ComuneFeatSchema.validate(
             self._identity_output_set_transform_to_df(y),
             # TODO: add this after tests
