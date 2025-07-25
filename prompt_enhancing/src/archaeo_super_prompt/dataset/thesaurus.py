@@ -38,7 +38,7 @@ class ComuneProvincia(NamedTuple):
 
 def load_comune_with_provincie() -> dict[int, ComuneProvincia]:
     comune = pd.read_csv(_get_comune_file())
-    provincie = pd.read_csv(_get_provincie_file())
+    provincie = pd.read_csv(_get_provincie_file(), keep_default_na=False)
     return {
         cast(int, row.id): ComuneProvincia(
             cast(str, row.nome_x),

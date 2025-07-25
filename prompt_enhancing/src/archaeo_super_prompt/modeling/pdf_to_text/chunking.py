@@ -17,6 +17,7 @@ from pathlib import Path
 from .types import CorrectlyConvertedDocument
 from ...types.intervention_id import InterventionId
 from ...types.pdfchunks import PDFChunkDataset, PDFChunkDatasetSchema
+from ...utils.cache import get_memory_for
 
 EMBED_MODEL_ID = "nomic-ai/nomic-embed-text-v1.5"
 
@@ -43,7 +44,7 @@ def _set_doc_items(chunk: BaseChunk, doc_items: list[DocItem]):
     # not pure
     chunk.meta.doc_items = doc_items  # type: ignore
 
-
+@get_memory_for("interim").cache
 def get_chunks(
     chunker: HybridChunker,
     document: CorrectlyConvertedDocument
@@ -115,7 +116,7 @@ def _page_numbers_of_chunk(chunk: BaseChunk) -> set[int]:
 
 
 def _chunk_types_of_chunk(chunk: BaseChunk) -> set[str]:
-    return set([item.label for item in _get_doc_items(chunk)])
+    return set([str(item.label) for item in _get_doc_items(chunk)])
 
 
 def chunk_to_ds(

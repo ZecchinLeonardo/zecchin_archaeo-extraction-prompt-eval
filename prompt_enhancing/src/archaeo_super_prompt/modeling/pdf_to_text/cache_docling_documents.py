@@ -68,6 +68,7 @@ def cache_docling_doc_on_disk(
     return docling_document.save_as_yaml(file_path)
 
 
+@cache.get_memory_for('interim').cache
 def load_docling_doc_from_cache(
     file_path_in_cache: Path,
 ) -> CorrectlyConvertedDocument | None:
