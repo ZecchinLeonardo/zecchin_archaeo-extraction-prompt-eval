@@ -121,8 +121,7 @@ def test_ne_selector_prefix_filter():
             }
         )
     )
-    name_extractor = entity_extractor.NeSelector(to_extract=small_patterns,
-                                                 allowed_fuzzy_match_score=0.75)
+    name_extractor = entity_extractor.NeSelector(to_extract=small_patterns)
     output = name_extractor.transform(input)
     identified_names = cast(
         list[list[int]], output["identified_thesaurus"].tolist()

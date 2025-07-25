@@ -18,32 +18,42 @@ def extended_expression(content: str, match: Match) -> str:
     "I am working for the Soprintendenza Archeologica della Toscana", "Soprintendenza Archeologica della Toscana" -> "Soprintendenza Archeologica della Toscana"
     "I am working for the Soprintendenza Archeologica della Toscana", "intendenza Archeologica della Toscana" -> "Soprintendenza Archeologica della Toscana"
     """
+    content_length = len(content)
+
     extended_start = match.start
-    if content[extended_start] != " ":
+    if content[extended_start].isalnum():
         while extended_start > 0 and content[extended_start - 1].isalnum():
             extended_start -= 1
 
-    content_length = len(content)
     extended_end = match.end
-    if content[extended_end-1] != " ":
+    if content[extended_end - 1].isalnum():
         while (
-            extended_end < content_length  and content[extended_end].isalnum()
+            extended_end < content_length and content[extended_end].isalnum()
         ):
             extended_end += 1
+    print(content[extended_start:extended_end])
     return content[extended_start:extended_end]
 
 
-def filter_occurences(content: str, thesaurus_value: str, matches: list[Match]) -> list[Match]:
+def filter_occurences(
+    content: str, thesaurus_value: str, matches: list[Match]
+) -> list[Match]:
     """Keep the matches whose extended expression still match with the thesarusus value.
 
     For example, if "PART" is detected in the content "WE ARE IN AN APPARTEMENT", then this match will be excluded.
     """
+    print(thesaurus_value, ":")
+
+    def filter_empty_word_matches(matches: list[Match]):
+        return [m for m in matches if m.matched != ""]
+
     f = [
         match
-        for match in matches
+        for match in filter_empty_word_matches(matches)
         # the levenstein distance will augment if the extended_expression is
         # too much longer, so the ratio will decrease
-        if fuzz.ratio(extended_expression(content, match), thesaurus_value) > 90
+        if fuzz.ratio(extended_expression(content, match), thesaurus_value)
+        > 80
     ]
     return f
 
@@ -60,7 +70,9 @@ def extract_from_content(
         thesaurus_id
         for thesaurus_id, thesaurus_value in wanted_entities
         if filter_occurences(
-            content, thesaurus_value, find_near_matches(thesaurus_value, content, max_l_dist=1)
+            content,
+            thesaurus_value,
+            find_near_matches(thesaurus_value, content, max_l_dist=2),
         )
     )
 
