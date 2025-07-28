@@ -8,7 +8,7 @@ from os import getenv
 
 def get_devices():
     """Get the desired gpu identifiers from a env variable."""
-    device = getenv("MAGOH_GPU_DEVICES")
+    device = getenv("CUDA_VISIBLE_DEVICES")
     if device is None:
         raise EnvironmentError("Missing the env var MAGOH_GPU_DEVICES")
     if "," in device:

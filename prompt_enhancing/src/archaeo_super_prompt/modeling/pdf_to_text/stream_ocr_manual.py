@@ -146,6 +146,42 @@ document (default to 3 minutes)
     )
     return options
 
+def vllm_vlm_options(
+    model: str,
+    prompt: str,
+    response_format: Literal[
+        ResponseFormat.HTML, ResponseFormat.MARKDOWN
+    ] = ResponseFormat.MARKDOWN,
+    allowed_timeout: int = 60 * 3,
+):
+    """Return a configuration for vlm model set with a vllm server (so an OpenAI compatible API).
+
+    Arguments:
+        model: the string identifier of the vllm model in ollama
+        prompt: a string to prompt to the vllm to contextualize its OCR task
+        response_format: a supported response format for the vllm
+        allowed_timeout: the allowed time for processing one page in one \
+document (default to 3 minutes)
+    """
+    # The ApiVlmOptions() allows to interface with APIs supporting
+    # the multi-modal chat interface. Here follow a few example on how to configure those.
+    #
+    # One possibility is self-hosting model, e.g. via LM Studio, Ollama or others.
+    options = ApiVlmOptions(
+        url=AnyUrl(
+            "http://localhost:8005/v1/chat/completions"
+        ),  # an arbitraty port 
+        params=dict(
+            model=model,
+        ),
+        prompt=prompt,
+        # One page may take 3 minutes to be roughly well processed
+        timeout=allowed_timeout,
+        concurrency=_PARALLEL_PAGE_NB,
+        scale=1.0,
+        response_format=response_format,
+    )
+    return options
 
 def converter(ollama_vlm_options: ApiVlmOptions):
     """Return a Docling PDF converter object from an ollama vlm configuration."""
