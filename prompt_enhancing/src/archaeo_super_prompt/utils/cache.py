@@ -142,7 +142,7 @@ def manualy_cache_batch_processing[Input, Output](
     all the inputs of the batch whose the output is already saved in the cache.
     """
     results_from_current_cache_only = [
-        (inpt, (lambda: load_output_from_cache(p)) if p.exists() else None)
+        (inpt, (p if p.exists() else None))
         for inpt, p in map(
             lambda inpt: (inpt, path_for_input(inpt)), input_iter
         )
@@ -161,7 +161,7 @@ def manualy_cache_batch_processing[Input, Output](
     return (
         (
             inpt,
-            opt_output()
+            load_output_from_cache(opt_output)
             if opt_output is not None
             else put_in_cache_and_return(inpt, next(new_results)),
         )
