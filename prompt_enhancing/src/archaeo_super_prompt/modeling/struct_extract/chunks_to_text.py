@@ -6,6 +6,7 @@ import pandas as pd
 from sklearn.pipeline import FunctionTransformer
 from ..entity_extractor.types import ChunksWithThesaurus
 from .types import InputForExtractionWithSuggestedThesauri
+from tqdm import tqdm
 
 
 def ChunksToText():
@@ -42,12 +43,16 @@ def ChunksToText():
                         "merged_chunks": to_readable_context_string(
                             filtered_chunks
                         ),
-                        "identified_thesaurus": list(unify_thesaurus(
-                            filtered_chunks
-                        )),
+                        "identified_thesaurus": list(
+                            unify_thesaurus(filtered_chunks)
+                        ),
                     }
                 )(cast(DataFrame[ChunksWithThesaurus], filtered_chunks))
-                for id_, filtered_chunks in X.groupby("id")
+                for id_, filtered_chunks in tqdm(
+                    X.groupby("id"),
+                    "Gathering filtered chunks",
+                    unit="intervention",
+                )
             )
         )
 
