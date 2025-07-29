@@ -239,7 +239,7 @@ def process_documents(
     documentConvertor: DocumentConverter,
     timeout_per_page: int,
     incipit_only=True,
-) -> list[
+) -> Iterable[
     tuple[
         tuple[InterventionId, Path],
         CorrectlyConvertedDocument | list[CorrectlyConvertedDocument | None],
@@ -303,4 +303,4 @@ def process_documents(
             id_ = next(ids_iter)
             yield (id_, f), r
 
-    return list(convert_with_debug(ids, files))
+    return convert_with_debug(ids, files)

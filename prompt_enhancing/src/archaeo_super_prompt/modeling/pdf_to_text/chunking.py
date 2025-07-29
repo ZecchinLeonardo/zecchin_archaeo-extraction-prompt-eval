@@ -1,6 +1,6 @@
 """Scanned document splitting into text chunks with layout metadata."""
 
-from collections.abc import Sequence
+from collections.abc import Sequence, Iterable
 from typing import cast
 from docling_core.transforms.chunker.base import BaseChunk
 from docling_core.transforms.chunker.tokenizer.huggingface import (
@@ -120,7 +120,7 @@ def _chunk_types_of_chunk(chunk: BaseChunk) -> set[str]:
 
 
 def chunk_to_ds(
-    pairs: list[tuple[tuple[InterventionId, Path], list[BaseChunk]]],
+    pairs: Iterable[tuple[tuple[InterventionId, Path], list[BaseChunk]]],
     chunker: HybridChunker,
 ) -> PDFChunkDataset:
     """Gather the list of labeled chunks into a dataframe for all the document batch."""

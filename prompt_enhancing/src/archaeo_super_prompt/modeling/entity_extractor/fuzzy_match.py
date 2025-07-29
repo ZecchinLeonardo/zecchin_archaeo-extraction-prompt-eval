@@ -31,7 +31,6 @@ def extended_expression(content: str, match: Match) -> str:
             extended_end < content_length and content[extended_end].isalnum()
         ):
             extended_end += 1
-    print(content[extended_start:extended_end])
     return content[extended_start:extended_end]
 
 
@@ -42,7 +41,6 @@ def filter_occurences(
 
     For example, if "PART" is detected in the content "WE ARE IN AN APPARTEMENT", then this match will be excluded.
     """
-    print(thesaurus_value, ":")
 
     def filter_empty_word_matches(matches: list[Match]):
         return [m for m in matches if m.matched != ""]
@@ -86,7 +84,7 @@ def extract_wanted_entities(
     chunk_contents: Iterable[str],
     complete_entity_sets: Iterable[list[CompleteEntity]],
     thesauri_factory: ThesaurusProvider,
-) -> list[set[int] | None]:
+) -> Iterable[set[int] | None]:
     """Filter only the entities that fuzzymatch with wanted thesaurus.
 
     Arguments:
@@ -105,11 +103,11 @@ same group of entity types
         (thesaurus_id, normalize_text(thesaurus_value))
         for thesaurus_id, thesaurus_value in thesauri_factory()
     ]
-    return [
+    return (
         extract_from_content(
             normalize_text(content), entity_set, load_and_normalized_thesauri
         )
         for content, entity_set in zip(
             chunk_contents, complete_entity_sets, strict=True
         )
-    ]
+    )

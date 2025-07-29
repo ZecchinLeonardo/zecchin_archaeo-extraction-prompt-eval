@@ -4,6 +4,7 @@ from typing import cast
 import pandas
 from pandera.typing.pandas import DataFrame
 from sklearn.base import BaseEstimator, ClassifierMixin, TransformerMixin
+from tqdm import tqdm
 
 from .types import (
     ChunksWithEntities,
@@ -52,7 +53,7 @@ which a thesaurus match is kept
         non-empty filtered named-entities list.
         """
         _, compatible_entities, thesaurus = self._to_extract
-        chunk_contents = X["chunk_content"].to_list()
+        chunk_contents = (cast(str, r.chunk_content) for r in X.itertuples())
         entities = X["named_entities"].to_list()
         result = fuzzy_match.extract_wanted_entities(
             chunk_contents,
@@ -70,7 +71,10 @@ which a thesaurus match is kept
             pandas.DataFrame, X.copy().drop(columns="named_entities")
         )
         output["identified_thesaurus"] = [
-            list(r) if r is not None else None for r in result
+            list(r) if r is not None else None for r in tqdm(result,
+                                                             total=len(X),
+                                                             desc="Fuzzy-search thesaurus in text chunks.",
+                                                             unit="analyzed chunk")
         ]
         filtered_chunks = ChunksWithThesaurus.validate(
             output[output["identified_thesaurus"].notnull()]

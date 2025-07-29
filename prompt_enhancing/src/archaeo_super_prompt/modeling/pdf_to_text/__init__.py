@@ -9,6 +9,7 @@ from ...types.pdfpaths import (
 )
 
 from .chunking import get_chunker, get_chunks, chunk_to_ds
+from tqdm import tqdm
 from . import stream_ocr_manual as vllm_scan_mod
 
 
@@ -50,10 +51,7 @@ def VLLM_Preprocessing(
             allowed_timeout,
             incipit_only
         )
-        chunked_results = [
-            (f, get_chunks(chunker, r)) for f, r in conversion_results
-        ]
-
+        chunked_results = tqdm(((f, get_chunks(chunker, r)) for f, r in conversion_results), desc="Chunking read text", unit="chunked files", total=len(X))
         return chunk_to_ds(chunked_results, chunker)
 
     return FunctionTransformer(transform)
