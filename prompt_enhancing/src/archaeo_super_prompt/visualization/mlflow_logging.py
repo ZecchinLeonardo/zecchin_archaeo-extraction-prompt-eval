@@ -1,21 +1,19 @@
-"""Module with functions to manage the mlflow logging and artifact saving"""
+"""Module with functions to manage the mlflow logging and artifact saving."""
 
-from typing import cast
-from pandera.typing.pandas import DataFrame
-from feature_engine.pipeline import Pipeline
 import mlflow
 import mlflow.dspy as mldspy
+from pandera.typing.pandas import DataFrame
 
-from ..types.pdfchunks import PDFChunkDataset
-from ..types.pdfpaths import PDFPathDataset
-
-from ..modeling.struct_extract.main_transformer import MagohDataExtractor
+from archaeo_super_prompt.modeling.struct_extract.field_extractor import (
+    FieldExtractor,
+)
 
 from ..types.results import ResultSchema
 from .prettify_field_names import prettify_field_names
 
 
 def save_table_in_artifacts(score_results: DataFrame[ResultSchema]):
+    """Save the detailed results."""
     for fieldName, resultPerField in prettify_field_names(
         score_results
     ).groupby("field_name"):
@@ -28,6 +26,7 @@ def save_table_in_artifacts(score_results: DataFrame[ResultSchema]):
 def save_metric_scores(
     reduced_dspy_eval_score: float, score_results: DataFrame[ResultSchema]
 ):
+    """Save the per-field metric scores from the global results."""
     mlflow.log_metric("reduced_dspy_eval_score", reduced_dspy_eval_score)
     for fieldName, resultPerField in prettify_field_names(
         score_results
@@ -37,28 +36,13 @@ def save_metric_scores(
         )
 
 
-def save_models(pipeline: Pipeline, interventionExample: PDFPathDataset):
-    """Save the dspy model for an inspection. The signature is just
-    representative.
-    """
+def save_models(extractorModel: FieldExtractor):
+    """Save the dspy model for an inspection."""
     # TODO: log the sklearn pipeline model too
-    extractorModel = cast(
-        MagohDataExtractor, pipeline.named_steps["extractor"]
-    )
-    dspy_model_input_example = {
-        "document_ocr_scans__df": extractorModel.compute_model_input(
-            cast(
-                PDFChunkDataset,
-                Pipeline(pipeline.steps[:-1]).transform(interventionExample),
-            )
-        )[0][1]
-    }
-    dspy_model_input_example = dspy_model_input_example  # unused for now
-
     mldspy.log_model(
-        extractorModel.dspy_model,
-        "dspy_extraction_model",
-        # TODO: make the dspy model input (custom class) json serializable
-        # input_example=dspy_model_input_example,
+        extractorModel.prompt_model,
+        extractorModel.field_to_be_extracted(),
+        # WARN: no signature is inferrable for now in cause of the usage of
+        # pydantic models which is not supported by the current dspy
+        # integration
     )
-    pass

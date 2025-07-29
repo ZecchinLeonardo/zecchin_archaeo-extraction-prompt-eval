@@ -7,6 +7,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Iterator
 from logging import warning
 from typing import cast, override
+from pydantic import BaseModel
 from pandera.typing.pandas import DataFrame
 import pandas as pd
 import dspy
@@ -22,17 +23,27 @@ from . import types as extract_input_type
 from ..types.detailed_evaluator import DetailedEvaluatorMixin
 
 
-class TypedDspyModule[DInput, DOutput](dspy.Module):
-    """A dspy module but with a typed wrapper for the forward function."""
+class TypedDspyModule[DInput: BaseModel, DOutput: BaseModel](dspy.Module):
+    """A dspy module but with a typed wrapper for the forward function.
+
+    It extends an mlflow util class to fit its signature API for logging.
+    """
+
+    def __init__(self, output_cls: type[DOutput]):
+        """Init with the class of the output so an instance of it can be built."""
+        super().__init__()
+        self._output_cls = output_cls
 
     def typed_forward(self, inpt: DInput) -> DOutput:
         """Carry out a type safe forward on the module."""
-        return cast(dspy.Prediction, self(**inpt)).toDict()  # type: ignore
+        return self._output_cls(
+            **cast(dspy.Prediction, self(**inpt.model_dump())).toDict()
+        )
 
 
 class FieldExtractor[
-    DSPyInput,
-    DSPyOutput,
+    DSPyInput: BaseModel,
+    DSPyOutput: BaseModel,
     InputDataFrameWithKnowledge: extract_input_type.BaseInputForExtraction,
     InputDataFrameWithKnowledgeRowSchema: extract_input_type.BaseInputForExtractionRowSchema,
     DFOutput: BasePerInterventionFeatureSchema,
@@ -59,6 +70,7 @@ the DSPy model as input in its forward method.
         llm_model: dspy.LM,
         model: TypedDspyModule[DSPyInput, DSPyOutput],
         example: tuple[DSPyInput, DSPyOutput],
+        output_constructor: type[DSPyOutput],
         optimized: TypedDspyModule[DSPyInput, DSPyOutput] | None = None,
     ) -> None:
         """Initialize the abstract class with the custom dspy module.
@@ -78,14 +90,8 @@ runtime the genericity and also to be able to log the model in mlflow
         self._optimized_prompt_model: (
             TypedDspyModule[DSPyInput, DSPyOutput] | None
         ) = optimized
-        # check at initialization at runtime if DInput and DOutput are subtypes
-        # of dict
-        i, o = example
-        if not isinstance(i, dict) or not isinstance(o, dict):
-            raise Exception(
-                "Type Error: both DInput and DOutput be subtypes of dict"
-            )
         self._example = example
+        self._output_constructor = output_constructor
 
     @classmethod
     def _itertuples(cls, X: DataFrame[InputDataFrameWithKnowledge]):
@@ -114,7 +120,7 @@ runtime the genericity and also to be able to log the model in mlflow
             [
                 {
                     "id": intervention_id,
-                    **cast(dict, dspy_output),
+                    **dspy_output.model_dump(),
                 }
                 for intervention_id, dspy_output in y
             ]
@@ -165,6 +171,7 @@ runtime the genericity and also to be able to log the model in mlflow
                     trainset=self._compute_devset(X, y),
                     max_bootstrapped_demos=2,
                     max_labeled_demos=2,
+                    requires_permission_to_run=False,
                 ),
             )
         return self
@@ -213,31 +220,36 @@ runtime the genericity and also to be able to log the model in mlflow
         X: DataFrame[InputDataFrameWithKnowledge],
         y: MagohDataset,
     ):
-        good_ids = self.filter_training_dataset(y, set(InterventionId(id_) for id_ in X["id"].to_list()))
+        good_ids = self.filter_training_dataset(
+            y, set(InterventionId(id_) for id_ in X["id"].to_list())
+        )
         not_good_ids = X[~(X["id"].isin(good_ids))]["id"].to_list()
         if not_good_ids:
-            warning(f"These records will not be used in the devset, as their answers are incorrect: {not_good_ids}")
+            warning(
+                f"These records will not be used in the devset, as their answers are incorrect: {not_good_ids}"
+            )
         inputs = {
             InterventionId(row.id): self._to_dspy_input(row)
             for row in self._itertuples(X[X["id"].isin(good_ids)])
         }
         answers = self._select_answers(y, set(inputs.keys()))
         return [
-            dspy.Example(
-                **model_input,
-                # TODO: select only one field with an abstract
-                **answers[id_],
-            ).with_inputs(*cast(dict, model_input).keys())
+            (
+                lambda model_input: dspy.Example(
+                    **model_input,
+                    # TODO: select only one field with an abstract
+                    **answers[id_].model_dump(),
+                ).with_inputs(*model_input.keys())
+            )(model_input.model_dump())
             for id_, model_input in inputs.items()
         ]
 
-    @classmethod
     def _dspy_metric(
-        cls, example: dspy.Example, prediction: dspy.Prediction, trace=None
+        self, example: dspy.Example, prediction: dspy.Prediction, trace=None
     ) -> float | bool:
-        result, passable_treshold = cls._compare_values(
-            cast(DSPyOutput, prediction.toDict()),
-            cast(DSPyOutput, example.toDict()),
+        result, passable_treshold = self._compare_values(
+            self._output_constructor(**prediction.toDict()),
+            self._output_constructor(**example.toDict()),
         )
         if trace is None:
             return result
@@ -294,3 +306,29 @@ runtime the genericity and also to be able to log the model in mlflow
         )
         # TODO: return a df after the score
         return results
+
+    @property
+    def prompt_model(self):
+        """Return the dspy prompt model, optimized if the model has been fitted."""
+        if self._optimized_prompt_model is not None:
+            return self._optimized_prompt_model
+        return self._prompt_model
+
+    @staticmethod
+    @abstractmethod
+    def field_to_be_extracted() -> str:
+        """A human label/description of the field related to the Extractor."""
+        raise NotImplementedError
+
+    @property
+    def signature_example(self):
+        """Return an example of input/output dict pair for the dspy model.
+
+        This property is usefull for a logging by mlflow.
+        """
+        return self._example
+
+    @property
+    def lm(self):
+        """Return the llm model."""
+        return self.__llm_model

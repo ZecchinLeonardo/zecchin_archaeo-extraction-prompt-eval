@@ -58,7 +58,7 @@ def get_pipeline():
                         )
                     ),
                 ),
-                ("merge",  ChunksToText()),
+                ("merge", ChunksToText()),
                 ("extract-comune", ComuneExtractor(llm_model))
             ],
         )

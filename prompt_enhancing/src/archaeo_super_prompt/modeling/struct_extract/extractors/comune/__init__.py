@@ -1,6 +1,6 @@
 """Comune LLM extractor."""
 
-from typing import TypedDict, override
+from typing import override
 import dspy
 import re
 import pydantic
@@ -43,7 +43,7 @@ class IdentificaComune(dspy.Signature):
     provincia: str = dspy.OutputField(desc="Il nome completo della provincia")
 
 
-class ComuneInputData(TypedDict):
+class ComuneInputData(pydantic.BaseModel):
     """Chunks of reports of an archaeological intervention with supposed information about the comune where the operations took place.
 
     Identified likely comuni with their province are also provided to help in the extraction.
@@ -53,7 +53,7 @@ class ComuneInputData(TypedDict):
     possibili_comuni: list[Comune]
 
 
-class ComuneOutputData(TypedDict):
+class ComuneOutputData(pydantic.BaseModel):
     """A predicted comune where the intervention took place, with its provincia."""
 
     comune: str
@@ -63,9 +63,9 @@ class ComuneOutputData(TypedDict):
 class FindComune(TypedDspyModule[ComuneInputData, ComuneOutputData]):
     """DSPy model for the extraction of the comune."""
 
-    def __init__(self, callbacks=None):
+    def __init__(self):
         """Initialize only a chain of thought."""
-        super().__init__(callbacks)
+        super().__init__(ComuneOutputData)
         self._estrattore_di_comune = dspy.ChainOfThought(IdentificaComune)
 
     def forward(
@@ -122,6 +122,7 @@ L'evento si è svolto a Lucca.""",
             llm_model,
             FindComune(),
             example,
+            ComuneOutputData,
         )
 
     @override
@@ -155,10 +156,8 @@ L'evento si è svolto a Lucca.""",
     @classmethod
     def _compare_values(cls, predicted, expected):
         TRESHOLD = 0.95
-        return 0.7 * int(
-            predicted["comune"] == expected["comune"]
-        ) + 0.3 * int(
-            predicted["provincia"] == expected["provincia"]
+        return 0.7 * int(predicted.comune == expected.comune) + 0.3 * int(
+            predicted.provincia == expected.provincia
         ), TRESHOLD
 
     @override
@@ -166,7 +165,9 @@ L'evento si è svolto a Lucca.""",
     def filter_training_dataset(
         cls, y: MagohDataset, ids: set[InterventionId]
     ) -> set[InterventionId]:
-        return y.filter_good_records_for_training(ids, lambda df: df["comune"].notnull())
+        return y.filter_good_records_for_training(
+            ids, lambda df: df["university__Comune"].notnull()
+        )
 
     @override
     @classmethod
@@ -188,3 +189,8 @@ L'evento si è svolto a Lucca.""",
             InterventionId(t.id): to_comune_data(t.university__Comune)
             for t in y.get_answers(ids)
         }
+
+    @override
+    @staticmethod
+    def field_to_be_extracted():
+        return "comune"
