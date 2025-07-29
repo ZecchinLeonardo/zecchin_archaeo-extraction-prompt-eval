@@ -5,6 +5,7 @@ This transformer is a classifier which scorable and trainable.
 
 from abc import ABC, abstractmethod
 from collections.abc import Iterator
+from logging import warning
 from typing import cast, override
 from pandera.typing.pandas import DataFrame
 import pandas as pd
@@ -58,6 +59,7 @@ the DSPy model as input in its forward method.
         llm_model: dspy.LM,
         model: TypedDspyModule[DSPyInput, DSPyOutput],
         example: tuple[DSPyInput, DSPyOutput],
+        optimized: TypedDspyModule[DSPyInput, DSPyOutput] | None = None,
     ) -> None:
         """Initialize the abstract class with the custom dspy module.
 
@@ -68,10 +70,14 @@ inference
             df_schemas: given for type checking
             example: a dspy input-output pair enabling to type check at \
 runtime the genericity and also to be able to log the model in mlflow
+            optimized: the already trained prompt model, if existing
         """
         super().__init__()
         self.__llm_model = llm_model
-        self._model = model
+        self._prompt_model = model
+        self._optimized_prompt_model: (
+            TypedDspyModule[DSPyInput, DSPyOutput] | None
+        ) = optimized
         # check at initialization at runtime if DInput and DOutput are subtypes
         # of dict
         i, o = example
@@ -146,9 +152,21 @@ runtime the genericity and also to be able to log the model in mlflow
         y: MagohDataset,
     ):
         """Optimize the dspy model according to the given dataset."""
-        # TODO:
-        X = X  # unused
-        y = y  # unused
+        if self._optimized_prompt_model is not None:
+            return self
+        with dspy.settings.context(lm=self.__llm_model):
+            tp = dspy.MIPROv2(
+                metric=self._dspy_metric, auto="medium", num_threads=24
+            )
+            self._optimized_prompt_model = cast(
+                TypedDspyModule[DSPyInput, DSPyOutput],
+                tp.compile(
+                    self._prompt_model,
+                    trainset=self._compute_devset(X, y),
+                    max_bootstrapped_demos=2,
+                    max_labeled_demos=2,
+                ),
+            )
         return self
 
     @override
@@ -165,7 +183,7 @@ runtime the genericity and also to be able to log the model in mlflow
             return self._transform_dspy_output(
                 (
                     intervention_id,
-                    self._model.typed_forward(inpt),
+                    self._prompt_model.typed_forward(inpt),
                 )
                 for intervention_id, inpt in tqdm.tqdm(
                     inputs,
@@ -174,6 +192,14 @@ runtime the genericity and also to be able to log the model in mlflow
                     unit="processed intervention",
                 )
             )
+
+    @classmethod
+    @abstractmethod
+    def filter_training_dataset(
+        cls, y: MagohDataset, ids: set[InterventionId]
+    ) -> set[InterventionId]:
+        """Among the given set of intervention records, select only those with suitable answers for a training or an evaluation."""
+        raise NotImplementedError
 
     @classmethod
     @abstractmethod
@@ -187,9 +213,13 @@ runtime the genericity and also to be able to log the model in mlflow
         X: DataFrame[InputDataFrameWithKnowledge],
         y: MagohDataset,
     ):
+        good_ids = self.filter_training_dataset(y, set(InterventionId(id_) for id_ in X["id"].to_list()))
+        not_good_ids = X[~(X["id"].isin(good_ids))]["id"].to_list()
+        if not_good_ids:
+            warning(f"These records will not be used in the devset, as their answers are incorrect: {not_good_ids}")
         inputs = {
             InterventionId(row.id): self._to_dspy_input(row)
-            for row in self._itertuples(X)
+            for row in self._itertuples(X[X["id"].isin(good_ids)])
         }
         answers = self._select_answers(y, set(inputs.keys()))
         return [
@@ -243,7 +273,7 @@ runtime the genericity and also to be able to log the model in mlflow
                 display_progress=True,
                 display_table=5,
             )
-            score = cast(float, evaluator(self._model))
+            score = cast(float, evaluator(self._prompt_model))
         return score
 
     @override
@@ -260,7 +290,7 @@ runtime the genericity and also to be able to log the model in mlflow
         )
         results = cast(
             tuple[float, list[tuple[dspy.Example, dspy.Prediction, float]]],
-            evaluator(self._model),
+            evaluator(self._prompt_model),
         )
         # TODO: return a df after the score
         return results

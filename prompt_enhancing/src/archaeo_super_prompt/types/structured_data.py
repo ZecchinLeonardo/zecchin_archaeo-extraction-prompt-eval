@@ -8,7 +8,7 @@ import pandas as pd
 
 
 def _negativeFloatColumn():
-    return pa.Column(float, pa.Check.lt(0.000001), nullable=True)
+    return pa.Column(pd.Float64Dtype, pa.Check.lt(0.000001), nullable=True)
 
 
 structuredDataSchema = pa.DataFrameSchema(

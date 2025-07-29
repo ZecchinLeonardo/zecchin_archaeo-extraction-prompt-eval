@@ -163,6 +163,13 @@ L'evento si è svolto a Lucca.""",
 
     @override
     @classmethod
+    def filter_training_dataset(
+        cls, y: MagohDataset, ids: set[InterventionId]
+    ) -> set[InterventionId]:
+        return y.filter_good_records_for_training(ids, lambda df: df["comune"].notnull())
+
+    @override
+    @classmethod
     def _select_answers(
         cls, y: MagohDataset, ids: set[InterventionId]
     ) -> dict[InterventionId, ComuneOutputData]:

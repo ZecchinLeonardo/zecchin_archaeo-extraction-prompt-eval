@@ -1,5 +1,7 @@
-from typing import NamedTuple, overload
+from collections.abc import Callable
+from typing import NamedTuple
 import pandas as pd
+from pandera.typing.pandas import DataFrame
 from tqdm import tqdm
 
 from ..types.intervention_id import InterventionId
@@ -24,6 +26,8 @@ def parse_intervention_data(intervention_data__df: pd.DataFrame):
         {
             "university.Numero di saggi": "UInt32",
             "university.Geologico": "boolean",
+            "university.Profondità falda": "Float64",
+            "university.Profondità massima": "Float64"
         }
     )
 
@@ -87,14 +91,16 @@ class MagohDataset:
         """Fetch a maximum of `size` samples from the Magoh training database."""
         if isinstance(params, SamplingParams):
             size, seed, only_recent_entries = params
-            self._intervention_data, self._findings, self._files = (
-                _init_with_cache(size, seed, only_recent_entries)
+            intervention_data, self._findings, self._files = _init_with_cache(
+                size, seed, only_recent_entries
             )
         else:
-            self._intervention_data, self._findings, self._files = (
+            intervention_data, self._findings, self._files = (
                 _init_with_cache_for_ids(params)
             )
-        # TODO: only store the normalized intervention_data
+        self._intervention_data = self._normalize_metadata_df(
+            intervention_data
+        )
 
     @property
     def intervention_data(self):
@@ -109,15 +115,31 @@ class MagohDataset:
         )
 
     def get_answer(self, id_: InterventionId) -> ExtractedStructuredDataSeries:
-        records = self._normalize_metadata_df(self._intervention_data)
+        records = self._intervention_data
         record = records[records["id"] == id_]
         if len(record) == 0:
             raise Exception(f"Unable to get record with id {id_}")
         return record.iloc[0].to_dict()
 
+    def filter_good_records_for_training(
+        self,
+        ids: set[InterventionId],
+        condition: Callable[
+            [DataFrame[OutputStructuredDataSchema]], pd.Series # of bool
+        ],
+    ) -> set[InterventionId]:
+        """Return only the ids for which the intervention records match a given condition."""
+        only_ids = self._intervention_data[
+            self._intervention_data["id"].isin(ids)
+        ]
+        return set(
+            InterventionId(id_)
+            for id_ in only_ids[condition(only_ids)]["id"].to_list()
+        )
+
     def get_answers(self, ids: set[InterventionId]):
         """Return the answers for each of the asked interventions."""
-        records = self._normalize_metadata_df(self._intervention_data)
+        records = self._intervention_data
         filtered = records[records["id"].isin(ids)]
         if len(filtered) != len(ids):
             raise Exception(
