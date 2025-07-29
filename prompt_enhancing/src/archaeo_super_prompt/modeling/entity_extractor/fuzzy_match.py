@@ -7,6 +7,8 @@ from thefuzz import fuzz
 
 from .types import CompleteEntity, ThesaurusProvider
 
+from ...utils import cache
+
 
 def extended_expression(content: str, match: Match) -> str:
     """Return the extended expression around a given match.
@@ -56,6 +58,7 @@ def filter_occurences(
     return f
 
 
+@cache.get_memory_for("interim").cache
 def extract_from_content(
     content: str,
     entity_set: list[CompleteEntity],
