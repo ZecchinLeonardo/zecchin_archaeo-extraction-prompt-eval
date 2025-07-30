@@ -1,7 +1,7 @@
 import dspy
 from ..config.env import getenv_or_throw
 
-ollama_localhost_port = getenv_or_throw("LOCAL_LLM_PORT")
+ollama_localhost_port = 8007 # TODO: change that
 
 # TOOD: set this as a model parametre
 embedder = dspy.Embedder(

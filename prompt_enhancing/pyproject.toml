@@ -27,6 +27,7 @@ dependencies = [
     "python-levenshtein (>=0.27.1,<0.28.0)",
     "thefuzz (>=0.22.1,<0.23.0)",
     "fuzzysearch (>=0.8.0,<0.9.0)",
+    "mkdocs-material (>=9.6.16,<10.0.0)",
 ]
 
 [project.scripts]
@@ -47,9 +48,8 @@ tqdm-stubs = "^0.2.1"
 pandas-stubs = ">=2.2.3.250527,<3.0.0.0"
 ruff = "^0.12.3"
 pytest = "^8.4.1"
-mkdocs = "^1.6.1"
-mkdocstrings = {extras = ["python"], version = "^0.30.0"}
 mkdocs-material = "^9.6.16"
+mkapi = "^4.4.5"
 
 
 [[tool.poetry.source]]

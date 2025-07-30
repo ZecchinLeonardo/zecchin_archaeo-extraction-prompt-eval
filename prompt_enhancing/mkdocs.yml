@@ -1,24 +1,25 @@
 site_name: Magoh Extract Exps Docs
+site_url: https://localhost:8000/docs
 
 theme:
-  name: "material"
-
-plugins:
-  - mkdocstrings:
-      handlers:
-        python:
-          options:
-            show_root_full_path: true
-            show_root_heading: true
+  name: material
+  highlightjs: true
+  hljs_language:
+    - python
+  features:
+    - navigation.indexes
+    - navigation.expand
+    - navigation.indexes
+    - navigation.sections
+    - navigation.tabs
 
 nav:
-- Magoh Extract Exps Docs: index.md
-- tutorials.md
-- How-To Guides: how-to-guides.md
-- Reference:
-  - Overview: reference.md
-  - Dataset loading:
-      - refs/dataset.md 
-      - refs/thesauri.md
+  - Magoh Extract Exps Docs: index.md
+  - tutorials.md
+  - How-To Guides: how-to-guides.md
+  - Reference: $api/archaeo_super_prompt.***
+  - explanation.md
 
-- explanation.md
+plugins:
+  - mkapi:
+      config: config.py
