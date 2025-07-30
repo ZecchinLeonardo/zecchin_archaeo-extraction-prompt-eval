@@ -150,7 +150,7 @@ def _worst_metric_value(trace=None) -> bool | float:
     return False
 
 
-def _worst_metric_values(trace=None):
+def _worst_metric_values(trace=None) -> dict[str, float] | dict[str, bool]:
     worst_val = _worst_metric_value(trace)
     metrics: dict[str, dict[str, float]] | dict[str, dict[str, bool]] = {
         "university": {

@@ -11,7 +11,7 @@ def _get_reasonable_page_number(chunkDataset: PDFChunkPerInterventionDataset):
     MAX_SELECTABLE_PAGE_NUMBER = 3
     total_page_number = max(
         fnt.reduce(
-            lambda flat, lst: flat + lst,
+            lambda flat, lst: [*flat, *lst],
             cast(
                 list[list[int]],
                 chunkDataset.data["chunk_page_position"].to_list(),
