@@ -180,27 +180,29 @@ def test_main_extractor_spec():
     def thesauri():
         return [(890, "Lungarno Pacinotti")]
 
-    result = fuzzy_match.extract_wanted_entities(
-        iter(
-            [
-                SAMPLE_TEXT,
-                SAMPLE_TEXT,
-            ]
-        ),
-        iter(
-            [
+    result = list(
+        fuzzy_match.extract_wanted_entities(
+            iter(
                 [
-                    CompleteEntity(
-                        entity="LUOGO",
-                        word="Lungarno Pacinotti",
-                        start=111,
-                        end=129,
-                    )
-                ],
-                [],
-            ]
-        ),
-        thesauri,
+                    SAMPLE_TEXT,
+                    SAMPLE_TEXT,
+                ]
+            ),
+            iter(
+                [
+                    [
+                        CompleteEntity(
+                            entity="LUOGO",
+                            word="Lungarno Pacinotti",
+                            start=111,
+                            end=129,
+                        )
+                    ],
+                    [],
+                ]
+            ),
+            thesauri,
+        )
     )
     assert len(result) == 2
     assert result[0] is not None
@@ -253,9 +255,11 @@ def test_main_extractor():
             ],
         ]
     )
-    results = fuzzy_match.extract_wanted_entities(
-        chunks, identified_entities_for_chunks, wanted_thesauri
+    results = list(
+        fuzzy_match.extract_wanted_entities(
+            chunks, identified_entities_for_chunks, wanted_thesauri
+        )
     )
-    assert(results[0] == {0, 1, 2, 3, 4})
-    assert(results[1] is None)
-    assert(results[2] == set())
+    assert results[0] == {0, 1, 2, 3, 4}
+    assert results[1] is None
+    assert results[2] == set()
