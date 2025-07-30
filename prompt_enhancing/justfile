@@ -32,9 +32,10 @@ run-notebooks:
 run-lab:
   jupyter lab notebooks/
 
-[group("main")]
-run_main EXP_NAME=DEFAULT_EXP_NAME INPUT_DIR=DEFAULT_INPUT_DIR:
-  poetry run main --experiment-name {{EXP_NAME}} --report-dir {{INPUT_DIR}}
+# suppose the dev deps has been installed
+[group("dev")]
+dev-docs:
+  poetry run mkdocs serve
 
 [group("monitor")]
 try_pipeline:
