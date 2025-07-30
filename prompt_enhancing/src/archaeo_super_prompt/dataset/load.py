@@ -83,6 +83,7 @@ class SamplingParams(NamedTuple):
     only_recent_entries: bool
 
 
+"""A set of interventions identified by their schedaid."""
 type IdSet = set[int]
 
 

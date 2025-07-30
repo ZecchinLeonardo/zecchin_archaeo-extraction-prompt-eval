@@ -4,7 +4,12 @@ theme:
   name: "material"
 
 plugins:
-- mkdocstrings
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            show_root_full_path: true
+            show_root_heading: true
 
 nav:
 - Magoh Extract Exps Docs: index.md
@@ -12,5 +17,8 @@ nav:
 - How-To Guides: how-to-guides.md
 - Reference:
   - Overview: reference.md
-  - Dataset loading: refs/dataset.md 
+  - Dataset loading:
+      - refs/dataset.md 
+      - refs/thesauri.md
+
 - explanation.md
