@@ -9,7 +9,7 @@ from ..dataset.thesaurus import load_comune
 from .entity_extractor import NamedEntityField, NerModel, NeSelector
 from .struct_extract.chunks_to_text import ChunksToText
 from .struct_extract.extractors.comune import ComuneExtractor
-from .struct_extract.language_model import load_model
+from .struct_extract.language_model import get_vllm_model
 
 def identity():
     """Set an identity pipeline Transformer."""
@@ -22,7 +22,7 @@ def identity():
 
 def get_pipeline():
     """Return the main pipeline as a Directed Acyclic Graph."""
-    llm_model = load_model(0.05)
+    llm_model = get_vllm_model(temperature=0.05)
     with sklearn.config_context(transform_output="pandas"):
         return Pipeline(
             [

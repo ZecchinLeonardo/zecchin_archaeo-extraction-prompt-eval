@@ -18,7 +18,6 @@ from .extractor_module import (
 from ...types.intervention_id import InterventionId
 
 
-from .language_model import load_model
 from ...types.pdfchunks import (
     PDFChunkDataset,
     PDFChunkPerInterventionDataset,
@@ -33,10 +32,10 @@ class MagohDataExtractor:
     It is a dspy model that can be trained and scored.
     """
 
-    def __init__(self, llm_temp=0.0) -> None:
+    def __init__(self, llm: dspy.LM) -> None:
         """The main hyperparametre is the temperature of the llm model."""
         self._module = ExtractDataFromInterventionReport()
-        self._llm = load_model(llm_temp)
+        self._llm = llm
         self._cached_score_results: DataFrame[ResultSchema] | None = None
 
     @property

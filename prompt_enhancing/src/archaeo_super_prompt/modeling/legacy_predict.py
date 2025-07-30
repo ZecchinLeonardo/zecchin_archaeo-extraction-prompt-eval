@@ -4,9 +4,10 @@ from pandera.typing.pandas import DataFrame
 from sklearn.pipeline import FunctionTransformer, Pipeline
 import sklearn
 
-from archaeo_super_prompt.modeling.entity_extractor.types import (
+from .entity_extractor.types import (
     ChunksWithThesaurus,
 )
+from .struct_extract.language_model import get_vllm_model
 
 from ..types.pdfchunks import PDFChunkDatasetSchema
 
@@ -29,6 +30,7 @@ def add_empty_suggested_thesaurus_list():
 
 def get_legacy_model():
     """Return the legacy model but with the vllm as pre-processing layer."""
+    llm_model = get_vllm_model(temperature=0.05)
     with sklearn.config_context(transform_output="pandas"):
         return Pipeline(
             [
@@ -41,6 +43,6 @@ def get_legacy_model():
                         incipit_only=True,
                     ),
                 ),
-                ("extractor", MagohDataExtractor()),
+                ("extractor", MagohDataExtractor(llm_model)),
             ],
         )

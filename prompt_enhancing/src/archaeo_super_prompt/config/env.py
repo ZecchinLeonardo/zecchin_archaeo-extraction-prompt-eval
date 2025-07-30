@@ -16,3 +16,5 @@ def getenv_or_throw(var_name: str):
             f"Environment variable '{var_name}' not set up in the .env file"
         )
     return env_var_value
+
+getenv = os.getenv
