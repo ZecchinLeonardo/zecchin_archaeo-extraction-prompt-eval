@@ -1,7 +1,12 @@
+"""Module gathering the loaders for a training/evaluation dataset.
+
+The data are slightly-transformed records of the Magoh database.
+"""
+
 from collections.abc import Callable
 from typing import NamedTuple
 import pandas as pd
-from pandera.typing.pandas import DataFrame
+from pandera.typing.pandas import DataFrame, Series
 from tqdm import tqdm
 
 from ..types.intervention_id import InterventionId
@@ -19,7 +24,7 @@ from ..utils.cache import get_memory_for
 from ..utils.norm import variabilize_column_name
 
 
-def parse_intervention_data(intervention_data__df: pd.DataFrame):
+def _parse_intervention_data(intervention_data__df: pd.DataFrame):
     filtered_df = intervention_data__df.filter(
         regex="^(scheda_intervento.id|(university|building|check).*)"
     ).astype(
@@ -27,15 +32,15 @@ def parse_intervention_data(intervention_data__df: pd.DataFrame):
             "university.Numero di saggi": "UInt32",
             "university.Geologico": "boolean",
             "university.Profondità falda": "Float64",
-            "university.Profondità massima": "Float64"
+            "university.Profondità massima": "Float64",
         }
     )
 
     return structuredDataSchema.validate(filtered_df)
 
 
-def parse_and_get_files(intervention_data: pd.DataFrame):
-    intervention_data = parse_intervention_data(intervention_data)
+def _parse_and_get_files(intervention_data: pd.DataFrame):
+    intervention_data = _parse_intervention_data(intervention_data)
     files = PDFPathSchema.validate(
         pd.concat(
             [
@@ -60,18 +65,19 @@ def parse_and_get_files(intervention_data: pd.DataFrame):
 @get_memory_for("external").cache
 def _init_with_cache(size: int, seed: float, only_recent_entries=False):
     intervention_data, findings = get_entries(size, seed, only_recent_entries)
-    intervention_data, files = parse_and_get_files(intervention_data)
+    intervention_data, files = _parse_and_get_files(intervention_data)
     return intervention_data, findings, files
 
 
 @get_memory_for("external").cache
 def _init_with_cache_for_ids(ids: set[int]):
     intervention_data, findings = get_entries_with_ids(ids)
-    intervention_data, files = parse_and_get_files(intervention_data)
+    intervention_data, files = _parse_and_get_files(intervention_data)
     return intervention_data, findings, files
 
 
 class SamplingParams(NamedTuple):
+    """Parametres for sampling records in the training dataset."""
     size: int
     seed: float
     only_recent_entries: bool
@@ -88,7 +94,12 @@ class MagohDataset:
     """
 
     def __init__(self, params: IdSet | SamplingParams):
-        """Fetch a maximum of `size` samples from the Magoh training database."""
+        """Fetch intervention records from the Magoh's training database.
+
+        Args:
+            params: a set of intervention identifiers to be fetched or a group \
+of sampling params to randomly fetch intervention records 
+        """
         if isinstance(params, SamplingParams):
             size, seed, only_recent_entries = params
             intervention_data, self._findings, self._files = _init_with_cache(
@@ -104,6 +115,7 @@ class MagohDataset:
 
     @property
     def intervention_data(self):
+        """A DataFrame with the truth metadata of registered records in Magoh."""
         return self._intervention_data
 
     @classmethod
@@ -115,6 +127,7 @@ class MagohDataset:
         )
 
     def get_answer(self, id_: InterventionId) -> ExtractedStructuredDataSeries:
+        """Return the metadata of a magoh record with the given id."""
         records = self._intervention_data
         record = records[records["id"] == id_]
         if len(record) == 0:
@@ -125,10 +138,16 @@ class MagohDataset:
         self,
         ids: set[InterventionId],
         condition: Callable[
-            [DataFrame[OutputStructuredDataSchema]], pd.Series # of bool
+            [DataFrame[OutputStructuredDataSchema]], Series[bool]
         ],
     ) -> set[InterventionId]:
-        """Return only the ids for which the intervention records match a given condition."""
+        """Return only the ids for which the intervention records match a given condition.
+
+        Args:
+            ids: the set of interventions to select
+            condition: a function taking the training metadata dataframe and \
+returning a series of boolean to filter the records with unusable values 
+        """
         only_ids = self._intervention_data[
             self._intervention_data["id"].isin(ids)
         ]

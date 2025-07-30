@@ -1,9 +1,9 @@
-"""Code for loading thesaurus sets from data files."""
+"""Loading of thesauri related to the comune and the province."""
 
 from typing import NamedTuple, cast
 import pandas as pd
 
-from ..utils.cache import get_cache_dir_for
+from ...utils.cache import get_cache_dir_for
 
 
 def _get_comune_file():
@@ -26,17 +26,20 @@ def load_comune() -> list[tuple[int, str]]:
 
 
 class Provincia(NamedTuple):
+    """Exhaustive data about a Province."""
     id_: int
     name: str
     sigla: str
 
 
 class ComuneProvincia(NamedTuple):
+    """Exhaustive data about a Comune."""
     comune: str  # the name and the id
     provincia: Provincia
 
 
 def load_comune_with_provincie() -> dict[int, ComuneProvincia]:
+    """Load the set of provincie thesaurus from an external reference table."""
     comune = pd.read_csv(_get_comune_file())
     provincie = pd.read_csv(_get_provincie_file(), keep_default_na=False)
     return {
@@ -52,3 +55,4 @@ def load_comune_with_provincie() -> dict[int, ComuneProvincia]:
             provincie, "right", left_on="provincia", right_on="id_prov"
         ).itertuples()
     }
+

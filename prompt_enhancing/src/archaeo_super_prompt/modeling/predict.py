@@ -5,7 +5,7 @@ import sklearn
 
 
 from .pdf_to_text import VLLM_Preprocessing
-from ..dataset.thesaurus import load_comune
+from ..dataset.thesauri import load_comune
 from .entity_extractor import NamedEntityField, NerModel, NeSelector
 from .struct_extract.chunks_to_text import ChunksToText
 from .struct_extract.extractors.comune import ComuneExtractor

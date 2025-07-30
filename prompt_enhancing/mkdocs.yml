@@ -1,0 +1,16 @@
+site_name: Magoh Extract Exps Docs
+
+theme:
+  name: "material"
+
+plugins:
+- mkdocstrings
+
+nav:
+- Magoh Extract Exps Docs: index.md
+- tutorials.md
+- How-To Guides: how-to-guides.md
+- Reference:
+  - Overview: reference.md
+  - Dataset loading: refs/dataset.md 
+- explanation.md

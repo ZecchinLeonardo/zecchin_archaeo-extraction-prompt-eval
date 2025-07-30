@@ -4,9 +4,10 @@ from typing import cast, override
 import dspy
 import re
 import pydantic
+from pandera.typing.pandas import Series
 
 from archaeo_super_prompt.dataset.load import MagohDataset
-from archaeo_super_prompt.dataset.thesaurus import load_comune_with_provincie
+from archaeo_super_prompt.dataset.thesauri import load_comune_with_provincie
 from archaeo_super_prompt.modeling.struct_extract.types import (
     InputForExtractionWithSuggestedThesauri,
     InputForExtractionWithSuggestedThesauriRowSchema,
@@ -178,7 +179,7 @@ L'evento si è svolto a Lucca.""",
         cls, y: MagohDataset, ids: set[InterventionId]
     ) -> set[InterventionId]:
         return y.filter_good_records_for_training(
-            ids, lambda df: df["university__Comune"].notnull()
+            ids, lambda df: cast(Series[bool], df["university__Comune"].notnull())
         )
 
     @override

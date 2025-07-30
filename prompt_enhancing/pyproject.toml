@@ -47,6 +47,9 @@ tqdm-stubs = "^0.2.1"
 pandas-stubs = ">=2.2.3.250527,<3.0.0.0"
 ruff = "^0.12.3"
 pytest = "^8.4.1"
+mkdocs = "^1.6.1"
+mkdocstrings = {extras = ["python"], version = "^0.30.0"}
+mkdocs-material = "^9.6.16"
 
 
 [[tool.poetry.source]]
