@@ -1,6 +1,6 @@
 """Comune LLM extractor."""
 
-from typing import override
+from typing import cast, override
 import dspy
 import re
 import pydantic
@@ -70,12 +70,24 @@ class FindComune(TypedDspyModule[ComuneInputData, ComuneOutputData]):
 
     def forward(
         self, fragmenti_relazione: str, possibili_comuni: list[Comune]
-    ):
+    ) -> dspy.Prediction:
         """Direct forward."""
-        # the signature's output is the same output; so we directly return
-        return self._estrattore_di_comune(
-            fragmenti_relazione=fragmenti_relazione,
-            possibili_comuni=possibili_comuni,
+        predicted_output = cast(
+            dspy.Prediction,
+            self._estrattore_di_comune(
+                fragmenti_relazione=fragmenti_relazione,
+                possibili_comuni=possibili_comuni,
+            ),
+        )
+        WRONG_COMUNE = "%ERROR_COMUNE%"
+        WRONG_PROVINCIA = "%ERROR_PROVINCIA%"
+        return self._to_prediction(
+            ComuneOutputData(
+                comune=cast(str, predicted_output.get("comune", WRONG_COMUNE)),
+                provincia=cast(
+                    str, predicted_output.get("provincia", WRONG_PROVINCIA)
+                ),
+            )
         )
 
 

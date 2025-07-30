@@ -17,6 +17,7 @@ import pandas as pd
 import pandera.pandas as pa
 from pandera.typing.pandas import Series
 import re
+import pydantic
 
 from archaeo_super_prompt.dataset.load import MagohDataset
 from archaeo_super_prompt.modeling.struct_extract.types import (
@@ -52,14 +53,14 @@ class StimareDataDellIntervento(dspy.Signature):
     precisione: Precisione = dspy.OutputField()
 
 
-class DataInterventoInputData(TypedDict):
+class DataInterventoInputData(pydantic.BaseModel):
     """Chunks of reports of an archaeological intervention with supposed information about the date of the intervention."""
 
     fragmenti_relazione: str
     data_di_archiviazone: Data
 
 
-class DataInterventoOutputData(TypedDict):
+class DataInterventoOutputData(pydantic.BaseModel):
     """A predicted maximum date for the intervention, in un window."""
 
     start_day: int
@@ -76,14 +77,16 @@ class EstimateInterventionDate(
 ):
     """DSPy model for the extraction of the date of the intervention."""
 
-    def __init__(self, callbacks=None):
+    def __init__(self):
         """Initialize only a chain of thought."""
-        super().__init__(callbacks)
+        super().__init__(DataInterventoOutputData)
         self._estrattore_della_data = dspy.ChainOfThought(
             StimareDataDellIntervento
         )
 
-    def forward(self, fragmenti_relazione: str, data_di_archiviazone: Data):
+    def forward(
+        self, fragmenti_relazione: str, data_di_archiviazone: Data
+    ) -> dspy.Prediction:
         """Simple date parsing."""
         result = cast(
             dspy.Prediction,
@@ -112,8 +115,8 @@ class EstimateInterventionDate(
             Literal["giorno", "mese", "anno"], result.get("precisione", "day")
         )
 
-        return dspy.Prediction(
-            **DataInterventoOutputData(
+        return self._to_prediction(
+            DataInterventoOutputData(
                 start_day=data_minima_di_inizio.giorno,
                 start_month=ITALIAN_MONTHS.index(data_minima_di_inizio.mese),
                 start_year=data_minima_di_inizio.anno,
@@ -127,13 +130,16 @@ class EstimateInterventionDate(
 
 # -- SKlearn part
 
+
 class InputForInterventionDate(BaseInputForExtraction):
-    """When indentifying the date of an intervention, we refer first to the date of protocol.""" 
+    """When indentifying the date of an intervention, we refer first to the date of protocol."""
+
     data_protocollo: datetime.date
 
 
 class InputForInterventionDateRowSchema(BaseInputForExtractionRowSchema):
-    """When indentifying the date of an intervention, we refer first to the date of protocol.""" 
+    """When indentifying the date of an intervention, we refer first to the date of protocol."""
+
     data_protocollo: datetime.date
 
 
@@ -180,6 +186,7 @@ Lo scavo è iniziato il 18 marzo 1985 ed è terminato il 20 marzo.""",
             llm_model,
             EstimateInterventionDate(),
             example,
+            DataInterventoOutputData
         )
 
     @override
@@ -209,20 +216,20 @@ Lo scavo è iniziato il 18 marzo 1985 ed è terminato il 20 marzo.""",
                     "id": [int(id_) for id_ in ids],
                     "intervention_date_start": pd.to_datetime(
                         [
-                            f"{y['start_year']}-{y['start_month']}-{y['start_day']}"
+                            f"{y.start_year}-{y.start_month}-{y.start_day}"
                             for y in values
                         ],
                         format="%Y-%m-%d",
                     ),
                     "intervention_date_end": pd.to_datetime(
                         [
-                            f"{y['end_year']}-{y['end_month']}-{y['end_day']}"
+                            f"{y.end_year}-{y.end_month}-{y.end_day}"
                             for y in values
                         ],
                         format="%Y-%m-%d",
                     ),
                     "intervention_date_precision": [
-                        y["precision"] for y in values
+                        y.precision for y in values
                     ],
                 }
             ),

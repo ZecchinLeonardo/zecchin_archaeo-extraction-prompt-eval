@@ -34,10 +34,21 @@ class TypedDspyModule[DInput: BaseModel, DOutput: BaseModel](dspy.Module):
         super().__init__()
         self._output_cls = output_cls
 
+    def _to_prediction(self, output: DOutput) -> dspy.Prediction:
+        """Call this function with the pydantic-typed output for return in forward."""
+        return dspy.Prediction(**output.model_dump())
+
+    def _prediction_to_output(self, pred: dspy.Prediction) -> DOutput:
+        """Inverse of the method above.
+
+        Expect the prediction to be built from the _to_prediction method above
+        """
+        return self._output_cls(**pred.toDict())
+
     def typed_forward(self, inpt: DInput) -> DOutput:
         """Carry out a type safe forward on the module."""
-        return self._output_cls(
-            **cast(dspy.Prediction, self(**inpt.model_dump())).toDict()
+        return self._prediction_to_output(
+            cast(dspy.Prediction, self(**inpt.model_dump()))
         )
 
 
@@ -79,9 +90,10 @@ the DSPy model as input in its forward method.
             llm_model: the dspy chat lm to be used for the extraction 
             model: the dspy module which will be used for the training and the \
 inference
-            df_schemas: given for type checking
             example: a dspy input-output pair enabling to type check at \
 runtime the genericity and also to be able to log the model in mlflow
+            output_constructor: the type of the output model for building it \
+generically from dictionnary expansion
             optimized: the already trained prompt model, if existing
         """
         super().__init__()
