@@ -1,6 +1,4 @@
-"""Wrapper to get the target Magoh data type from the untrusted output types of
-the LLM
-"""
+"""Wrapper to get the target Magoh data type from the untrusted output types of the LLM."""
 
 from datetime import date
 from typing import TypeVar
@@ -10,7 +8,7 @@ from .arch_extract_type import (
     SourceOfInformationInReport,
     TechnicalInformation,
 )
-from ....types.target_types import (
+from .....types.target_types import (
     MagohDocumentBuildingData,
     MagohUniversityData,
 )

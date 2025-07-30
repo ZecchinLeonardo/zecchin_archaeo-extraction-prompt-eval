@@ -13,7 +13,7 @@ from ..types.pdfchunks import PDFChunkDatasetSchema
 
 
 from .pdf_to_text import VLLM_Preprocessing
-from .struct_extract.main_transformer import MagohDataExtractor
+from .struct_extract.legacy_extractor.main_transformer import MagohDataExtractor
 
 
 def add_empty_suggested_thesaurus_list():

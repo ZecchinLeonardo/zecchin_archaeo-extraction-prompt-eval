@@ -1,16 +1,18 @@
+"""DSPy module for the prompt-engineering extraction model."""
+
 from typing import Any, TypedDict, cast
-from ..chunk_selector import select_end_pages, select_incipit
-from ...types.pdfchunks import (
+from ...chunk_selector import select_end_pages, select_incipit
+from ....types.pdfchunks import (
     PDFChunkPerInterventionDataset,
 )
 from archaeo_super_prompt.types.structured_data import (
     ExtractedStructuredDataSeries,
 )
-from ...utils.norm import flatten_dict
+from ....utils.norm import flatten_dict
 import dspy
 
-from ...config.debug_log import forward_warning, print_debug_log
-from ...types.target_types import (
+from ....config.debug_log import forward_warning, print_debug_log
+from ....types.target_types import (
     MagohDocumentBuildingData,
     MagohUniversityData,
 )
@@ -27,12 +29,15 @@ from .signatures.arch_extract_type import (
 
 
 class ExtractedInterventionData(TypedDict):
+    """Intervention metadata as in the dataset."""
     university: MagohUniversityData
     building: MagohDocumentBuildingData
 
 
 class ExtractDataFromInterventionReport(dspy.Module):
+    """Model for extracting metadata about archaeological intervention records."""
     def __init__(self):
+        """Initialize all the prompt-engineering submodels."""
         self.extract_intervention_context_data = dspy.ChainOfThought(
             ArchaeologicalInterventionContext
         )
@@ -47,6 +52,7 @@ class ExtractDataFromInterventionReport(dspy.Module):
         )
 
     def forward(self, document_ocr_scans__df: PDFChunkPerInterventionDataset):
+        """Extract from the documents' text chunks the metadata."""
         document_ocr_scans = (
             document_ocr_scans__df.to_readable_context_string()
         )
@@ -117,6 +123,7 @@ class ExtractDataFromInterventionReport(dspy.Module):
     def forward_and_type(
         self, document_ocr_scan__df: PDFChunkPerInterventionDataset
     ):
+        """Forward wrapper for type safety."""
         result: dspy.Prediction
         try:
             result = cast(

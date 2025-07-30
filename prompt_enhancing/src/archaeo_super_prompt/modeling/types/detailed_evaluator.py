@@ -12,7 +12,7 @@ from sklearn.base import ClassifierMixin, BaseEstimator, TransformerMixin
 from typing import Any, override
 
 
-class DetailedEvaluatorMixin[InputBatch, TargetDataSet](
+class DetailedEvaluatorMixin[InputBatch, TargetDataSet, EvaluationDetail](
     ClassifierMixin, BaseEstimator, TransformerMixin, ABC
 ):
     """A transformer which can be evaluated and trained if needed."""
@@ -38,14 +38,14 @@ class DetailedEvaluatorMixin[InputBatch, TargetDataSet](
         X: InputBatch,
         y: TargetDataSet,
         sample_weight=None,
-    ):
+    ) -> float:
         """The evaluation to compute a local (or independent) accuracy of the model."""
         raise NotImplementedError
 
     @abstractmethod
     def score_and_transform(
         self, X: InputBatch, y: TargetDataSet
-    ) -> tuple[float, Any]:
+    ) -> tuple[float, EvaluationDetail]:
         """Run an evaluation and return the score with the detailed results.
 
         Call this method to score the model with getting the detailed results

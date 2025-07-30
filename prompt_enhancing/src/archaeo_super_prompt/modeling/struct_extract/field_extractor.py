@@ -51,6 +51,9 @@ class TypedDspyModule[DInput: BaseModel, DOutput: BaseModel](dspy.Module):
             cast(dspy.Prediction, self(**inpt.model_dump()))
         )
 
+# TODO: uniformize this type into a dataframe for better handling during
+# visualization
+EvalDetailedResult = list[tuple[dspy.Example, dspy.Prediction, float]]
 
 class FieldExtractor[
     DSPyInput: BaseModel,
@@ -62,6 +65,7 @@ class FieldExtractor[
     DetailedEvaluatorMixin[
         DataFrame[InputDataFrameWithKnowledge],
         MagohDataset,
+        EvalDetailedResult, 
     ],
     ABC,
 ):
@@ -313,7 +317,7 @@ generically from dictionnary expansion
             display_table=5,
         )
         results = cast(
-            tuple[float, list[tuple[dspy.Example, dspy.Prediction, float]]],
+            tuple[float, EvalDetailedResult],
             evaluator(self._prompt_model),
         )
         # TODO: return a df after the score
