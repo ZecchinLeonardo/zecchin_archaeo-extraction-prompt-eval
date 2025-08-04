@@ -58,11 +58,22 @@ def get_month_period(
 ) -> Date | None:
     s = row.data_intervento
     pattern = r"([a-zA-Z]+)\s+(\d{4})\s*-\s*([a-zA-Z]+)\s+(\d{4})"
+    pattern_with_year_on_right = r"([a-zA-Z]+)\s*-\s*([a-zA-Z]+)\s+(\d{4})"
+    pattern_without_year = r"([a-zA-Z]+)\s*-\s*([a-zA-Z]+)"
     m = re.fullmatch(pattern, s)
-    if not m:
-        return None
-    month1, year1, month2, year2 = m.groups()
-    return Date(f"{1}/{month1}/{year1}", f"{28}/{month2}/{year2}", "month")
+    if m:
+        month1, year1, month2, year2 = m.groups()
+        return Date(f"{1}/{month1}/{year1}", f"{28}/{month2}/{year2}", "month")
+    m = re.fullmatch(pattern_with_year_on_right, s)
+    if m:
+        month1, month2, year = m.groups()
+        return Date(f"{1}/{month1}/{year}", f"{28}/{month2}/{year}", "month")
+    m = re.fullmatch(pattern_without_year, s)
+    if m:
+        month1, month2 = m.groups()
+        year = row.anno
+        return Date(f"{1}/{month1}/{year}", f"{28}/{month2}/{year}", "month")
+    return None
 
 
 def get_single_month_period(
@@ -77,23 +88,10 @@ def get_single_month_period(
         return Date(f"{1}/{month1}/{year1}", f"{28}/{month1}/{year1}", "month")
     m_without_year = re.fullmatch(pattern_without_year, s)
     if m_without_year:
-        month1 = m_without_year.groups()
+        (month1,) = m_without_year.groups()
         year1 = row.anno
         return Date(f"{1}/{month1}/{year1}", f"{28}/{month1}/{year1}", "month")
     return None
-
-
-def get_month_period_without_year(
-    row: InterventionDataForDateNormalizationRowSchema,
-) -> Date | None:
-    s = row.data_intervento
-    pattern = r"([a-zA-Z]+)\s*-\s*([a-zA-Z]+)"
-    m = re.fullmatch(pattern, s)
-    if not m:
-        return None
-    month1, month2 = m.groups()
-    year = row.anno
-    return Date(f"{1}/{month1}/{year}", f"{28}/{month2}/{year}", "month")
 
 
 def start_year(
