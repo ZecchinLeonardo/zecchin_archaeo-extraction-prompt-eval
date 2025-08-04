@@ -8,11 +8,15 @@ from .utils import (
     Precision,
 )
 
+DAY_PATTERN = r"(\d{1,2})"
+MONTH_PATTERN = r"\b(gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre)\b"
+YEAR_PATTERN = r"(\d{4})"
+
 
 def get_day_period(
     row: InterventionDataForDateNormalizationRowSchema,
 ) -> Date | None:
-    s = row.data_intervento
+    s = row.data_intervento.lower()
     pattern = (
         r"(\d{1,2})\s+([a-zA-Z]+)\s*-\s*(\d{1,2})\s+([a-zA-Z]+)\s+(\d{4})"
     )
@@ -112,12 +116,13 @@ def start_year(
 
 
 def _get_d_y_m(ds: str) -> tuple[str | None, str | None, str | None]:
-    d_m_y__pattern = r"(\d{1,2})\s+([a-zA-Z]+)\s+(\d{4})"
-    d_m__pattern = r"(\d{1,2})\s+([a-zA-Z]+)"
-    m_y__pattern = r"([a-zA-Z]+)\s+(\d{4})"
-    y__pattern = r"(\d{4})"
-    m__pattern = r"([a-zA-Z]+)"
-    d__pattern = r"(\d{1,2})"
+    ds = ds.strip().lower()
+    d_m_y__pattern = rf"{DAY_PATTERN}\s+{MONTH_PATTERN}\s+{YEAR_PATTERN}"
+    d_m__pattern = rf"{DAY_PATTERN}\s+{MONTH_PATTERN}"
+    m_y__pattern = rf"{MONTH_PATTERN}\s+{YEAR_PATTERN}"
+    y__pattern = YEAR_PATTERN
+    m__pattern = MONTH_PATTERN
+    d__pattern = DAY_PATTERN
     m = re.fullmatch(d_m_y__pattern, ds)
     if m:
         day, month, year = m.groups()
@@ -177,7 +182,7 @@ def generic_period(
             (
                 end[0]
                 if end[0] is not None
-                else (str(28) if precision == "month" else str(31)),
+                else (str(31) if precision == "year" else str(28)),
                 end[1] if end[1] is not None else str(12),
                 end[2] if end[2] is not None else str(row.anno),
             )
@@ -190,7 +195,7 @@ def generic_single_period(
     row: InterventionDataForDateNormalizationRowSchema,
 ) -> Date | None:
     """Process a single period with the day, month or year precision."""
-    d, m, y = _get_d_y_m(row.data_intervento.strip())
+    d, m, y = _get_d_y_m(row.data_intervento)
     if (d, m, y) == (None, None, None):
         return None
     y = y if y is not None else str(row.anno)
@@ -217,13 +222,13 @@ def before_day_month(
     row: InterventionDataForDateNormalizationRowSchema,
 ) -> Date | None:
     """Return only the most recent day before which the intervention could happen."""
-    s = row.data_intervento
-    pattern = r"(?:pre|[a,A]nte|prima di|prima del)\s+(.*)"
+    s = row.data_intervento.strip()
+    pattern = r"(?:pre|[a,A]nte|prima di|prima del)\s*(.*)"
     m = re.fullmatch(pattern, s)
     if not m:
         return None
     (final_date_str,) = m.groups()
-    d, m, y = _get_d_y_m(final_date_str.rstrip())
+    d, m, y = _get_d_y_m(final_date_str)
     y = y if y is not None else row.anno
     precision: Precision = (
         "day" if d is not None else ("month" if m is not None else "year")
