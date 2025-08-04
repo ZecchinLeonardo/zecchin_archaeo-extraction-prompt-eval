@@ -20,14 +20,14 @@ def test_day_period_transform():
         data_protocollo="",
         data_intervento="27 febbraio - 29 settembre 1981",
         anno=1981,
-        processed_date=None,
+        norm_date=None,
     )
     inpt_without_year = InterventionDataForDateNormalizationRowSchema(
         idscheda=8,
         data_protocollo="",
         data_intervento="27 febbraio - 29 settembre",
         anno=1981,
-        processed_date=None,
+        norm_date=None,
     )
     expected = Date("27/febbraio/1981", "29/settembre/1981", "day")
 
@@ -44,7 +44,7 @@ def test_single_day_period():
         data_protocollo="",
         data_intervento="27 febbraio 1981",
         anno=1981,
-        processed_date=None,
+        norm_date=None,
     )
     single_day_input_without_year = (
         InterventionDataForDateNormalizationRowSchema(
@@ -52,7 +52,7 @@ def test_single_day_period():
             data_protocollo="",
             data_intervento="27 febbraio",
             anno=1981,
-            processed_date=None,
+            norm_date=None,
         )
     )
     expected_single = Date("27/febbraio/1981", "27/febbraio/1981", "day")
@@ -78,7 +78,7 @@ def test_month_period():
         data_protocollo="",
         data_intervento="febbraio 1979 -  settembre 1981",
         anno=1981,
-        processed_date=None,
+        norm_date=None,
     )
     assert _is_equal(
         transforms.get_month_period(month_and_year_input),
@@ -94,7 +94,7 @@ def test_month_period():
             data_protocollo="",
             data_intervento="febbraio -  settembre 1981",
             anno=1981,
-            processed_date=None,
+            norm_date=None,
         )
     )
     expected_months_year = Date(
@@ -113,7 +113,7 @@ def test_month_period():
         data_protocollo="",
         data_intervento="febbraio -  settembre",
         anno=1981,
-        processed_date=None,
+        norm_date=None,
     )
     assert _is_equal(
         transforms.get_month_period(month_without_year_input),
@@ -132,14 +132,14 @@ def test_single_month_period():
         data_protocollo="",
         data_intervento="febbraio 1981",
         anno=1981,
-        processed_date=None,
+        norm_date=None,
     )
     month_without_year_input = InterventionDataForDateNormalizationRowSchema(
         idscheda=8,
         data_protocollo="",
         data_intervento="febbraio",
         anno=1981,
-        processed_date=None,
+        norm_date=None,
     )
     assert _is_equal(
         transforms.get_single_month_period(month_input), expected_month_year
@@ -156,28 +156,87 @@ def test_single_month_period():
         expected_month_year,
     )
 
+
+def test_year_period():
+    assert _is_equal(
+        transforms.generic_period(
+            InterventionDataForDateNormalizationRowSchema(
+                idscheda=8,
+                data_protocollo="",
+                data_intervento="2005 -",
+                anno=2006,
+                norm_date=None,
+            )
+        ),
+        Date("1/1/2005", "31/12/2006", "year"),
+    )
+    assert _is_equal(
+        transforms.generic_period(
+            InterventionDataForDateNormalizationRowSchema(
+                idscheda=8,
+                data_protocollo="",
+                data_intervento="2006 -",
+                anno=2006,
+                norm_date=None,
+            )
+        ),
+        Date("1/1/2006", "31/12/2006", "year"),
+    )
+
+
+def test_year_single_period():
+    assert _is_equal(
+        transforms.generic_single_period(
+            InterventionDataForDateNormalizationRowSchema(
+                idscheda=8,
+                data_protocollo="",
+                data_intervento="2006 ",
+                anno=2006,
+                norm_date=None,
+            )
+        ),
+        Date("1/1/2006", "31/12/2006", "year"),
+    )
+
+
 def test_generic_period():
-    assert _is_equal(transforms.generic_period(InterventionDataForDateNormalizationRowSchema(
-        idscheda=8,
-        data_protocollo="",
-        data_intervento="6-10 novembre 2006",
-        anno=2006,
-        processed_date=None,
-    )), Date("6/novembre/2006", "10/novembre/2006", "day"))
-    assert _is_equal(transforms.generic_period(InterventionDataForDateNormalizationRowSchema(
-        idscheda=8,
-        data_protocollo="",
-        data_intervento="25 settembre 2019 - 09 ottobre",
-        anno=2019,
-        processed_date=None,
-    )), Date("25/settembre/2019", "09/ottobre/2019", "day"))
-    assert _is_equal(transforms.generic_period(InterventionDataForDateNormalizationRowSchema(
-        idscheda=8,
-        data_protocollo="",
-        data_intervento="7 - 30 giugno",
-        anno=2019,
-        processed_date=None,
-    )), Date("7/giugno/2019", "30/giugno/2019", "day"))
+    assert _is_equal(
+        transforms.generic_period(
+            InterventionDataForDateNormalizationRowSchema(
+                idscheda=8,
+                data_protocollo="",
+                data_intervento="6-10 novembre 2006",
+                anno=2006,
+                norm_date=None,
+            )
+        ),
+        Date("6/novembre/2006", "10/novembre/2006", "day"),
+    )
+    assert _is_equal(
+        transforms.generic_period(
+            InterventionDataForDateNormalizationRowSchema(
+                idscheda=8,
+                data_protocollo="",
+                data_intervento="25 settembre 2019 - 09 ottobre",
+                anno=2019,
+                norm_date=None,
+            )
+        ),
+        Date("25/settembre/2019", "09/ottobre/2019", "day"),
+    )
+    assert _is_equal(
+        transforms.generic_period(
+            InterventionDataForDateNormalizationRowSchema(
+                idscheda=8,
+                data_protocollo="",
+                data_intervento="7 - 30 giugno",
+                anno=2019,
+                norm_date=None,
+            )
+        ),
+        Date("7/giugno/2019", "30/giugno/2019", "day"),
+    )
+
 
 def test_generic_period_reject():
     single_period = InterventionDataForDateNormalizationRowSchema(
@@ -185,14 +244,14 @@ def test_generic_period_reject():
         data_protocollo="",
         data_intervento="febbraio",
         anno=1981,
-        processed_date=None,
+        norm_date=None,
     )
     period = InterventionDataForDateNormalizationRowSchema(
         idscheda=8,
         data_protocollo="",
         data_intervento="7 - 30 giugno",
         anno=2019,
-        processed_date=None,
+        norm_date=None,
     )
     assert transforms.generic_period(single_period) is None
     assert transforms.generic_single_period(period) is None

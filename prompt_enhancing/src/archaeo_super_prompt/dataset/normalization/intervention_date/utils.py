@@ -1,8 +1,9 @@
 """Utils for piping normalization functions."""
 
 from collections.abc import Callable
-from typing import Literal, NamedTuple
-from pandera.pandas import DataFrameModel
+from typing import Literal, NamedTuple, Optional
+import pandas as pd
+from pandera.pandas import DataFrameModel, Field
 from pandera.typing.pandas import DataFrame, Series
 
 Precision = Literal["day", "month", "year"]
@@ -30,8 +31,8 @@ class InterventionDataForDateNormalization(DataFrameModel):
     idscheda: Series[int]
     data_protocollo: Series[str]
     data_intervento: Series[str]
-    anno: Series[int]
-    processed_date: Series[Date | None]
+    anno: Series[pd.Int32Dtype]
+    norm_date: Optional[Date] = Field(nullable=True)  # noqa: UP045
 
 
 class InterventionDataForDateNormalizationRowSchema(NamedTuple):
@@ -41,7 +42,7 @@ class InterventionDataForDateNormalizationRowSchema(NamedTuple):
     data_protocollo: str
     data_intervento: str
     anno: int
-    processed_date: Date | None
+    norm_date: Date | None
 
 
 DateProcessor = Callable[
@@ -57,7 +58,7 @@ def process_if_not_yet(
     This normalization function try to normalize if the humanly-input date
     matches with patterns that it supports. Else, it returns None.
     """
-    current_answer = row.processed_date
+    current_answer = row.norm_date
     if current_answer is not None:
         return current_answer
     return fn(row)
@@ -80,7 +81,7 @@ def pipe(
             return s
         return pipe_aux(
             s.assign(
-                column_key=lambda df: df.apply(
+                norm_date=lambda df: df.apply(
                     lambda row: process_if_not_yet(
                         InterventionDataForDateNormalizationRowSchema(
                             *tuple(row)
@@ -95,7 +96,7 @@ def pipe(
 
     return pipe_aux(
         InterventionDataForDateNormalization.validate(
-            s.assign(processed_date=None), lazy=True
+            s.assign(norm_date=None), lazy=True
         ),
         functions,
     )

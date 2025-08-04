@@ -2,7 +2,11 @@
 
 import re
 
-from .utils import Date, InterventionDataForDateNormalizationRowSchema
+from .utils import (
+    Date,
+    InterventionDataForDateNormalizationRowSchema,
+    Precision,
+)
 
 
 def get_day_period(
@@ -111,6 +115,7 @@ def _get_d_y_m(ds: str) -> tuple[str | None, str | None, str | None]:
     d_m_y__pattern = r"(\d{1,2})\s+([a-zA-Z]+)\s+(\d{4})"
     d_m__pattern = r"(\d{1,2})\s+([a-zA-Z]+)"
     m_y__pattern = r"([a-zA-Z]+)\s+(\d{4})"
+    y__pattern = r"(\d{4})"
     m__pattern = r"([a-zA-Z]+)"
     d__pattern = r"(\d{1,2})"
     m = re.fullmatch(d_m_y__pattern, ds)
@@ -125,6 +130,10 @@ def _get_d_y_m(ds: str) -> tuple[str | None, str | None, str | None]:
     if m:
         month, year = m.groups()
         return (None, month, year)
+    m = re.fullmatch(y__pattern, ds)
+    if m:
+        (year,) = m.groups()
+        return None, None, year
     m = re.fullmatch(m__pattern, ds)
     if m:
         (month,) = m.groups()
@@ -148,7 +157,7 @@ def generic_period(
     start, end = tuple(map(_get_d_y_m, splits))
     if start == (None, None, None) and end == (None, None, None):
         return None
-    precision = "day"
+    precision: Precision = "day"
     if start[0] is None and end[0] is None:
         if start[1] is None and end[1] is None:
             precision = "year"
@@ -166,7 +175,9 @@ def generic_period(
         ),
         "/".join(
             (
-                end[0] if end[0] is not None else str(28),
+                end[0]
+                if end[0] is not None
+                else (str(28) if precision == "month" else str(31)),
                 end[1] if end[1] is not None else str(12),
                 end[2] if end[2] is not None else str(row.anno),
             )
@@ -179,7 +190,7 @@ def generic_single_period(
     row: InterventionDataForDateNormalizationRowSchema,
 ) -> Date | None:
     """Process a single period with the day, month or year precision."""
-    d, m, y = _get_d_y_m(row.data_intervento)
+    d, m, y = _get_d_y_m(row.data_intervento.strip())
     if (d, m, y) == (None, None, None):
         return None
     y = y if y is not None else str(row.anno)
