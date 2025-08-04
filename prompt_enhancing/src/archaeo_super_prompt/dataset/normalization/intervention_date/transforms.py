@@ -107,6 +107,35 @@ def start_year(
     return Date(f"{1}/{1}/{start_year}", f"{31}/{12}/{final_year}", "year")
 
 
+def _get_d_y_m(ds: str) -> tuple[str | None, str | None, str | None]:
+    d_m_y__pattern = r"(\d{1,2})\s+([a-zA-Z]+)\s+(\d{4})"
+    d_m__pattern = r"(\d{1,2})\s+([a-zA-Z]+)"
+    m_y__pattern = r"([a-zA-Z]+)\s+(\d{4})"
+    m__pattern = r"([a-zA-Z]+)"
+    d__pattern = r"(\d{1,2})"
+    m = re.fullmatch(d_m_y__pattern, ds)
+    if m:
+        day, month, year = m.groups()
+        return (day, month, year)
+    m = re.fullmatch(d_m__pattern, ds)
+    if m:
+        day, month = m.groups()
+        return (day, month, None)
+    m = re.fullmatch(m_y__pattern, ds)
+    if m:
+        month, year = m.groups()
+        return (None, month, year)
+    m = re.fullmatch(m__pattern, ds)
+    if m:
+        (month,) = m.groups()
+        return None, month, None
+    m = re.fullmatch(d__pattern, ds)
+    if m:
+        (day,) = m.groups()
+        return day, None, None
+    return None, None, None
+
+
 def generic_period(
     row: InterventionDataForDateNormalizationRowSchema,
 ) -> Date | None:
@@ -115,31 +144,8 @@ def generic_period(
     splits = re.split(split_pattern, s)
     if len(splits) != 2:
         return None
-    d_m_y__pattern = r"(\d{1,2})\s+([a-zA-Z]+)\s+(\d{4})"
-    d_m__pattern = r"(\d{1,2})\s+([a-zA-Z]+)"
-    m_y__pattern = r"([a-zA-Z]+)\s+(\d{4})"
-    m__pattern = r"([a-zA-Z]+)"
-    d__pattern = r"(\d{1,2})"
 
-    def get_d_y_m(ds: str) -> tuple[str | None, str | None, str | None]:
-        m = re.fullmatch(d_m_y__pattern, ds)
-        if m:
-            return (m[0], m[1], m[2])
-        m = re.fullmatch(d_m__pattern, ds)
-        if m:
-            return (m[0], m[1], None)
-        m = re.fullmatch(m_y__pattern, ds)
-        if m:
-            return (None, m[0], m[1])
-        m = re.fullmatch(m__pattern, ds)
-        if m:
-            return None, m[0], None
-        m = re.fullmatch(d__pattern, ds)
-        if m:
-            return m[0], None, None
-        return None, None, None
-
-    start, end = tuple(map(get_d_y_m, splits))
+    start, end = tuple(map(_get_d_y_m, splits))
     if start == (None, None, None) and end == (None, None, None):
         return None
     precision = "day"
@@ -167,6 +173,21 @@ def generic_period(
         ),
         precision,
     )
+
+
+def generic_single_period(
+    row: InterventionDataForDateNormalizationRowSchema,
+) -> Date | None:
+    """Process a single period with the day, month or year precision."""
+    d, m, y = _get_d_y_m(row.data_intervento)
+    if (d, m, y) == (None, None, None):
+        return None
+    y = y if y is not None else str(row.anno)
+    if m is None:
+        return Date(f"{1}/{1}/{y}", f"{31}/{12}/{y}", "year")
+    if d is None:
+        return Date(f"{1}/{m}/{y}", f"{28}/{m}/{y}", "month")
+    return Date(f"{d}/{m}/{y}", f"{d}/{m}/{y}", "day")
 
 
 def before_day_month(
