@@ -201,6 +201,18 @@ def generic_single_period(
     return Date(f"{d}/{m}/{y}", f"{d}/{m}/{y}", "day")
 
 
+def precised_numeric_start_date(
+    row: InterventionDataForDateNormalizationRowSchema,
+) -> Date | None:
+    """Process a precise date in the format day/month/year."""
+    date_pattern = r"(\d{1,2})\/(\d{1,2})\/(\d{4})"
+    m = re.fullmatch(date_pattern, row.data_intervento.strip())
+    if m:
+        d, m, y = m.groups()
+        return Date(f"{d}/{m}/{y}", f"{d}/{m}/{y}", "day")
+    return None
+
+
 def before_day_month(
     row: InterventionDataForDateNormalizationRowSchema,
 ) -> Date | None:

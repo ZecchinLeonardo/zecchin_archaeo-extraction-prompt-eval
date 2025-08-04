@@ -255,3 +255,17 @@ def test_generic_period_reject():
     )
     assert transforms.generic_period(single_period) is None
     assert transforms.generic_single_period(period) is None
+
+
+def test_precise_numeric_date():
+    period = InterventionDataForDateNormalizationRowSchema(
+        idscheda=8,
+        data_protocollo="",
+        data_intervento="18/09/2019 ",
+        anno=2019,
+        norm_date=None,
+    )
+    assert _is_equal(
+        transforms.precised_numeric_start_date(period),
+        Date("18/09/2019", "18/09/2019", "day"),
+    )
