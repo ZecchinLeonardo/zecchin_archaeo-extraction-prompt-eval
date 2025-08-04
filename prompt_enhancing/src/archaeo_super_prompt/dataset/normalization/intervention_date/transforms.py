@@ -216,16 +216,22 @@ def precised_numeric_start_date(
 def before_day_month(
     row: InterventionDataForDateNormalizationRowSchema,
 ) -> Date | None:
+    """Return only the most recent day before which the intervention could happen."""
     s = row.data_intervento
-    pattern = r"pre\s+(\d{1,2})\s+([a-zA-Z]+)"
+    pattern = r"(?:pre|[a,A]nte|prima di|prima del)\s+(.*)"
     m = re.fullmatch(pattern, s)
     if not m:
         return None
-    final_day, final_month = m.groups()
-    year = row.anno
-    # TODO: compute it with datetime
+    (final_date_str,) = m.groups()
+    d, m, y = _get_d_y_m(final_date_str.rstrip())
+    y = y if y is not None else row.anno
+    precision: Precision = (
+        "day" if d is not None else ("month" if m is not None else "year")
+    )
+    m = m if m is not None else 12
+    d = d if d is not None else (31 if precision == "year" else 28)
     return Date(
-        f"{1}/{final_month}-1/{year}",
-        f"{final_day}/{final_month}/{year}",
+        "<UNKNOWN>",
+        f"{d}/{m}/{y}",
         "day",
     )

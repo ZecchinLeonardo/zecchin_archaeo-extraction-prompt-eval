@@ -269,3 +269,54 @@ def test_precise_numeric_date():
         transforms.precised_numeric_start_date(period),
         Date("18/09/2019", "18/09/2019", "day"),
     )
+
+
+def test_before_day_mont():
+    assert _is_equal(
+        transforms.before_day_month(
+            InterventionDataForDateNormalizationRowSchema(
+                idscheda=8,
+                data_protocollo="",
+                data_intervento="pre 18 settembre",
+                anno=2019,
+                norm_date=None,
+            )
+        ),
+        Date("<UNKNOWN>", "18/settembre/2019", "day"),
+    )
+    assert _is_equal(
+        transforms.before_day_month(
+            InterventionDataForDateNormalizationRowSchema(
+                idscheda=8,
+                data_protocollo="",
+                data_intervento="ante 18 settembre",
+                anno=2019,
+                norm_date=None,
+            )
+        ),
+        Date("<UNKNOWN>", "18/settembre/2019", "day"),
+    )
+    assert _is_equal(
+        transforms.before_day_month(
+            InterventionDataForDateNormalizationRowSchema(
+                idscheda=8,
+                data_protocollo="",
+                data_intervento="Ante 18 settembre",
+                anno=2019,
+                norm_date=None,
+            )
+        ),
+        Date("<UNKNOWN>", "18/settembre/2019", "day"),
+    )
+    assert _is_equal(
+        transforms.before_day_month(
+            InterventionDataForDateNormalizationRowSchema(
+                idscheda=8,
+                data_protocollo="",
+                data_intervento="Ante  settembre ",
+                anno=2019,
+                norm_date=None,
+            )
+        ),
+        Date("<UNKNOWN>", "28/settembre/2019", "day"),
+    )
