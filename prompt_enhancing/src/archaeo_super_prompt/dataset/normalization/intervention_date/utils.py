@@ -8,30 +8,40 @@ from pandera.typing.pandas import DataFrame, Series
 
 Precision = Literal["day", "month", "year"]
 
+
 class Date(NamedTuple):
     """Not completely normalized date, but the day, the month and the year are already separated by /."""
 
-    start_date: str # d/m/y
-    end_date: str # d/m/y
+    start_date: str  # d/m/y
+    end_date: str  # d/m/y
     precision: Precision
+
+
+class Duration(NamedTuple):
+    """Tuple to represent a uniform duration."""
+
+    nb: int
+    unit: Precision
 
 
 class RawInterventionDataForDateNormalization(DataFrameModel):
     """This is the schema of usefull columns for normalizing the intervention dates."""
 
     idscheda: Series[int]
-    data_protocollo: Series[str]
+    data_protocollo: Optional[Series[str]] = Field(nullable=True)  # noqa: UP045
     data_intervento: Series[str]
     anno: Series[int]
-
+    norm_duration: Optional[tuple[int, Precision]] = Field(nullable=True)  # noqa: UP045
+ 
 
 class InterventionDataForDateNormalization(DataFrameModel):
     """This is the schema of usefull columns for normalizing the intervention dates."""
 
     idscheda: Series[int]
-    data_protocollo: Series[str]
+    data_protocollo: Optional[Series[str]] = Field(nullable=True)  # noqa: UP045
     data_intervento: Series[str]
     anno: Series[pd.Int32Dtype]
+    norm_duration: Optional[tuple[int, Precision]] = Field(nullable=True)  # noqa: UP045
     norm_date: Optional[Date] = Field(nullable=True)  # noqa: UP045
 
 
@@ -42,6 +52,7 @@ class InterventionDataForDateNormalizationRowSchema(NamedTuple):
     data_protocollo: str
     data_intervento: str
     anno: int
+    norm_duration: Duration | None
     norm_date: Date | None
 
 

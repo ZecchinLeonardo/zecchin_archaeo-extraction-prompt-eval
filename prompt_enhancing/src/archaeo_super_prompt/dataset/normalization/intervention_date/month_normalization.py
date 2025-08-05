@@ -24,6 +24,7 @@ ITALIAN_MONTHS = list(
 
 
 def to_int_month(month_str: str) -> int:
+    """Convert a string of month into its integer format."""
     if month_str.isdigit():
         return int(month_str)
     norm = month_str.lower().strip()

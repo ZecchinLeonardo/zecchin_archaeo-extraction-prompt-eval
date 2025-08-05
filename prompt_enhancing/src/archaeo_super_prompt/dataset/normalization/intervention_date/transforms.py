@@ -13,9 +13,13 @@ MONTH_PATTERN = r"\b(gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|s
 YEAR_PATTERN = r"(\d{4})"
 
 
+# ----- PARTICULAR PATTERNS -----
+
+
 def get_day_period(
     row: InterventionDataForDateNormalizationRowSchema,
 ) -> Date | None:
+    """Extract a precise date period from a string of 2 dates separated by an hyphen."""
     s = row.data_intervento.lower()
     pattern = (
         r"(\d{1,2})\s+([a-zA-Z]+)\s*-\s*(\d{1,2})\s+([a-zA-Z]+)\s+(\d{4})"
@@ -42,6 +46,7 @@ def get_day_period(
 def get_single_day_period(
     row: InterventionDataForDateNormalizationRowSchema,
 ) -> Date | None:
+    """Extract a single date with a day."""
     s = row.data_intervento
     pattern_without_year = r"(\d{1,2})\s+([a-zA-Z]+)"
     pattern_with_year = pattern_without_year + r"\s+(\d{4})"
@@ -64,6 +69,7 @@ def get_single_day_period(
 def get_month_period(
     row: InterventionDataForDateNormalizationRowSchema,
 ) -> Date | None:
+    """Extract a month period from a string of 2 months separated by an hyphen."""
     s = row.data_intervento
     pattern = r"([a-zA-Z]+)\s+(\d{4})\s*-\s*([a-zA-Z]+)\s+(\d{4})"
     pattern_with_year_on_right = r"([a-zA-Z]+)\s*-\s*([a-zA-Z]+)\s+(\d{4})"
@@ -87,6 +93,7 @@ def get_month_period(
 def get_single_month_period(
     row: InterventionDataForDateNormalizationRowSchema,
 ) -> Date | None:
+    """Extract a single month period."""
     s = row.data_intervento
     pattern_without_year = r"([a-zA-Z]+)"
     pattern_with_year = pattern_without_year + r"\s+(\d{4})"
@@ -105,6 +112,7 @@ def get_single_month_period(
 def start_year(
     row: InterventionDataForDateNormalizationRowSchema,
 ) -> Date | None:
+    """Extract a year, meaning a year when the intervention has started."""
     s = row.data_intervento
     pattern = r"(\d{4})\s*-\s*"
     m = re.fullmatch(pattern, s)
@@ -113,6 +121,10 @@ def start_year(
     start_year = m.groups()
     final_year = row.anno
     return Date(f"{1}/{1}/{start_year}", f"{31}/{12}/{final_year}", "year")
+
+
+# ----- PARTICULAR PATTERNS -----
+# ----- GENERIC PATTERNS -----
 
 
 def _get_d_y_m(ds: str) -> tuple[str | None, str | None, str | None]:
@@ -153,6 +165,12 @@ def _get_d_y_m(ds: str) -> tuple[str | None, str | None, str | None]:
 def generic_period(
     row: InterventionDataForDateNormalizationRowSchema,
 ) -> Date | None:
+    """Process a generic period of 2 dates separated by an hyphen.
+
+    Notes:
+    If 2 dates are given, usually it is not a window of time for the start of
+    the intervention but the start and the end dates of the intervention.
+    """
     s = row.data_intervento
     split_pattern = r"\s*-\s*"
     splits = re.split(split_pattern, s)
@@ -175,7 +193,9 @@ def generic_period(
                 start[1]
                 if start[1] is not None
                 else (end[1] if end[1] is not None else str(1)),
-                start[2] if start[2] is not None else str(row.anno),
+                start[2]
+                if start[2] is not None
+                else (end[2] if end[2] is not None else str(row.anno)),
             )
         ),
         "/".join(
@@ -184,7 +204,9 @@ def generic_period(
                 if end[0] is not None
                 else (str(31) if precision == "year" else str(28)),
                 end[1] if end[1] is not None else str(12),
-                end[2] if end[2] is not None else str(row.anno),
+                end[2]
+                if end[2] is not None
+                else str(row.anno),
             )
         ),
         precision,
@@ -240,3 +262,6 @@ def before_day_month(
         f"{d}/{m}/{y}",
         "day",
     )
+
+
+# ----- GENERIC PATTERNS -----
