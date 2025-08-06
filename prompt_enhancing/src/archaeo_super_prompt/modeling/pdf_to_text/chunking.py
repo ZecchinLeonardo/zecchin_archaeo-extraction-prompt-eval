@@ -1,23 +1,25 @@
 """Scanned document splitting into text chunks with layout metadata."""
 
-from collections.abc import Sequence, Iterable
+import functools as fnt
+from collections.abc import Iterable, Iterator
+from functools import reduce
+from pathlib import Path
 from typing import cast
+
+import pandas as pd
+from docling.datamodel.settings import PageRange
 from docling_core.transforms.chunker.base import BaseChunk
+from docling_core.transforms.chunker.hybrid_chunker import HybridChunker
 from docling_core.transforms.chunker.tokenizer.huggingface import (
     HuggingFaceTokenizer,
 )
-from docling_core.types.doc.document import DocItem, ProvenanceItem
-import pandas as pd
+from docling_core.types.doc.document import DocItem
 from transformers import AutoTokenizer
 
-from docling_core.transforms.chunker.hybrid_chunker import HybridChunker
-import functools as fnt
-
-from pathlib import Path
-from .types import CorrectlyConvertedDocument
 from ...types.intervention_id import InterventionId
 from ...types.pdfchunks import PDFChunkDataset, PDFChunkDatasetSchema
 from ...utils.cache import get_memory_for
+from .types import CorrectlyConvertedDocument
 
 EMBED_MODEL_ID = "nomic-ai/nomic-embed-text-v1.5"
 
@@ -36,19 +38,10 @@ def get_chunker(embed_model_id: str, max_chunk_size: int):
     return HybridChunker(tokenizer=tokenizer, merge_peers=True)
 
 
-def _get_doc_items(chunk: BaseChunk) -> list[DocItem]:
-    return cast(list[DocItem], chunk.meta.doc_items)  # type: ignore
-
-
-def _set_doc_items(chunk: BaseChunk, doc_items: list[DocItem]):
-    # not pure
-    chunk.meta.doc_items = doc_items  # type: ignore
-
 @get_memory_for("interim").cache
 def get_chunks(
     chunker: HybridChunker,
-    document: CorrectlyConvertedDocument
-    | Sequence[CorrectlyConvertedDocument | None],
+    document: Iterator[tuple[PageRange, CorrectlyConvertedDocument]],
 ) -> list[BaseChunk]:
     """Extracts a list of labeled chunks through all the pages of the document.
 
@@ -56,52 +49,16 @@ def get_chunks(
         chunker: the chunker model to chunk according to the layout and the \
 tokenization
         document: the document or a list of documents for each page
-    """ 
-    if not isinstance(document, Sequence):
-        return list(chunker.chunk(dl_doc=document))
-    if not document:
-        return []
-
-    def adapt_page_numbers(chunk: BaseChunk, page_number: int):
-        new_chunk = chunk.model_copy(deep=True)
-
-        def adapt_page_number_for_doc_item(item: DocItem):
-            def adapt_page_number_for_prov(prov: ProvenanceItem):
-                new_prov = prov.model_copy(deep=True)
-                new_prov.page_no = page_number
-                return new_prov
-
-            new_item = item.model_copy(deep=True)
-            new_item.prov = list(
-                map(adapt_page_number_for_prov, new_item.prov)
-            )
-            return new_item
-
-        _set_doc_items(
-            new_chunk,
-            list(
-                map(
-                    adapt_page_number_for_doc_item,
-                    _get_doc_items(new_chunk),
-                )
-            ),
-        )
-        return new_chunk
-
-    per_page_chunk_packs = (
-        [adapt_page_numbers(chunk, page_nb) for chunk in chunks]
-        for page_nb, chunks in (
-            (pnb, chunker.chunk(dl_doc=d))
-            for pnb, d in enumerate(document)
-            if d is not None
-        )
-    )
-    chunks = fnt.reduce(
-        lambda chunk_lst, per_page_chunk_pack: chunk_lst + per_page_chunk_pack,
-        per_page_chunk_packs,
+    """
+    return reduce(
+        lambda flatten, d: ([*flatten, *chunker.chunk(dl_doc=d)]),
+        (d for _, d in document),
         cast(list[BaseChunk], []),
     )
-    return chunks
+
+
+def _get_doc_items(chunk: BaseChunk) -> list[DocItem]:
+    return cast(list[DocItem], chunk.meta.doc_items)  # type: ignore
 
 
 def _page_numbers_of_chunk(chunk: BaseChunk) -> set[int]:

@@ -1,17 +1,17 @@
 """Better OCR model with VLLM."""
 
-from io import BytesIO
 from pathlib import Path
 from typing import (
     cast,
     Literal,
 )
-from collections.abc import Iterator, Iterable
+from collections.abc import Iterator
 from pydantic import AnyUrl
 import pymupdf
 from tqdm import tqdm
 
 from docling.datamodel.base_models import InputFormat
+from docling.datamodel.settings import PageRange
 from docling.datamodel.pipeline_options import (
     VlmPipelineOptions,
 )
@@ -21,13 +21,13 @@ from docling.datamodel.pipeline_options_vlm_model import (
 )
 from docling.document_converter import DocumentConverter, PdfFormatOption
 from docling.pipeline.vlm_pipeline import VlmPipeline
-from docling_core.types.io import DocumentStream
 
 from .types import has_document_been_well_scanned, CorrectlyConvertedDocument
 from ...types.intervention_id import InterventionId
-from ...utils import cache
+from .document_division import get_page_ranges
 
 from ...config.debug_log import print_log
+from ...utils import cache
 
 from . import cache_docling_documents as cache_dd
 
@@ -42,71 +42,6 @@ def _document_page_number(file: Path) -> int:
     page_count = source_doc.page_count
     source_doc.close()
     return page_count
-
-
-def get_incipit(file: Path):
-    """Return a stream of the document incipit, so less pages are processed."""
-    source_doc = pymupdf.open(file)
-    incipit_document = pymupdf.open()
-    incipit_document.insert_pdf(
-        source_doc,
-        from_page=0,
-        to_page=min(INCIPIT_MAX_PAGES, source_doc.page_count)-1,
-    )
-    intervention_id = file.parent.name
-    filestem = file.stem
-    return cache_dd.ArtificialPDFData(
-        intervention_id=InterventionId(int(intervention_id)),
-        filestem=filestem,
-        page_number=INCIPIT_MAX_PAGES
-        + 1,  # artificial page number for the whole incipit
-    ), DocumentStream(
-        # intervention_id + fileanme + page_number + .pdf
-        name=f"{intervention_id}__{filestem}__incipit.pdf",
-        stream=BytesIO(incipit_document.tobytes()),
-    )
-
-
-def stream_document_pages(
-    file: Path, incipit_only: bool
-) -> tuple[Iterator[tuple[cache_dd.ArtificialPDFData, DocumentStream]], int]:
-    """Load a pdf document and split it into an iterable of buffer for each page.
-
-    We do not use a per-page processing to let Docling running its native
-    per-page vllm processing, hoping more performant results will be output.
-
-    So this function is kept here in case of
-    """
-    source_doc = pymupdf.open(file)
-
-    def create_smaller_pdf_for_page(page_number: int):
-        per_page_pdf = pymupdf.open()
-        per_page_pdf.insert_pdf(
-            source_doc, from_page=page_number, to_page=page_number
-        )
-        intervention_id = file.parent.name
-        filestem = file.stem
-        return cache_dd.ArtificialPDFData(
-            intervention_id=InterventionId(int(intervention_id)),
-            filestem=filestem,
-            page_number=page_number,
-        ), DocumentStream(
-            # intervention_id + fileanme + page_number + .pdf
-            name=f"{intervention_id}__{filestem}__p{page_number}.pdf",
-            stream=BytesIO(per_page_pdf.tobytes()),
-        )
-
-    page_number = min(INCIPIT_MAX_PAGES, source_doc.page_count)
-
-    pages = (
-        create_smaller_pdf_for_page(pn)
-        for pn in range(
-            source_doc.page_count
-            if not incipit_only
-            else page_number
-        )
-    )
-    return pages, page_number 
 
 
 def ollama_vlm_options(
@@ -146,6 +81,7 @@ document (default to 3 minutes)
     )
     return options
 
+
 def vllm_vlm_options(
     model: str,
     prompt: str,
@@ -170,7 +106,7 @@ document (default to 3 minutes)
     options = ApiVlmOptions(
         url=AnyUrl(
             "http://localhost:8005/v1/chat/completions"
-        ),  # an arbitraty port 
+        ),  # an arbitraty port
         params=dict(
             model=model,
         ),
@@ -182,6 +118,7 @@ document (default to 3 minutes)
         response_format=response_format,
     )
     return options
+
 
 def converter(ollama_vlm_options: ApiVlmOptions):
     """Return a Docling PDF converter object from an ollama vlm configuration."""
@@ -203,46 +140,86 @@ def converter(ollama_vlm_options: ApiVlmOptions):
     return doc_converter
 
 
-def _retry_scanning_failed_document(
-    doc: Path, docConverter: DocumentConverter, incipit_only: bool
-) -> list[CorrectlyConvertedDocument | None]:
-    print_log("Retry scanning the document page per page...")
-    pages_iter, page_number = stream_document_pages(doc, incipit_only)
-    return [
-        page_doc
-        for _, page_doc in cache.manualy_cache_batch_processing(
-            lambda t: cache_dd.get_yaml_file_for_pdf(t[0]),
-            cache_dd.cache_docling_doc_on_disk,
-            cache_dd.load_docling_doc_from_cache,
-            lambda tpit: iter(
-                tqdm(
-                    map(
-                        has_document_been_well_scanned,
-                        docConverter.convert_all(
-                            (pit for _, pit in tpit),
-                            max_num_pages=1,
-                            raises_on_error=False,
-                        ),
-                    ),
-                    desc="Individual page scan",
-                    unit="page",
-                    total=page_number,
+def _process_page_ranges_with_cache(
+    intervention_id: InterventionId,
+    file: Path,
+    docConverter: DocumentConverter,
+    page_ranges: Iterator[PageRange],
+) -> Iterator[tuple[PageRange, CorrectlyConvertedDocument | None]]:
+    def scan_page_range(
+        page_ranges: Iterator[PageRange],
+    ) -> Iterator[CorrectlyConvertedDocument | None]:
+        return (
+            has_document_been_well_scanned(
+                docConverter.convert(
+                    file,
+                    page_range=p_range,
+                    max_num_pages=p_range[1] - p_range[0] + 1,
+                    raises_on_error=False,
                 )
-            ),
-            pages_iter,
+            )
+            for p_range in page_ranges
         )
-    ]
+
+    def get_yaml_file_for_pdf_slice(page_range: PageRange):
+        return cache_dd.get_yaml_file_for_pdf(
+            cache_dd.ArtificialPDFData(intervention_id, file.stem, page_range)
+        )
+
+    return cache.manualy_cache_batch_processing(
+        get_yaml_file_for_pdf_slice,
+        cache_dd.cache_docling_doc_on_disk,
+        cache_dd.load_docling_doc_from_cache,
+        scan_page_range,
+        page_ranges,
+    )
+
+
+def _retry_scanning_failed_document(
+    intervention_id: InterventionId,
+    doc: Path,
+    docConverter: DocumentConverter,
+    page_range: PageRange,
+) -> Iterator[tuple[PageRange, CorrectlyConvertedDocument | None]]:
+    print_log("Retry scanning the document page per page...")
+    return _process_page_ranges_with_cache(
+        intervention_id,
+        doc,
+        docConverter,
+        (
+            cast(PageRange, (p_number, p_number))
+            for p_number in range(page_range[0], page_range[1] + 1)
+        ),
+    )
+
+
+def _convert_document_with_parallel_pages(
+    intervention_id: InterventionId,
+    file: Path,
+    p_count: int,
+    docConverter: DocumentConverter,
+    incipit_only: bool,
+) -> Iterator[tuple[PageRange, CorrectlyConvertedDocument | None]]:
+    return _process_page_ranges_with_cache(
+        intervention_id,
+        file,
+        docConverter,
+        get_page_ranges(
+            p_count,
+            _PARALLEL_PAGE_NB,
+            INCIPIT_MAX_PAGES if incipit_only else None,
+        ),
+    )
 
 
 def process_documents(
     file_inputs: list[tuple[InterventionId, Path]],
     documentConvertor: DocumentConverter,
-    timeout_per_page: int,
     incipit_only=True,
-) -> Iterable[
+) -> Iterator[
     tuple[
         tuple[InterventionId, Path],
-        CorrectlyConvertedDocument | list[CorrectlyConvertedDocument | None],
+        Iterator[tuple[PageRange, CorrectlyConvertedDocument]],
     ]
 ]:
     """Convert the documents into text with Docling, using the given converter.
@@ -253,54 +230,43 @@ def process_documents(
     document page. For some pages, the a null value is put when the page
     reading has failed.
     """
-    ids, files = cast(
-        tuple[list[InterventionId], list[Path]], zip(*file_inputs)
-    )
-    page_counts = (_document_page_number(p) for p in files)
 
-    def convert_all_with_retry(files: Iterable[Path]):
+    def convert_all_with_retry(
+        intervention_id: InterventionId, file: Path, p_count: int
+    ) -> Iterator[tuple[PageRange, CorrectlyConvertedDocument]]:
+        for p_range, result in _convert_document_with_parallel_pages(
+            intervention_id, file, p_count, documentConvertor, incipit_only
+        ):
+            if result is not None:
+                yield p_range, result
+            else:
+                for p_range, result in _retry_scanning_failed_document(
+                    intervention_id, file, documentConvertor, p_range
+                ):
+                    if result is not None:
+                        yield p_range, result
+
+    def convert_with_debug(file_inputs: list[tuple[InterventionId, Path]]):
         return (
             (
-                p,
-                result
-                if result is not None
-                else _retry_scanning_failed_document(
-                    p, documentConvertor, incipit_only
+                (id_, f),
+                iter(
+                    tqdm(
+                        convert_all_with_retry(id_, f, p_count),
+                        desc="Doc's scanned proportion",
+                        total=p_count,
+                        unit="page batch",
+                    )
                 ),
             )
-            for (p, _), result in cache.manualy_cache_batch_processing(
-                lambda t: cache_dd.get_yaml_file_for_pdf(t[1][0]),
-                cache_dd.cache_docling_doc_on_disk,
-                cache_dd.load_docling_doc_from_cache,
-                lambda it: map(
-                    has_document_been_well_scanned,
-                    documentConvertor.convert_all(
-                        (inpt for _, (_, inpt) in it),
-                        max_num_pages=150,
-                        raises_on_error=False,
-                    ),
-                ),
-                (
-                    (f, get_incipit(f) if incipit_only else (f, f))
-                    for f in files
-                ),
+            for id_, f, p_count in (
+                (id_, f, _document_page_number(f))
+                for id_, f in tqdm(
+                    file_inputs,
+                    desc="vision-llm-scanned files",
+                    unit="file",
+                )
             )
         )
 
-    def convert_with_debug(ids: list[InterventionId], files: list[Path]):
-        result_iter = convert_all_with_retry(files)
-        ids_iter = iter(ids)
-        for max_duration in tqdm(
-            page_counts,
-            desc="vllm-scanned files",
-            unit="file",
-            total=len(file_inputs),
-        ):
-            print_log(
-                f"Max duration for the current scan: {max_duration * timeout_per_page} s",
-            )
-            f, r = next(result_iter)
-            id_ = next(ids_iter)
-            yield (id_, f), r
-
-    return convert_with_debug(ids, files)
+    return convert_with_debug(file_inputs)

@@ -1,4 +1,4 @@
-"""Abstract data type for handling a dataset of read pdfs"""
+"""Abstract data type for handling a dataset of read pdfs."""
 
 from pandas import concat
 from pandera.pandas import DataFrameModel
@@ -7,7 +7,7 @@ from typing import NewType, TypedDict, cast
 from collections.abc import Generator, Iterable
 
 # TODO: remove these dependencies
-from ..modeling.struct_extract.signatures.input import (
+from .text_for_extractor import (
     Chunk,
     ChunkHumanDescription,
     Filename,
@@ -37,9 +37,7 @@ PDFChunkDataset = NewType("PDFChunkDataset", DataFrame[PDFChunkDatasetSchema])
 
 
 class PDFChunkPerInterventionDataset:
-    """DataFrame class wrapper to customize the auto-displaying from tracing tools
-    such as mlflow
-    """
+    """DataFrame class wrapper to customize the auto-displaying from tracing tools such as mlflow."""
 
     def __init__(
         self,
@@ -57,8 +55,7 @@ class PDFChunkPerInterventionDataset:
         )
 
     def getExtractedPdfContent(self) -> PDFSources:
-        """Let dataset be a set of chunks from several pdf files related to a
-        single intervention. Computes the batch of chunk sources from this dataset
+        """Let dataset be a set of chunks from several pdf files related to a single intervention. Computes the batch of chunk sources from this dataset.
 
         The dataset can be partial if a selection of chunks in each files has
         already been carried out.

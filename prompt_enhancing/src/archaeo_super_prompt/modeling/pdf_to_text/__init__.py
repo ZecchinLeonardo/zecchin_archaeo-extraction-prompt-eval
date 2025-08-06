@@ -1,16 +1,16 @@
 """PDF Ingestion layer with vision llm and chunking model."""
 
 from pathlib import Path
+
 from sklearn.pipeline import FunctionTransformer
+from tqdm import tqdm
 
 from ...types.pdfchunks import PDFChunkDataset
 from ...types.pdfpaths import (
     PDFPathDataset,
 )
-
-from .chunking import get_chunker, get_chunks, chunk_to_ds
-from tqdm import tqdm
 from . import stream_ocr_manual as vllm_scan_mod
+from . import chunking as vllm_doc_chunk_mod
 
 
 def VLLM_Preprocessing(
@@ -42,16 +42,20 @@ def VLLM_Preprocessing(
             model, prompt, allowed_timeout=allowed_timeout
         )
     )
-    chunker = get_chunker(embedding_model_hf_id, max_chunk_size)
+    chunker = vllm_doc_chunk_mod.get_chunker(embedding_model_hf_id, max_chunk_size)
 
     def transform(X: PDFPathDataset) -> PDFChunkDataset:
         conversion_results = vllm_scan_mod.process_documents(
             [(line["id"], Path(line["filepath"])) for _, line in X.iterrows()],
             converter,
-            allowed_timeout,
-            incipit_only
+            incipit_only,
         )
-        chunked_results = tqdm(((f, get_chunks(chunker, r)) for f, r in conversion_results), desc="Chunking read text", unit="chunked files", total=len(X))
-        return chunk_to_ds(chunked_results, chunker)
+        chunked_results = tqdm(
+            ((f, vllm_doc_chunk_mod.get_chunks(chunker, r)) for f, r in conversion_results),
+            desc="Chunking read text",
+            unit="chunked files",
+            total=len(X),
+        )
+        return vllm_doc_chunk_mod.chunk_to_ds(chunked_results, chunker)
 
     return FunctionTransformer(transform)

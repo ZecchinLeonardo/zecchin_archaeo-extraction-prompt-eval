@@ -8,6 +8,7 @@ recompute it with a VLLM call.
 from pathlib import Path
 from typing import NamedTuple
 
+from docling.datamodel.settings import PageRange
 from docling_core.types.doc.document import DoclingDocument
 
 from archaeo_super_prompt.types.intervention_id import InterventionId
@@ -18,22 +19,24 @@ from ...utils import cache
 DOC_DOC_SUBDIR = "pdf_scans"
 
 
-
-
 class ArtificialPDFData(NamedTuple):
     """Data for saving data about a bufferized PDF document."""
 
     intervention_id: InterventionId
     filestem: str
-    page_number: int
+    page_range: PageRange
 
 
 def _get_yaml_file_for_artificial_pdf(pdf_data: ArtificialPDFData) -> Path:
     """Return a yaml file to cache the extracted document from a pdf buffer."""
     return (
-        cache.get_cache_dir_for("interim", DOC_DOC_SUBDIR)
-        / str(pdf_data.intervention_id)
-    ) / f"{pdf_data.filestem}.{pdf_data.page_number}.docling.yaml"
+        (
+            cache.get_cache_dir_for("interim", DOC_DOC_SUBDIR)
+            / str(pdf_data.intervention_id)
+        )
+        / f"{pdf_data.filestem}.{'-'.join(map(str, pdf_data.page_range))}.docling.yaml"
+    )
+
 
 def _get_yaml_file_for_saved_pdf(source_pdf_path: Path) -> Path:
     cache_docling_doc_path = (
@@ -45,11 +48,13 @@ def _get_yaml_file_for_saved_pdf(source_pdf_path: Path) -> Path:
         / cache_docling_doc_path
     )
 
+
 def get_yaml_file_for_pdf(source_pdf_path: Path | ArtificialPDFData) -> Path:
     """Return a yaml file in which the extracted docling document can be cached."""
     if isinstance(source_pdf_path, ArtificialPDFData):
         return _get_yaml_file_for_artificial_pdf(source_pdf_path)
     return _get_yaml_file_for_saved_pdf(source_pdf_path)
+
 
 def cache_docling_doc_on_disk(
     docling_document: CorrectlyConvertedDocument | None, file_path: Path
@@ -68,7 +73,7 @@ def cache_docling_doc_on_disk(
     return docling_document.save_as_yaml(file_path)
 
 
-@cache.get_memory_for('interim').cache
+@cache.get_memory_for("interim").cache
 def load_docling_doc_from_cache(
     file_path_in_cache: Path,
 ) -> CorrectlyConvertedDocument | None:

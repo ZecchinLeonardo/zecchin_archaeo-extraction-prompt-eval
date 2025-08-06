@@ -1,4 +1,6 @@
-"""The field descriptions are samples or interpretations of this paper:
+"""Signatures of the LLM prompts in the legacy model.
+
+The field descriptions are samples or interpretations of this paper:
 MapPapers 1en-II, 2012, pp.21-38
 doi:10.4456/MAPPA.2012.02
 """
@@ -6,7 +8,7 @@ doi:10.4456/MAPPA.2012.02
 from typing import List, Optional, Union
 import dspy
 
-from ..signatures.input import PDFChunkEnumeration
+from .....types.text_for_extractor import PDFChunkEnumeration
 from .date_estimation import LatestEstimatedPastMoment
 from .document_type import ItalianDocumentType
 from .intervention_type import ItalianInterventionType
