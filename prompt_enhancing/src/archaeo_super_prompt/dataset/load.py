@@ -13,7 +13,7 @@ from ..types.intervention_id import InterventionId
 from ..types.pdfpaths import PDFPathSchema
 from ..types.structured_data import (
     ExtractedStructuredDataSeries,
-    structuredDataSchema,
+    FeaturedOutputStructureDataSchema,
     OutputStructuredDataSchema,
     outputStructuredDataSchema_itertuples,
 )
@@ -25,18 +25,22 @@ from ..utils.norm import variabilize_column_name
 
 
 def _parse_intervention_data(intervention_data__df: pd.DataFrame):
-    filtered_df = intervention_data__df.filter(
-        regex="^(scheda_intervento.id|(university|building|check).*)"
-    ).astype(
-        {
-            "university.Numero di saggi": "UInt32",
-            "university.Geologico": "boolean",
-            "university.Profondità falda": "Float64",
-            "university.Profondità massima": "Float64",
-        }
+    filtered_df = (
+        intervention_data__df.filter(
+            regex="^(scheda_intervento.id|intervention_start_date_*|duration_(value|precision)|(university|building|check).*)"
+        )
+        .astype(
+            {
+                "university.Numero di saggi": "UInt32",
+                "university.Geologico": "boolean",
+                "university.Profondità falda": "Float64",
+                "university.Profondità massima": "Float64",
+                "duration_value": "UInt32"
+            }
+        )
     )
 
-    return structuredDataSchema.validate(filtered_df)
+    return filtered_df
 
 
 def _parse_and_get_files(intervention_data: pd.DataFrame):
@@ -78,6 +82,7 @@ def _init_with_cache_for_ids(ids: set[int]):
 
 class SamplingParams(NamedTuple):
     """Parametres for sampling records in the training dataset."""
+
     size: int
     seed: float
     only_recent_entries: bool
@@ -119,12 +124,31 @@ of sampling params to randomly fetch intervention records
         """A DataFrame with the truth metadata of registered records in Magoh."""
         return self._intervention_data
 
-    @classmethod
-    def _normalize_metadata_df(cls, df: pd.DataFrame):
+    @property
+    def legacy_intervention_data(
+        self,
+    ) -> DataFrame[OutputStructuredDataSchema]:
+        """The intervention data in the old schema for the legacy model."""
         return OutputStructuredDataSchema.validate(
-            df.filter(regex="^(scheda_intervento.id|(university|building).*)")
+            self._intervention_data.filter(
+                regex="^(id|(university|building)__*)"
+            ),
+            # TODO: add this once the method is tested
+            # lazy=True
+        )
+
+    @classmethod
+    def _normalize_metadata_df(
+        cls, df: pd.DataFrame
+    ) -> DataFrame[FeaturedOutputStructureDataSchema]:
+        return FeaturedOutputStructureDataSchema.validate(
+            df.filter(
+                regex="^(scheda_intervento.id|intervention_start_date_*|duration_(value|precision)|(university|building).*)"
+            )
             .rename(columns={"scheda_intervento.id": "id"})
-            .rename(columns=variabilize_column_name)
+            .rename(columns=variabilize_column_name),
+            # TODO: add this once the method is tested
+            # lazy=True
         )
 
     def get_answer(self, id_: InterventionId) -> ExtractedStructuredDataSeries:
@@ -139,7 +163,7 @@ of sampling params to randomly fetch intervention records
         self,
         ids: set[InterventionId],
         condition: Callable[
-            [DataFrame[OutputStructuredDataSchema]], Series[bool]
+            [DataFrame[FeaturedOutputStructureDataSchema]], Series[bool]
         ],
     ) -> set[InterventionId]:
         """Return only the ids for which the intervention records match a given condition.

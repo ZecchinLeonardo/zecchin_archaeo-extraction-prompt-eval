@@ -1,6 +1,7 @@
 """Types related to the wanted structured data in the dataset."""
 
 from collections.abc import Iterator
+import datetime
 from typing import Any, NamedTuple, Optional, cast
 import pandera.pandas as pa
 from pandera.typing.pandas import DataFrame, Series
@@ -80,6 +81,15 @@ class OutputStructuredDataSchema(pa.DataFrameModel):
     building__Data_Protocollo: Optional[Series[str]] = pa.Field(nullable=True)  # noqa: UP045
 
 
+class FeaturedOutputStructureDataSchema(OutputStructuredDataSchema):
+    """New structure data schema for the new models, with some fields that are normalized."""
+    intervention_start_date_min: Optional[datetime.date] = pa.Field(nullable=True)  # noqa: UP045
+    intervention_start_date_max: datetime.date
+    intervention_start_date_precision: Series[str]
+    duration_value: Series[pd.UInt32Dtype] = pa.Field(nullable=True)  # noqa: UP045
+    duration_precision: Optional[Series[str]] = pa.Field(nullable=True)  # noqa: UP045
+
+
 class DatasetAnswerSchema(NamedTuple):
     """Schema of a row in the answer dataframe loadable from the dataset."""
 
@@ -109,7 +119,7 @@ class DatasetAnswerSchema(NamedTuple):
 
 
 def outputStructuredDataSchema_itertuples(
-    df: DataFrame[OutputStructuredDataSchema],
+    df: DataFrame[FeaturedOutputStructureDataSchema],
 ):
     """Type-safe wrapper of DataFrame.itertuples."""
     return cast(Iterator[DatasetAnswerSchema], df.itertuples())
