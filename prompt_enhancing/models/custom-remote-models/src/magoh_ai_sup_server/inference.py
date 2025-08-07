@@ -15,7 +15,7 @@ model = AutoModelForTokenClassification.from_pretrained(
 )
 
 # set CUDA_VISIBLE_DEVICES, so 0 index will be mapped to an allowed GPU
-nlp = pipeline("ner", model=model, tokenizer=tokenizer, device=0)
+nlp = pipeline("ner", model=model, tokenizer=tokenizer, device=-1)
 example = """Il commendatore Gianluigi Alberico De Laurentis-Ponti, con residenza legale in Corso Imperatrice 67,  Torino, avente codice fiscale DLNGGL60B01L219P, è amministratore delegato della "De Laurentis Advanced Engineering Group S.p.A.",  che si trova in Piazza Affari 32, Milano (MI); con una partita IVA di 09876543210, la società è stata recentemente incaricata  di sviluppare una nuova linea di componenti aerospaziali per il progetto internazionale di esplorazione di Marte."""
 
 
