@@ -38,7 +38,7 @@ def VLLM_Preprocessing(
     """
     allowed_timeout = allowed_timeout
     converter = vllm_scan_mod.converter(
-        vllm_scan_mod.ollama_vlm_options(
+        vllm_scan_mod.vllm_vlm_options(
             model, prompt, allowed_timeout=allowed_timeout
         )
     )
@@ -52,7 +52,7 @@ def VLLM_Preprocessing(
             converter,
             incipit_only,
         )
-        chunked_results = tqdm(
+        chunked_results = iter(tqdm(
             (
                 (f, vllm_doc_chunk_mod.get_chunks(chunker, r))
                 for f, r in conversion_results
@@ -60,7 +60,7 @@ def VLLM_Preprocessing(
             desc="Chunking read text",
             unit="chunked files",
             total=len(X),
-        )
+        ))
         return vllm_doc_chunk_mod.chunk_to_ds(chunked_results, chunker)
 
     return FunctionTransformer(VLM_Ingest)

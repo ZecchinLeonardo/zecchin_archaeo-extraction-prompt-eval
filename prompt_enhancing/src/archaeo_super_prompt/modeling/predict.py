@@ -29,7 +29,7 @@ def get_pipeline():
                 (
                     "vllm",
                     VLLM_Preprocessing(
-                        model="granite3.2-vision:latest",
+                        model="ibm-granite/granite-vision-3.3-2b",
                         incipit_only=True,
                         prompt="OCR this part of Italian document for markdown-based processing.",
                         embedding_model_hf_id="nomic-ai/nomic-embed-text-v1.5",

@@ -1,7 +1,7 @@
 """Scanned document splitting into text chunks with layout metadata."""
 
 import functools as fnt
-from collections.abc import Iterable, Iterator
+from collections.abc import Iterator
 from functools import reduce
 from pathlib import Path
 from typing import cast
@@ -39,6 +39,15 @@ def get_chunker(embed_model_id: str, max_chunk_size: int):
 
 
 @get_memory_for("interim").cache
+def _get_chunk_from_document(
+    chunker: HybridChunker,
+    document: CorrectlyConvertedDocument,
+    page_range: PageRange,
+):
+    page_range = page_range  # used only for the cache hashing
+    return list(chunker.chunk(dl_doc=document))
+
+
 def get_chunks(
     chunker: HybridChunker,
     document: Iterator[tuple[PageRange, CorrectlyConvertedDocument]],
@@ -51,8 +60,10 @@ tokenization
         document: the document or a list of documents for each page
     """
     return reduce(
-        lambda flatten, d: ([*flatten, *chunker.chunk(dl_doc=d)]),
-        (d for _, d in document),
+        lambda flatten, d: (
+            [*flatten, *_get_chunk_from_document(chunker, d[1], d[0])]
+        ),
+        document,
         cast(list[BaseChunk], []),
     )
 
@@ -77,7 +88,7 @@ def _chunk_types_of_chunk(chunk: BaseChunk) -> set[str]:
 
 
 def chunk_to_ds(
-    pairs: Iterable[tuple[tuple[InterventionId, Path], list[BaseChunk]]],
+    pairs: Iterator[tuple[tuple[InterventionId, Path], list[BaseChunk]]],
     chunker: HybridChunker,
 ) -> PDFChunkDataset:
     """Gather the list of labeled chunks into a dataframe for all the document batch."""

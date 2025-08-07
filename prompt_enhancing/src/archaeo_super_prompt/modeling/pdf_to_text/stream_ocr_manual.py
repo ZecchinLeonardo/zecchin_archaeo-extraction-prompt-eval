@@ -154,7 +154,6 @@ def _process_page_ranges_with_cache(
                 docConverter.convert(
                     file,
                     page_range=p_range,
-                    max_num_pages=p_range[1] - p_range[0] + 1,
                     raises_on_error=False,
                 )
             )
@@ -182,14 +181,19 @@ def _retry_scanning_failed_document(
     page_range: PageRange,
 ) -> Iterator[tuple[PageRange, CorrectlyConvertedDocument | None]]:
     print_log("Retry scanning the document page per page...")
-    return _process_page_ranges_with_cache(
-        intervention_id,
-        doc,
-        docConverter,
-        (
-            cast(PageRange, (p_number, p_number))
-            for p_number in range(page_range[0], page_range[1] + 1)
-        ),
+    page_ranges = [
+        cast(PageRange, (p_number, p_number))
+        for p_number in range(page_range[0], page_range[1] + 1)
+    ]
+    return iter(
+        tqdm(
+            _process_page_ranges_with_cache(
+                intervention_id, doc, docConverter, iter(page_ranges)
+            ),
+            desc=f"({intervention_id}, {page_range[0]}-{page_range[1]}) rescanned pages",
+            unit="page",
+            total=len(page_ranges),
+        )
     )
 
 
@@ -200,15 +204,20 @@ def _convert_document_with_parallel_pages(
     docConverter: DocumentConverter,
     incipit_only: bool,
 ) -> Iterator[tuple[PageRange, CorrectlyConvertedDocument | None]]:
-    return _process_page_ranges_with_cache(
-        intervention_id,
-        file,
-        docConverter,
-        get_page_ranges(
-            p_count,
-            _PARALLEL_PAGE_NB,
-            INCIPIT_MAX_PAGES if incipit_only else None,
-        ),
+    page_ranges = get_page_ranges(
+        p_count,
+        _PARALLEL_PAGE_NB,
+        INCIPIT_MAX_PAGES if incipit_only else None,
+    )
+    return iter(
+        tqdm(
+            _process_page_ranges_with_cache(
+                intervention_id, file, docConverter, iter(page_ranges)
+            ),
+            desc=f"Doc n°{intervention_id}'s scanned proportion",
+            unit="page batch",
+            total=len(page_ranges),
+        )
     )
 
 
@@ -246,27 +255,17 @@ def process_documents(
                     if result is not None:
                         yield p_range, result
 
-    def convert_with_debug(file_inputs: list[tuple[InterventionId, Path]]):
-        return (
-            (
-                (id_, f),
-                iter(
-                    tqdm(
-                        convert_all_with_retry(id_, f, p_count),
-                        desc="Doc's scanned proportion",
-                        total=p_count,
-                        unit="page batch",
-                    )
-                ),
-            )
-            for id_, f, p_count in (
-                (id_, f, _document_page_number(f))
-                for id_, f in tqdm(
-                    file_inputs,
-                    desc="vision-llm-scanned files",
-                    unit="file",
-                )
+    return (
+        (
+            (id_, f),
+            convert_all_with_retry(id_, f, p_count),
+        )
+        for id_, f, p_count in (
+            (id_, f, _document_page_number(f))
+            for id_, f in tqdm(
+                file_inputs,
+                desc="vision-llm-scanned files",
+                unit="file",
             )
         )
-
-    return convert_with_debug(file_inputs)
+    )
