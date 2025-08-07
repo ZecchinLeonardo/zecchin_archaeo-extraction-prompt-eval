@@ -1,3 +1,5 @@
+"""Conversion typing to discriminate the successfull vlm runs."""
+
 from typing import NewType
 from docling.datamodel.document import ConversionResult
 from docling.datamodel.base_models import ConversionStatus
@@ -12,9 +14,7 @@ CorrectlyConvertedDocument = NewType(
 def has_document_been_well_scanned(
     doc: ConversionResult,
 ) -> CorrectlyConvertedDocument | None:
-    """Return the docling document typed as validated if the status of the
-    conversion is at least partially successfull, else return None
-    """
+    """Return the docling document typed as validated if the status of the conversion is at least partially successfull, else return None."""
     if (
         doc.status == ConversionStatus.SUCCESS
         or doc.status == ConversionStatus.PARTIAL_SUCCESS

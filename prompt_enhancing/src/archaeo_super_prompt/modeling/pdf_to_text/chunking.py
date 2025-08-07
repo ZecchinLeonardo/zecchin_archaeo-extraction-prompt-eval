@@ -43,15 +43,14 @@ def _get_chunk_from_document(
     chunker: HybridChunker,
     document: CorrectlyConvertedDocument,
     page_range: PageRange,
-):
-    page_range = page_range  # used only for the cache hashing
-    return list(chunker.chunk(dl_doc=document))
+) -> list[tuple[PageRange, BaseChunk]]:
+    return [(page_range, chunk) for chunk in chunker.chunk(dl_doc=document)]
 
 
 def get_chunks(
     chunker: HybridChunker,
     document: Iterator[tuple[PageRange, CorrectlyConvertedDocument]],
-) -> list[BaseChunk]:
+) -> list[tuple[PageRange, BaseChunk]]:
     """Extracts a list of labeled chunks through all the pages of the document.
 
     Arguments:
@@ -88,7 +87,9 @@ def _chunk_types_of_chunk(chunk: BaseChunk) -> set[str]:
 
 
 def chunk_to_ds(
-    pairs: Iterator[tuple[tuple[InterventionId, Path], list[BaseChunk]]],
+    pairs: Iterator[
+        tuple[tuple[InterventionId, Path], list[tuple[PageRange, BaseChunk]]]
+    ],
     chunker: HybridChunker,
 ) -> PDFChunkDataset:
     """Gather the list of labeled chunks into a dataframe for all the document batch."""
@@ -104,16 +105,19 @@ def chunk_to_ds(
                                 "chunk_type": list(
                                     _chunk_types_of_chunk(chunk)
                                 ),
-                                "chunk_page_position": list(
-                                    _page_numbers_of_chunk(chunk)
-                                ),
+                                "chunk_page_position": [
+                                    (prange[0] - 1) + pn
+                                    for pn in _page_numbers_of_chunk(chunk)
+                                ],
                                 "chunk_index": chunk_idx,
                                 "chunk_embedding_content": chunker.contextualize(
                                     chunk
                                 ),
                                 "chunk_content": chunk.text,
                             }
-                            for chunk_idx, chunk in enumerate(chunks_per_file)
+                            for chunk_idx, (prange, chunk) in enumerate(
+                                chunks_per_file
+                            )
                         ]
                     )
                     for (id_, file), chunks_per_file in pairs
