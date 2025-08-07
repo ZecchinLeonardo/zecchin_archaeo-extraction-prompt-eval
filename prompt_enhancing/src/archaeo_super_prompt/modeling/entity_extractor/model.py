@@ -6,15 +6,17 @@ from typing import cast
 import requests
 from tqdm import tqdm
 
+from ...config.env import getenv_or_throw
 from .types import CompleteEntity, NerOutput, NerXXLEntities
 
 
-def _fetch_entities(chunks: list[str]) -> list[list[NerOutput]]:
+def _fetch_entities(ner_model_hosturl: str, chunks: list[str]) -> list[list[NerOutput]]:
     if not chunks:
         return []
     print("Fetching the transformers model")
     payload = {"chunks": chunks}
-    response = requests.post("http://localhost:8884/ner", json=payload)
+    response = requests.post(f"{ner_model_hosturl}/ner", json=payload,
+                             timeout=60)
     response.raise_for_status()
     entities = list(
         map(
@@ -27,9 +29,10 @@ def _fetch_entities(chunks: list[str]) -> list[list[NerOutput]]:
 
 def fetch_entities(chunks: list[str]):
     """Infer into the remote NER model to find named entities in each chunk."""
+    ner_model_hosturl = getenv_or_throw("NER_MODEL_HOST_URL")
     return list(
         itertools.chain.from_iterable(
-            _fetch_entities(list(c))
+            _fetch_entities(ner_model_hosturl, list(c))
             for c in tqdm(
                 itertools.batched(chunks, 50),
                 desc="NER analysing",

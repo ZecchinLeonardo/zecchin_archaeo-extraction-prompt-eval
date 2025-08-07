@@ -11,7 +11,7 @@ sync:
 
 # Connect to the inference server through a ssh tunnel toward the cluster
 connect_remote_server:
-  @echo "You can now fetch your llm from http://localhost:{{LOCAL_PORT}}"
+  @echo "You can now fetch the ner model from http://localhost:{{LOCAL_PORT}}"
   ssh -N {{REMOTE_SERVER_SSH_LOGIN}} -L {{LOCAL_PORT}}:localhost:{{REMOTE_PORT}}
 
 # On the remote server (must be in the venv)

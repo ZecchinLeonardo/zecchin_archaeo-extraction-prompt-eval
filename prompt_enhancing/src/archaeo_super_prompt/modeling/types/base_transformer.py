@@ -12,6 +12,11 @@ class BaseTransformer(BaseEstimator, TransformerMixin, ABC):
         """Neutral init."""
         super().__init__()
 
+    def set_output(self, transform=None):  # type: ignore
+        """Function for the support of pandas."""
+        # no-op to support sklearn pipeline compatibility
+        return self
+
     def fit(self, X, y):
         """Neutral fit function."""
         X = X  # unused
