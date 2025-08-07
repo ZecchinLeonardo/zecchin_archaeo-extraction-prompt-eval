@@ -1,22 +1,24 @@
-"""LLM-based extraction of the Date of Intervention.
+"""LLM-based extraction of the date of start of the intervention.
 
-We expect the model to predict a window of date for the start of the
+We expect the model to predict a window of dates for the start of the
 intervention. This model has a known/guessed date of archiving of the report
-and can output a window at least before this date. The precision of the window
-is among those below :
+and can output a window at least before this date.
+
+The precision of the window is among those below :
 1. Day
 2. Month
 3. Year
+Moreover, the earlier date in the window can be open if the information is not
+guessable. The most recent in the window must be by default the date of
+archiving if the information is unknown.
 """
 
 import datetime
-from typing import Literal, cast, override
+from typing import Literal, Optional, cast, override
 
 import dspy
 import pandas as pd
 import pandera.pandas as pa
-from pandera.typing.pandas import Series
-import re
 import pydantic
 
 from archaeo_super_prompt.dataset.load import MagohDataset
@@ -32,13 +34,14 @@ from .....types.per_intervention_feature import (
 from ...field_extractor import FieldExtractor, TypedDspyModule
 from .type_models import ITALIAN_MONTHS, Data, Precision, Precisione
 
+
 # -- DSPy part
 
 
 class StimareDataDellIntervento(dspy.Signature):
-    """Degli framenti datti di relazione archeologiche, stima il momento di partenza dell'indagine in una finestra de due date, con un precisione al giorno, al mese o all'anno più vicino. Se non ci sono molte informazione, ritorna almeno una finestra prima di la data di archiviazone datta.
+    """Degli framenti datti di relazione archeologiche, stima il momento di partenza dell'indagine in una finestra de due date, con un precisione al giorno, al mese o all'anno più vicino. Se non ci sono molte informazione, ritorna almeno una finestra prima di la data di archiviazone datta. La data minima può essere lasciata sconosciuta.
 
-    1. Innanzitutto, determina la precisione con cui puoi approssimare la finestra.
+    1. Innanzitutto, determina se c'è una data minima e la precisione con cui puoi approssimare la finestra.
     2. Quindi, determina la finestra, inserendo valori predefiniti (ma ben tipizzati) nei campi non coperti dalla precisione.
        a. Se possibile, restringi la finestra a un punto impostando le stesse date minima e massima.
     """
@@ -48,7 +51,7 @@ class StimareDataDellIntervento(dspy.Signature):
     )
     data_di_archiviazone: Data = dspy.InputField()
 
-    data_minima_di_inizio: Data = dspy.OutputField()
+    data_minima_di_inizio: Optional[Data] = dspy.OutputField()  # noqa: UP045
     data_massima_di_inizio: Data = dspy.OutputField()
     precisione: Precisione = dspy.OutputField()
 
@@ -63,13 +66,35 @@ class DataInterventoInputData(pydantic.BaseModel):
 class DataInterventoOutputData(pydantic.BaseModel):
     """A predicted maximum date for the intervention, in un window."""
 
-    start_day: int
-    start_month: int  # between 1 and 12
-    start_year: int
+    start_day: int | None
+    start_month: int | None  # between 1 and 12
+    start_year: int | None
     end_day: int
     end_month: int  # between 1 and 12
     end_year: int
     precision: Precision
+
+
+def _get_min_date(output_model: DataInterventoOutputData):
+    return (
+        datetime.date(
+            output_model.start_year,
+            output_model.start_month,
+            output_model.start_day,
+        )
+        if (
+            output_model.start_year is not None
+            and output_model.start_month is not None
+            and output_model.start_day is not None
+        )
+        else None
+    )
+
+
+def _get_max_date(output_model: DataInterventoOutputData):
+    return datetime.date(
+        output_model.end_year, output_model.end_month, output_model.end_day
+    )
 
 
 class EstimateInterventionDate(
@@ -97,7 +122,7 @@ class EstimateInterventionDate(
         )
 
         DEFAULT_WRONG_DATE = Data(
-            giorno=25, mese="Dicembre", anno=-1
+            giorno=25, mese="Dicembre", anno=1
         )  # The child was born
         TO_ENGLISH_PRECISION: dict[Precisione, Precision] = {
             "giorno": "day",
@@ -106,7 +131,7 @@ class EstimateInterventionDate(
         }
 
         data_minima_di_inizio = cast(
-            Data, result.get("data_minima_di_inizio", DEFAULT_WRONG_DATE)
+            Data | None, result.get("data_minima_di_inizio")
         )
         data_massima_di_inizio = cast(
             Data, result.get("data_minima_di_inizio", DEFAULT_WRONG_DATE)
@@ -117,9 +142,15 @@ class EstimateInterventionDate(
 
         return self._to_prediction(
             DataInterventoOutputData(
-                start_day=data_minima_di_inizio.giorno,
-                start_month=ITALIAN_MONTHS.index(data_minima_di_inizio.mese),
-                start_year=data_minima_di_inizio.anno,
+                start_day=data_minima_di_inizio.giorno
+                if data_minima_di_inizio is not None
+                else None,
+                start_month=ITALIAN_MONTHS.index(data_minima_di_inizio.mese)
+                if data_minima_di_inizio is not None
+                else None,
+                start_year=data_minima_di_inizio.anno
+                if data_minima_di_inizio is not None
+                else None,
                 end_day=data_massima_di_inizio.giorno,
                 end_month=ITALIAN_MONTHS.index(data_massima_di_inizio.mese),
                 end_year=data_massima_di_inizio.anno,
@@ -146,10 +177,12 @@ class InputForInterventionDateRowSchema(BaseInputForExtractionRowSchema):
 class DateFeatSchema(BasePerInterventionFeatureSchema):
     """Extracted data about the intervention start date."""
 
-    intervention_date_start: Series[pa.DateTime]
-    intervention_date_end: Series[pa.DateTime]
-    intervention_date_precision: Literal["day", "month", "year"] = pa.Field(
-        isin=["day", "month", "year"]
+    intervention_start_date_min: Optional[datetime.date] = pa.Field(  # noqa: UP045
+        nullable=True
+    )
+    intervention_start_date_max: datetime.date
+    intervention_start_date_precision: Literal["day", "month", "year"] = (
+        pa.Field(isin=["day", "month", "year"])
     )
 
 
@@ -186,7 +219,7 @@ Lo scavo è iniziato il 18 marzo 1985 ed è terminato il 20 marzo.""",
             llm_model,
             EstimateInterventionDate(),
             example,
-            DataInterventoOutputData
+            DataInterventoOutputData,
         )
 
     @override
@@ -203,36 +236,18 @@ Lo scavo è iniziato il 18 marzo 1985 ed è terminato il 20 marzo.""",
 
     @override
     def _transform_dspy_output(self, y):
-        ids, values = cast(
-            tuple[
-                tuple[InterventionId, ...],
-                tuple[DataInterventoOutputData, ...],
-            ],
-            zip(*y),
-        )
         return DateFeatSchema.validate(
             pd.DataFrame(
-                {
-                    "id": [int(id_) for id_ in ids],
-                    "intervention_date_start": pd.to_datetime(
-                        [
-                            f"{y.start_year}-{y.start_month}-{y.start_day}"
-                            for y in values
-                        ],
-                        format="%Y-%m-%d",
-                    ),
-                    "intervention_date_end": pd.to_datetime(
-                        [
-                            f"{y.end_year}-{y.end_month}-{y.end_day}"
-                            for y in values
-                        ],
-                        format="%Y-%m-%d",
-                    ),
-                    "intervention_date_precision": [
-                        y.precision for y in values
-                    ],
-                }
-            ),
+                [
+                    {
+                        "id": id_,
+                        "intervention_start_date_min": _get_min_date(y),
+                        "intervention_start_date_max": _get_max_date(y),
+                        "intervention_start_date_precision": y.precision,
+                    }
+                    for id_, y in y
+                ]
+            )
             # TODO: add this argument
             # lazy=True,
         )
@@ -240,72 +255,83 @@ Lo scavo è iniziato il 18 marzo 1985 ed è terminato il 20 marzo.""",
     @override
     @classmethod
     def _compare_values(cls, predicted, expected):
-        TRESHOLD = 0.95
-        if predicted == expected:
-            return 1, TRESHOLD
-        return int(predicted == expected), TRESHOLD
-        # TODO: return a real evaluation as below
-        # if (
-        #     predicted["month"] == expected["month"]
-        #     and predicted["year"] == expected["year"]
-        # ):
-        #     if expected["day"] is None:
-        #         return 0.9, TRESHOLD
-        #     if predicted["day"] is None:
-        #         return 0.7, TRESHOLD
-        #     return 0.7 if predicted["day"] > expected["day"] else 0.6, TRESHOLD
-        # if expected["day"] is None:
-        #     delay = datetime(
-        #         predicted["year"], predicted["month"], 1
-        #     ) - datetime(expected["year"], expected["month"], 1)
-        #     return (
-        #         0.4 + 0.1 * int(predicted["day"] is None)
-        #     ) if delay.days < 60 else 0, TRESHOLD
-        # return 0, TRESHOLD
+        def compare_dates(
+            predicted: datetime.date,
+            expected: datetime.date,
+            expected_precision: Precision,
+        ) -> float:
+            if predicted.year != expected.year:
+                return 0.0
+            if expected_precision == "year":
+                return 1.0
+            if predicted.month != expected.month:
+                return 0.5
+            if expected_precision == "month":
+                return 1.0
+            return 1.0 if predicted.day == expected.day else 0.6
+
+        precision_reward_coeff = (
+            1.0 if predicted.precision == expected.precision else 0.6
+        )
+        expected_max = _get_max_date(expected)
+        predicted_max = _get_max_date(predicted)
+        expected_min = _get_min_date(expected)
+        predicted_min = _get_min_date(expected)
+        ref_precision = expected.precision
+
+        score_for_min_date = 0.0
+        if expected_min is None or predicted_min is None:
+            score_for_min_date = 1.0 if expected_min == predicted_min else 0.0
+        else:
+            score_for_min_date = compare_dates(
+                predicted_min, expected_min, ref_precision
+            )
+
+        score_for_max_date = compare_dates(
+            predicted_max, expected_max, ref_precision
+        )
+        TRESHOLD = 0.9
+
+        return (
+            score_for_min_date + score_for_max_date
+        ) * precision_reward_coeff / 2, TRESHOLD
 
     @override
     @classmethod
     def _select_answers(
         cls, y: MagohDataset, ids: set[InterventionId]
     ) -> dict[InterventionId, DataInterventoOutputData]:
-        def to_date(date: str | None) -> DataInterventoOutputData:
-            # TODO:
-            if date is None:
-                # TODO:
-                raise NotImplementedError
-            normalized_date = date.lower()
-
-            # WARNING: the date string has not extact pattern
-            # TODO: fuzzy match 0, 1 or 2 days and infer the precision and the
-            # window
-
-            # TODO: fuzzy match 0, 1 or 2 months and infer the precision and
-            # the window
-            def compute_months(val: str):
-                found_months = [
-                    idx + 1
-                    for idx, m in enumerate(ITALIAN_MONTHS)
-                    if m.lower() in val
-                ]
-                found_months = found_months
-                raise NotImplementedError
-
-            def compute_years(val: str):
-                years = re.findall(r"\d{4}", val)
-                if not years:
-                    return -1, -1
-                if len(years) == 1:
-                    return years[0], years[0]
-                if len(years) == 2:
-                    return years[0], years[1]
-                # impossible to know
-                return -1, -1
-
-            compute_months(normalized_date)
-            compute_years(normalized_date)
-            raise NotImplementedError
+        def to_data(
+            start: datetime.date | None, end: datetime.date, precision: str
+        ) -> DataInterventoOutputData:
+            sd, sm, sy = None, None, None
+            if start is not None:
+                sd, sm, sy = start.day, start.month, start.year
+            return DataInterventoOutputData(
+                start_day=sd,
+                start_month=sm,
+                start_year=sy,
+                end_day=end.day,
+                end_month=end.month,
+                end_year=end.year,
+                precision=cast(Precision, precision),
+            )
 
         return {
-            InterventionId(t.id): to_date(t.university__Data_intervento)
-            for t in y.get_answers(ids)
+            InterventionId(answer.id): to_data(
+                answer.intervention_start_date_min,
+                answer.intervention_start_date_max,
+                answer.intervention_start_date_precision,
+            )
+            for answer in y.get_answers(ids)
         }
+
+    @override
+    @classmethod
+    def filter_training_dataset(
+        cls, y: MagohDataset, ids: set[InterventionId]
+    ) -> set[InterventionId]:
+        # we filter nothing as the correct start intervention date has always
+        # be figured out by the Magoh Contributors on the featured dataset
+        y = y  # unused
+        return ids

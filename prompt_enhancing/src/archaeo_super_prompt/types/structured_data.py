@@ -116,6 +116,11 @@ class DatasetAnswerSchema(NamedTuple):
     building__Tipo_di_documento: str | None
     building__Protocollo: str | None
     building__Data_Protocollo: str | None
+    intervention_start_date_min: datetime.date | None
+    intervention_start_date_max: datetime.date
+    intervention_start_date_precision: str
+    duration_value: pd.UInt32Dtype
+    duration_precision: str | None
 
 
 def outputStructuredDataSchema_itertuples(
