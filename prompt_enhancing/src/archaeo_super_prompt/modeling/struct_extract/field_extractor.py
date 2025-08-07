@@ -51,9 +51,11 @@ class TypedDspyModule[DInput: BaseModel, DOutput: BaseModel](dspy.Module):
             cast(dspy.Prediction, self(**inpt.model_dump()))
         )
 
+
 # TODO: uniformize this type into a dataframe for better handling during
 # visualization
 EvalDetailedResult = list[tuple[dspy.Example, dspy.Prediction, float]]
+
 
 class FieldExtractor[
     DSPyInput: BaseModel,
@@ -65,7 +67,7 @@ class FieldExtractor[
     DetailedEvaluatorMixin[
         DataFrame[InputDataFrameWithKnowledge],
         MagohDataset,
-        EvalDetailedResult, 
+        EvalDetailedResult,
     ],
     ABC,
 ):
@@ -101,7 +103,7 @@ generically from dictionnary expansion
             optimized: the already trained prompt model, if existing
         """
         super().__init__()
-        self.__llm_model = llm_model
+        self.llm_model = llm_model
         self._prompt_model = model
         self._optimized_prompt_model: (
             TypedDspyModule[DSPyInput, DSPyOutput] | None
@@ -176,7 +178,7 @@ generically from dictionnary expansion
         """Optimize the dspy model according to the given dataset."""
         if self._optimized_prompt_model is not None:
             return self
-        with dspy.settings.context(lm=self.__llm_model):
+        with dspy.settings.context(lm=self.llm_model):
             tp = dspy.MIPROv2(
                 metric=self._dspy_metric, auto="medium", num_threads=24
             )
@@ -202,7 +204,7 @@ generically from dictionnary expansion
             (InterventionId(row.id), self._to_dspy_input(row))
             for row in self._itertuples(X)
         )
-        with dspy.settings.context(lm=self.__llm_model):
+        with dspy.settings.context(lm=self.llm_model):
             return self._transform_dspy_output(
                 (
                     intervention_id,
@@ -291,7 +293,7 @@ generically from dictionnary expansion
 
         devset = self._compute_devset(X, y)
 
-        with dspy.settings.context(lm=self.__llm_model):
+        with dspy.settings.context(lm=self.llm_model):
             evaluator = dspy.Evaluate(
                 devset=devset,
                 metric=self._dspy_metric,
@@ -347,4 +349,4 @@ generically from dictionnary expansion
     @property
     def lm(self):
         """Return the llm model."""
-        return self.__llm_model
+        return self.llm_model

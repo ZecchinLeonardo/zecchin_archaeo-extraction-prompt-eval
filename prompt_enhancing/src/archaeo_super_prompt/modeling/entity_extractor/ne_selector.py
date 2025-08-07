@@ -37,7 +37,7 @@ which a thesaurus match is kept
     A Transformer to select only chunks in which named thesaurus occur.
     """
 
-    def transform(
+    def SelectChunkWithEntities(
         X: DataFrame[ChunksWithEntities],
     ) -> DataFrame[ChunksWithThesaurus]:
         """Filter the identified named entities and filter the chunks.
@@ -88,4 +88,4 @@ which a thesaurus match is kept
             return chunks_with_thesaurus
         return filtered_chunks
 
-    return FunctionTransformer(transform)
+    return FunctionTransformer(SelectChunkWithEntities)

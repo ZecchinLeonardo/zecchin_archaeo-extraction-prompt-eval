@@ -14,10 +14,10 @@ from .struct_extract.language_model import get_vllm_model
 def identity():
     """Set an identity pipeline Transformer."""
 
-    def transform(X: DataFrame) -> DataFrame:
+    def IdentityFunction(X: DataFrame) -> DataFrame:
         return X
 
-    return FunctionTransformer(transform)
+    return FunctionTransformer(IdentityFunction)
 
 
 def get_pipeline():

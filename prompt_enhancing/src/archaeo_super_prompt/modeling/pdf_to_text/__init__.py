@@ -9,8 +9,8 @@ from ...types.pdfchunks import PDFChunkDataset
 from ...types.pdfpaths import (
     PDFPathDataset,
 )
-from . import stream_ocr_manual as vllm_scan_mod
 from . import chunking as vllm_doc_chunk_mod
+from . import stream_ocr_manual as vllm_scan_mod
 
 
 def VLLM_Preprocessing(
@@ -42,20 +42,25 @@ def VLLM_Preprocessing(
             model, prompt, allowed_timeout=allowed_timeout
         )
     )
-    chunker = vllm_doc_chunk_mod.get_chunker(embedding_model_hf_id, max_chunk_size)
+    chunker = vllm_doc_chunk_mod.get_chunker(
+        embedding_model_hf_id, max_chunk_size
+    )
 
-    def transform(X: PDFPathDataset) -> PDFChunkDataset:
+    def VLM_Ingest(X: PDFPathDataset) -> PDFChunkDataset:
         conversion_results = vllm_scan_mod.process_documents(
             [(line["id"], Path(line["filepath"])) for _, line in X.iterrows()],
             converter,
             incipit_only,
         )
         chunked_results = tqdm(
-            ((f, vllm_doc_chunk_mod.get_chunks(chunker, r)) for f, r in conversion_results),
+            (
+                (f, vllm_doc_chunk_mod.get_chunks(chunker, r))
+                for f, r in conversion_results
+            ),
             desc="Chunking read text",
             unit="chunked files",
             total=len(X),
         )
         return vllm_doc_chunk_mod.chunk_to_ds(chunked_results, chunker)
 
-    return FunctionTransformer(transform)
+    return FunctionTransformer(VLM_Ingest)

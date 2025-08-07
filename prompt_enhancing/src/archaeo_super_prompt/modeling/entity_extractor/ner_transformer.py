@@ -15,7 +15,7 @@ def NerModel(
 ):
     """Transformer adding identified NamedRecognition features for each chunk."""
 
-    def transform(
+    def NERecognize(
         X: PDFChunkDataset,
     ) -> DataFrame[EntitiesPerChunkSchema]:
         chunk_contents = list(
@@ -27,4 +27,4 @@ def NerModel(
             pd.DataFrame([{"named_entities": lst} for lst in result])
         )
 
-    return FunctionTransformer(transform)
+    return FunctionTransformer(NERecognize)

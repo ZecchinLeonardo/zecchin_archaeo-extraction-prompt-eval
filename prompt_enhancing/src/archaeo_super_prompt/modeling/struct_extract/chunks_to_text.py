@@ -32,7 +32,7 @@ def ChunksToText():
     def unify_thesaurus(X: DataFrame[ChunksWithThesaurus]):
         return set().union(*X["identified_thesaurus"].tolist())
 
-    def transform(
+    def ChunksToPromptContent(
         X: DataFrame[ChunksWithThesaurus],
     ) -> DataFrame[InputForExtractionWithSuggestedThesauri]:
         return InputForExtractionWithSuggestedThesauri.validate(
@@ -56,4 +56,4 @@ def ChunksToText():
             )
         )
 
-    return FunctionTransformer(transform)
+    return FunctionTransformer(ChunksToPromptContent)
