@@ -27,6 +27,7 @@ from ...types.intervention_id import InterventionId
 from .document_division import get_page_ranges
 
 from ...config.debug_log import print_log
+from ...config.env import getenv_or_throw
 from ...utils import cache
 
 from . import cache_docling_documents as cache_dd
@@ -67,7 +68,7 @@ document (default to 3 minutes)
     # One possibility is self-hosting model, e.g. via LM Studio, Ollama or others.
     options = ApiVlmOptions(
         url=AnyUrl(
-            "http://localhost:11434/v1/chat/completions"
+            f"{getenv_or_throw("VLM_HOST_URL")}/v1/chat/completions"
         ),  # the default Ollama endpoint
         params=dict(
             model=model,
@@ -105,7 +106,7 @@ document (default to 3 minutes)
     # One possibility is self-hosting model, e.g. via LM Studio, Ollama or others.
     options = ApiVlmOptions(
         url=AnyUrl(
-            "http://localhost:8005/v1/chat/completions"
+            f"{getenv_or_throw("VLM_HOST_URL")}/v1/chat/completions"
         ),  # an arbitraty port
         params=dict(
             model=model,

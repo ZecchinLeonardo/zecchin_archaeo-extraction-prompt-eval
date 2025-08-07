@@ -43,6 +43,10 @@ class VLLM_Preprocessing(BaseTransformer):
             incipit_only: if only the first pages are scanned or all the document
             max_chunk_size: the maximum size of all text chunks
             allowed_timeout: the maximum duration for scanning text from one PDF page
+
+        Environment variable:
+            The VLM_HOST_URL env var must be set like this :
+            http://localhost:8005 
         """
         # store the parameters for logging
         self.vlm_provider = vlm_provider
@@ -53,24 +57,27 @@ class VLLM_Preprocessing(BaseTransformer):
         self.max_chunk_size = max_chunk_size
         self.allowed_timeout = allowed_timeout
 
-        self._converter = vllm_scan_mod.converter(
-            vllm_scan_mod.vllm_vlm_options(
-                vlm_model_id, prompt, allowed_timeout=allowed_timeout
-            )
-            if vlm_provider != "ollama"
-            else vllm_scan_mod.ollama_vlm_options(
-                vlm_model_id, prompt, allowed_timeout=allowed_timeout
-            )
-        )
         self._chunker = vllm_doc_chunk_mod.get_chunker(
             embedding_model_hf_id, max_chunk_size
         )
 
     @override
     def transform(self, X: PDFPathDataset) -> PDFChunkDataset:
+        # instantiate the converter at runtime so the environment variable of
+        # the endpoint of the vlm is not cached if the instance of the
+        # Transformer is cached by joblib, as in standard sklearn workflows
+        converter = vllm_scan_mod.converter(
+                    vllm_scan_mod.vllm_vlm_options(
+                        self.vlm_model_id, self.prompt, allowed_timeout=self.allowed_timeout
+                    )
+                    if self.vlm_provider != "ollama"
+                    else vllm_scan_mod.ollama_vlm_options(
+                        self.vlm_model_id, self.prompt, allowed_timeout=self.allowed_timeout
+                    )
+                )
         conversion_results = vllm_scan_mod.process_documents(
             [(line["id"], Path(line["filepath"])) for _, line in X.iterrows()],
-            self._converter,
+            converter,
             self.incipit_only,
         )
         chunked_results = iter(
