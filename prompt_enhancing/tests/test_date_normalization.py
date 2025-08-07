@@ -20,6 +20,7 @@ def test_day_period_transform():
         data_protocollo="",
         data_intervento="27 febbraio - 29 settembre 1981",
         anno=1981,
+        norm_duration=None,
         norm_date=None,
     )
     inpt_without_year = InterventionDataForDateNormalizationRowSchema(
@@ -27,6 +28,7 @@ def test_day_period_transform():
         data_protocollo="",
         data_intervento="27 febbraio - 29 settembre",
         anno=1981,
+        norm_duration=None,
         norm_date=None,
     )
     expected = Date("27/febbraio/1981", "29/settembre/1981", "day")
@@ -44,6 +46,7 @@ def test_single_day_period():
         data_protocollo="",
         data_intervento="27 febbraio 1981",
         anno=1981,
+        norm_duration=None,
         norm_date=None,
     )
     single_day_input_without_year = (
@@ -52,6 +55,7 @@ def test_single_day_period():
             data_protocollo="",
             data_intervento="27 febbraio",
             anno=1981,
+            norm_duration=None,
             norm_date=None,
         )
     )
@@ -73,11 +77,13 @@ def test_single_day_period():
 
 
 def test_month_period():
+    """."""
     month_and_year_input = InterventionDataForDateNormalizationRowSchema(
         idscheda=8,
         data_protocollo="",
         data_intervento="febbraio 1979 -  settembre 1981",
         anno=1981,
+        norm_duration=None,
         norm_date=None,
     )
     assert _is_equal(
@@ -94,6 +100,7 @@ def test_month_period():
             data_protocollo="",
             data_intervento="febbraio -  settembre 1981",
             anno=1981,
+            norm_duration=None,
             norm_date=None,
         )
     )
@@ -113,6 +120,7 @@ def test_month_period():
         data_protocollo="",
         data_intervento="febbraio -  settembre",
         anno=1981,
+        norm_duration=None,
         norm_date=None,
     )
     assert _is_equal(
@@ -126,12 +134,14 @@ def test_month_period():
 
 
 def test_single_month_period():
+    """."""
     expected_month_year = Date("1/febbraio/1981", "28/febbraio/1981", "month")
     month_input = InterventionDataForDateNormalizationRowSchema(
         idscheda=8,
         data_protocollo="",
         data_intervento="febbraio 1981",
         anno=1981,
+        norm_duration=None,
         norm_date=None,
     )
     month_without_year_input = InterventionDataForDateNormalizationRowSchema(
@@ -139,6 +149,7 @@ def test_single_month_period():
         data_protocollo="",
         data_intervento="febbraio",
         anno=1981,
+        norm_duration=None,
         norm_date=None,
     )
     assert _is_equal(
@@ -158,6 +169,7 @@ def test_single_month_period():
 
 
 def test_year_period():
+    """."""
     assert _is_equal(
         transforms.generic_period(
             InterventionDataForDateNormalizationRowSchema(
@@ -165,6 +177,7 @@ def test_year_period():
                 data_protocollo="",
                 data_intervento="2005 -",
                 anno=2006,
+                norm_duration=None,
                 norm_date=None,
             )
         ),
@@ -177,6 +190,7 @@ def test_year_period():
                 data_protocollo="",
                 data_intervento="2006 -",
                 anno=2006,
+                norm_duration=None,
                 norm_date=None,
             )
         ),
@@ -185,6 +199,7 @@ def test_year_period():
 
 
 def test_year_single_period():
+    """."""
     assert _is_equal(
         transforms.generic_single_period(
             InterventionDataForDateNormalizationRowSchema(
@@ -192,6 +207,7 @@ def test_year_single_period():
                 data_protocollo="",
                 data_intervento="2006 ",
                 anno=2006,
+                norm_duration=None,
                 norm_date=None,
             )
         ),
@@ -200,6 +216,7 @@ def test_year_single_period():
 
 
 def test_generic_period():
+    """."""
     assert _is_equal(
         transforms.generic_period(
             InterventionDataForDateNormalizationRowSchema(
@@ -207,6 +224,7 @@ def test_generic_period():
                 data_protocollo="",
                 data_intervento="6-10 novembre 2006",
                 anno=2006,
+                norm_duration=None,
                 norm_date=None,
             )
         ),
@@ -219,6 +237,7 @@ def test_generic_period():
                 data_protocollo="",
                 data_intervento="25 settembre 2019 - 09 ottobre",
                 anno=2019,
+                norm_duration=None,
                 norm_date=None,
             )
         ),
@@ -231,6 +250,7 @@ def test_generic_period():
                 data_protocollo="",
                 data_intervento="7 - 30 giugno",
                 anno=2019,
+                norm_duration=None,
                 norm_date=None,
             )
         ),
@@ -239,11 +259,13 @@ def test_generic_period():
 
 
 def test_generic_period_reject():
+    """."""
     single_period = InterventionDataForDateNormalizationRowSchema(
         idscheda=8,
         data_protocollo="",
         data_intervento="febbraio",
         anno=1981,
+        norm_duration=None,
         norm_date=None,
     )
     period = InterventionDataForDateNormalizationRowSchema(
@@ -251,6 +273,7 @@ def test_generic_period_reject():
         data_protocollo="",
         data_intervento="7 - 30 giugno",
         anno=2019,
+        norm_duration=None,
         norm_date=None,
     )
     assert transforms.generic_period(single_period) is None
@@ -258,11 +281,13 @@ def test_generic_period_reject():
 
 
 def test_precise_numeric_date():
+    """."""
     period = InterventionDataForDateNormalizationRowSchema(
         idscheda=8,
         data_protocollo="",
         data_intervento="18/09/2019 ",
         anno=2019,
+        norm_duration=None,
         norm_date=None,
     )
     assert _is_equal(
@@ -272,6 +297,7 @@ def test_precise_numeric_date():
 
 
 def test_before_day_mont():
+    """."""
     assert _is_equal(
         transforms.before_day_month(
             InterventionDataForDateNormalizationRowSchema(
@@ -279,6 +305,7 @@ def test_before_day_mont():
                 data_protocollo="",
                 data_intervento="pre 18 settembre",
                 anno=2019,
+                norm_duration=None,
                 norm_date=None,
             )
         ),
@@ -291,6 +318,7 @@ def test_before_day_mont():
                 data_protocollo="",
                 data_intervento="ante 18 settembre",
                 anno=2019,
+                norm_duration=None,
                 norm_date=None,
             )
         ),
@@ -303,6 +331,7 @@ def test_before_day_mont():
                 data_protocollo="",
                 data_intervento="Ante 18 settembre",
                 anno=2019,
+                norm_duration=None,
                 norm_date=None,
             )
         ),
@@ -315,6 +344,7 @@ def test_before_day_mont():
                 data_protocollo="",
                 data_intervento="Ante  settembre ",
                 anno=2019,
+                norm_duration=None,
                 norm_date=None,
             )
         ),

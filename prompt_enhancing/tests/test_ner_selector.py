@@ -73,7 +73,7 @@ def test_ne_selector():
         )
     )
     time_place_extractor = entity_extractor.NeSelector(
-        to_extract=place_time_field
+        *place_time_field
     )
     output = time_place_extractor.transform(input)
     identified_place_month = cast(
@@ -98,7 +98,7 @@ def test_ne_selector_names():
             }
         )
     )
-    name_extractor = entity_extractor.NeSelector(to_extract=name_field)
+    name_extractor = entity_extractor.NeSelector(*name_field)
     output = name_extractor.transform(input)
     identified_names = cast(
         list[list[int]], output["identified_thesaurus"].tolist()
@@ -121,7 +121,7 @@ def test_ne_selector_prefix_filter():
             }
         )
     )
-    name_extractor = entity_extractor.NeSelector(to_extract=small_patterns)
+    name_extractor = entity_extractor.NeSelector(*small_patterns)
     output = name_extractor.transform(input)
     identified_names = cast(
         list[list[int]], output["identified_thesaurus"].tolist()
