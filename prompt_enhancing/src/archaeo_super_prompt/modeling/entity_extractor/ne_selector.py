@@ -2,7 +2,7 @@
 
 from typing import cast, override
 
-import pandas
+import pandas as pd
 from pandera.typing.pandas import DataFrame
 from tqdm import tqdm
 
@@ -75,29 +75,52 @@ are only kept if there is not any chunk where hesaurus has been identified.
             ),
             self.wanted_matches,
         )
-        output = cast(
-            pandas.DataFrame, X.copy().drop(columns="named_entities")
-        )
-        output["identified_thesaurus"] = [
-            list(r) if r is not None else None
-            for r in tqdm(
-                result,
-                total=len(X),
-                desc="Fuzzy-search thesaurus in text chunks.",
-                unit="analyzed chunk",
+        output = cast(pd.DataFrame, X.drop(columns="named_entities")).assign(
+            identified_thesaurus=pd.Series(
+                [
+                    list(r) if r is not None else None
+                    for r in tqdm(
+                        result,
+                        total=len(X),
+                        desc="Fuzzy-search thesaurus in text chunks.",
+                        unit="analyzed chunk",
+                    )
+                ]
             )
-        ]
-        filtered_chunks = ChunksWithThesaurus.validate(
-            output[output["identified_thesaurus"].notnull()]
         )
-        # keep only the chunks with thesaurus if needed
-        if not self.keep_chunks_without_identified_values:
-            return filtered_chunks
-        chunks_with_thesaurus = filtered_chunks[
-            filtered_chunks["identified_thesaurus"].apply(
-                lambda lst: len(lst) > 0
+        can_chunks_be_filtered = (
+            output[["id"]]
+            .assign(
+                chunk_is_selectable=output["identified_thesaurus"].notnull()
+                if self.keep_chunks_without_identified_values
+                else output["identified_thesaurus"].apply(
+                    lambda lst: lst is not None and len(lst) > 0
+                )
             )
-        ]
-        if len(chunks_with_thesaurus) > 0:
-            return chunks_with_thesaurus
-        return filtered_chunks
+            .assign(
+                can_intervention_be_filtered=lambda chunks_are_selectable: (
+                    chunks_are_selectable["id"].map(
+                        chunks_are_selectable.groupby("id")[
+                            "chunk_is_selectable"
+                        ]
+                        .sum()
+                        .gt(0)
+                    )
+                )
+            )
+            .assign(
+                can_chunk_be_filtered=lambda conditioned_df: (
+                    conditioned_df["chunk_is_selectable"]
+                    | (~conditioned_df["can_intervention_be_filtered"])
+                )
+            )["can_chunk_be_filtered"]
+        )
+        return ChunksWithThesaurus.validate(
+            output[can_chunks_be_filtered].assign(
+                identified_thesaurus=lambda filtered_chunks: (
+                    filtered_chunks["identified_thesaurus"].apply(
+                        lambda x: [] if x is None else x
+                    )
+                )
+            )
+        )

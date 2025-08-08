@@ -1,6 +1,6 @@
 """Identification of thesaurus with fuzzymatching in text chunks."""
 
-from collections.abc import Iterable
+from collections.abc import Iterator
 
 from fuzzysearch import find_near_matches, Match
 from thefuzz import fuzz
@@ -63,7 +63,7 @@ def extract_from_content(
     content: str,
     entity_set: list[CompleteEntity],
     wanted_entities: list[tuple[int, str]],
-):
+) -> set[int] | None:
     """We expect the wanted entities and the content to be normalized."""
     if not entity_set:
         return None
@@ -78,16 +78,16 @@ def extract_from_content(
     )
 
 
-def normalize_text(txt: str):
+def normalize_text(txt: str) -> str:
     """Apply simple normalization to make the comparison easier."""
     return txt.lower()
 
 
 def extract_wanted_entities(
-    chunk_contents: Iterable[str],
-    complete_entity_sets: Iterable[list[CompleteEntity]],
+    chunk_contents: Iterator[str],
+    complete_entity_sets: Iterator[list[CompleteEntity]],
     thesauri_factory: ThesaurusProvider,
-) -> Iterable[set[int] | None]:
+) -> Iterator[set[int] | None]:
     """Filter only the entities that fuzzymatch with wanted thesaurus.
 
     Arguments:
