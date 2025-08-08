@@ -31,7 +31,7 @@ from archaeo_super_prompt.types.intervention_id import InterventionId
 from .....types.per_intervention_feature import (
     BasePerInterventionFeatureSchema,
 )
-from ...field_extractor import FieldExtractor, TypedDspyModule
+from ...field_extractor import FieldExtractor, LLMProvider, TypedDspyModule
 from .type_models import ITALIAN_MONTHS, Data, Precision, Precisione
 
 
@@ -186,7 +186,7 @@ class DateFeatSchema(BasePerInterventionFeatureSchema):
     )
 
 
-class ComuneExtractor(
+class InterventionStartExtractor(
     FieldExtractor[
         DataInterventoInputData,
         DataInterventoOutputData,
@@ -197,7 +197,12 @@ class ComuneExtractor(
 ):
     """Dspy-LLM-based extractor of the comune data."""
 
-    def __init__(self, llm_model: dspy.LM) -> None:
+    def __init__(
+        self,
+        llm_model_provider: LLMProvider,
+        llm_model_id: str,
+        llm_temperature: float,
+    ) -> None:
         """Initialize the extractor with providing it the llm which will be used."""
         example = (
             DataInterventoInputData(
@@ -216,7 +221,9 @@ Lo scavo è iniziato il 18 marzo 1985 ed è terminato il 20 marzo.""",
             ),
         )
         super().__init__(
-            llm_model,
+            llm_model_provider,
+            llm_model_id,
+            llm_temperature,
             EstimateInterventionDate(),
             example,
             DataInterventoOutputData,
@@ -247,7 +254,7 @@ Lo scavo è iniziato il 18 marzo 1985 ed è terminato il 20 marzo.""",
                     }
                     for id_, y in y
                 ]
-            )
+            ).set_index("id")
             # TODO: add this argument
             # lazy=True,
         )
@@ -335,3 +342,8 @@ Lo scavo è iniziato il 18 marzo 1985 ed è terminato il 20 marzo.""",
         # be figured out by the Magoh Contributors on the featured dataset
         y = y  # unused
         return ids
+
+    @override
+    @staticmethod
+    def field_to_be_extracted():
+        return "intervention-start-date"

@@ -2,7 +2,7 @@
 
 from typing import NamedTuple
 from pandera.pandas import DataFrameModel
-from pandera.typing.pandas import Series
+from pandera.typing.pandas import Series, Index
 
 
 class BaseInputForExtraction(DataFrameModel):
@@ -13,14 +13,14 @@ class BaseInputForExtraction(DataFrameModel):
     another prior model.
     """
 
-    id: Series[int]
+    id: Index[int]
     merged_chunks: Series[str]
 
 
 class BaseInputForExtractionRowSchema(NamedTuple):
     """Base Schema for typesafely iterating over rows."""
 
-    id: int
+    Index: int
     merged_chunks: str
 
 

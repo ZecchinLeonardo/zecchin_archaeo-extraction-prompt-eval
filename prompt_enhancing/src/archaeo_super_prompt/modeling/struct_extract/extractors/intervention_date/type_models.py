@@ -2,7 +2,7 @@
 import pydantic
 from typing import Literal
 
-type Mese = Literal[
+Mese = Literal[
     "Gennaio",
     "Febbraio",
     "Marzo",
@@ -41,4 +41,4 @@ class Data(pydantic.BaseModel):
     anno: int
 
 type Precision = Literal["day", "month", "year"]
-type Precisione = Literal["giorno", "mese", "anno"]
+Precisione = Literal["giorno", "mese", "anno"]

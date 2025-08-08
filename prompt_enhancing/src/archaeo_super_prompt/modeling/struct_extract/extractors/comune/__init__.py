@@ -18,7 +18,7 @@ from .....types.per_intervention_feature import (
     BasePerInterventionFeatureSchema,
 )
 
-from ...field_extractor import FieldExtractor, TypedDspyModule
+from ...field_extractor import FieldExtractor, LLMProvider, TypedDspyModule
 
 # -- DSPy part
 
@@ -113,7 +113,12 @@ class ComuneExtractor(
 ):
     """Dspy-LLM-based extractor of the comune data."""
 
-    def __init__(self, llm_model: dspy.LM) -> None:
+    def __init__(self,
+
+        llm_model_provider: LLMProvider,
+        llm_model_id: str,
+        llm_temperature: float,
+                 ) -> None:
         """Initialize the extractor with providing it the llm which will be used."""
         example = (
             ComuneInputData(
@@ -132,7 +137,9 @@ L'evento si è svolto a Lucca.""",
         # TODO: load this more lazily
         self._thesaurus = load_comune_with_provincie()
         super().__init__(
-            llm_model,
+            llm_model_provider,
+            llm_model_id,
+            llm_temperature,
             FindComune(),
             example,
             ComuneOutputData,

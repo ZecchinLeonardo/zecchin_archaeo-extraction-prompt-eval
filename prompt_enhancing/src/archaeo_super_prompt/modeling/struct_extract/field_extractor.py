@@ -6,7 +6,7 @@ This transformer is a classifier which scorable and trainable.
 from abc import ABC, abstractmethod
 from collections.abc import Iterator
 from logging import warning
-from typing import cast, override
+from typing import Literal, cast, override
 from pydantic import BaseModel
 from pandera.typing.pandas import DataFrame
 import pandas as pd
@@ -21,6 +21,8 @@ from archaeo_super_prompt.types.per_intervention_feature import (
 
 from . import types as extract_input_type
 from ..types.detailed_evaluator import DetailedEvaluatorMixin
+
+from . import language_model as lm_provider_mod
 
 
 class TypedDspyModule[DInput: BaseModel, DOutput: BaseModel](dspy.Module):
@@ -55,6 +57,7 @@ class TypedDspyModule[DInput: BaseModel, DOutput: BaseModel](dspy.Module):
 # TODO: uniformize this type into a dataframe for better handling during
 # visualization
 EvalDetailedResult = list[tuple[dspy.Example, dspy.Prediction, float]]
+LLMProvider = Literal["vllm", "ollama", "openai"]
 
 
 class FieldExtractor[
@@ -84,7 +87,9 @@ the DSPy model as input in its forward method.
 
     def __init__(
         self,
-        llm_model: dspy.LM,
+        llm_model_provider: LLMProvider,
+        llm_model_id: str,
+        llm_temperature: float,
         model: TypedDspyModule[DSPyInput, DSPyOutput],
         example: tuple[DSPyInput, DSPyOutput],
         output_constructor: type[DSPyOutput],
@@ -93,7 +98,10 @@ the DSPy model as input in its forward method.
         """Initialize the abstract class with the custom dspy module.
 
         Arguments:
-            llm_model: the dspy chat lm to be used for the extraction 
+            llm_model_provider: the service from which the llm must be fetched
+            llm_model_id: the dspy chat lm to be used for the extraction 
+            llm_temperature: the temperature of the llm during the prompts of \
+this model
             model: the dspy module which will be used for the training and the \
 inference
             example: a dspy input-output pair enabling to type check at \
@@ -101,15 +109,41 @@ runtime the genericity and also to be able to log the model in mlflow
             output_constructor: the type of the output model for building it \
 generically from dictionnary expansion
             optimized: the already trained prompt model, if existing
+
+        Environment variables:
+            According to the llm provider, either the following env vars is
+            required:
+               OPENAI_API_KEY
+               OLLAMA_SERVER_BASE_URL (default to http://localhost:11434)
+               VLLM_SERVER_BASE_URL (default to http://localhost:8006/v1)
         """
         super().__init__()
-        self.llm_model = llm_model
+        self.llm_model_provider: LLMProvider = (
+            llm_model_provider
+        )
+        self.llm_model_id = llm_model_id
+        self.llm_temperature = llm_temperature
         self._prompt_model = model
         self._optimized_prompt_model: (
             TypedDspyModule[DSPyInput, DSPyOutput] | None
         ) = optimized
         self._example = example
         self._output_constructor = output_constructor
+
+    def _infer_language_model(self):
+        match self.llm_model_provider:
+            case "ollama":
+                return lm_provider_mod.get_ollama_model(
+                    self.llm_model_id, self.llm_temperature
+                )
+            case "vllm":
+                return lm_provider_mod.get_vllm_model(
+                    self.llm_model_id, self.llm_temperature
+                )
+            case "openai":
+                return lm_provider_mod.get_openai_model(
+                    self.llm_model_id, self.llm_temperature
+                )
 
     @classmethod
     def _itertuples(cls, X: DataFrame[InputDataFrameWithKnowledge]):
@@ -142,7 +176,7 @@ generically from dictionnary expansion
                 }
                 for intervention_id, dspy_output in y
             ]
-        )
+        ).set_index("id")
 
     @abstractmethod
     def _transform_dspy_output(
@@ -178,7 +212,7 @@ generically from dictionnary expansion
         """Optimize the dspy model according to the given dataset."""
         if self._optimized_prompt_model is not None:
             return self
-        with dspy.settings.context(lm=self.llm_model):
+        with dspy.settings.context(lm=self._infer_language_model()):
             tp = dspy.MIPROv2(
                 metric=self._dspy_metric, auto="medium", num_threads=24
             )
@@ -201,10 +235,10 @@ generically from dictionnary expansion
     ) -> DataFrame[DFOutput]:
         """Generic transform operation."""
         inputs = (
-            (InterventionId(row.id), self._to_dspy_input(row))
+            (InterventionId(row.Index), self._to_dspy_input(row))
             for row in self._itertuples(X)
         )
-        with dspy.settings.context(lm=self.llm_model):
+        with dspy.settings.context(lm=self._infer_language_model()):
             return self._transform_dspy_output(
                 (
                     intervention_id,
@@ -239,16 +273,16 @@ generically from dictionnary expansion
         y: MagohDataset,
     ):
         good_ids = self.filter_training_dataset(
-            y, set(InterventionId(id_) for id_ in X["id"].to_list())
+            y, set(InterventionId(id_) for id_ in list(X.index))
         )
-        not_good_ids = X[~(X["id"].isin(good_ids))]["id"].to_list()
+        not_good_ids = X[~(X.index.isin(good_ids))].index.to_list()
         if not_good_ids:
             warning(
                 f"These records will not be used in the devset, as their answers are incorrect: {not_good_ids}"
             )
         inputs = {
-            InterventionId(row.id): self._to_dspy_input(row)
-            for row in self._itertuples(X[X["id"].isin(good_ids)])
+            InterventionId(row.Index): self._to_dspy_input(row)
+            for row in self._itertuples(X[X.index.isin(good_ids)])
         }
         answers = self._select_answers(y, set(inputs.keys()))
         return [
@@ -293,7 +327,7 @@ generically from dictionnary expansion
 
         devset = self._compute_devset(X, y)
 
-        with dspy.settings.context(lm=self.llm_model):
+        with dspy.settings.context(lm=self._infer_language_model()):
             evaluator = dspy.Evaluate(
                 devset=devset,
                 metric=self._dspy_metric,
@@ -349,4 +383,4 @@ generically from dictionnary expansion
     @property
     def lm(self):
         """Return the llm model."""
-        return self.llm_model
+        return self._infer_language_model()

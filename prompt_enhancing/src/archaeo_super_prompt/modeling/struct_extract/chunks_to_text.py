@@ -53,7 +53,7 @@ def ChunksToText():
                     "Gathering filtered chunks",
                     unit="intervention",
                 )
-            )
+            ).set_index("id")
         )
 
     return FunctionTransformer(ChunksToPromptContent)
