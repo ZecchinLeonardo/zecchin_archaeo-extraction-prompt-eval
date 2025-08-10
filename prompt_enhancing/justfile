@@ -25,12 +25,12 @@ init-nb-git-workspace:
 # suppose this shell is in the environment of your jupyter stack
 [group("notebook")]
 run-notebooks:
-  jupyter --no-browser notebook notebooks/
+  jupyter notebook --no-browser notebooks/
 
 # suppose this shell is in the environment of your jupyter stack
 [group("notebook")]
 run-lab:
-  jupyter --no-browser lab notebooks/
+  jupyter lab --no-browser notebooks/
 
 # suppose the dev deps has been installed
 [group("dev")]
