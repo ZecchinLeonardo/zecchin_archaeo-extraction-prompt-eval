@@ -15,6 +15,7 @@ theme:
 
 nav:
   - Magoh Extract Exps Docs: index.md
+  - install.md
   - tutorials.md
   - How-To Guides: how-to-guides.md
   - Reference: $api/archaeo_super_prompt.***

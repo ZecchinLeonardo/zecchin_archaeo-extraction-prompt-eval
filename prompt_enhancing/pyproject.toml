@@ -27,7 +27,6 @@ dependencies = [
     "python-levenshtein (>=0.27.1,<0.28.0)",
     "thefuzz (>=0.22.1,<0.23.0)",
     "fuzzysearch (>=0.8.0,<0.9.0)",
-    "mkdocs-material (>=9.6.16,<10.0.0)",
     "skdag (>=0.0.7,<0.0.8)",
     "pygraphviz (>=1.14,<2.0)",
 ]
@@ -41,7 +40,6 @@ main = "archaeo_super_prompt.main:main"
 mypy = "^1.15.0"
 ipykernel = "^6.29.5"
 ipywidgets = "^8.1.7"
-nbstripout = "^0.8.1"
 pyyaml = "^6.0.2"
 black = "^25.1.0"
 frictionless = "^5.18.1"
