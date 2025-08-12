@@ -19,6 +19,7 @@ from archaeo_super_prompt.types.intervention_id import InterventionId
 from archaeo_super_prompt.types.per_intervention_feature import (
     BasePerInterventionFeatureSchema,
 )
+from ...types.results import ResultSchema
 
 from . import types as extract_input_type
 from ..types.detailed_evaluator import DetailedEvaluatorMixin
@@ -71,7 +72,7 @@ class FieldExtractor[
     DetailedEvaluatorMixin[
         DataFrame[InputDataFrameWithKnowledge],
         MagohDataset,
-        EvalDetailedResult,
+        DataFrame[ResultSchema],
     ],
     ABC,
 ):
@@ -219,7 +220,7 @@ generically from dictionnary expansion
                 TypedDspyModule[DSPyInput, DSPyOutput],
                 tp.compile(
                     self.prompt_model_,
-                    trainset=self._compute_devset(X, y),
+                    trainset=list(self._compute_devset(X, y)[1]),
                     max_bootstrapped_demos=2,
                     max_labeled_demos=2,
                     requires_permission_to_run=False,
@@ -270,7 +271,7 @@ generically from dictionnary expansion
         self,
         X: DataFrame[InputDataFrameWithKnowledge],
         y: MagohDataset,
-    ):
+    ) -> tuple[tuple[int, ...], tuple[dspy.Example, ...]]:
         good_ids = self.filter_training_dataset(
             y, set(InterventionId(id_) for id_ in list(X.index))
         )
@@ -284,16 +285,22 @@ generically from dictionnary expansion
             for row in self._itertuples(X[X.index.isin(good_ids)])
         }
         answers = self._select_answers(y, set(inputs.keys()))
-        return [
-            (
-                lambda model_input: dspy.Example(
-                    **model_input,
-                    # TODO: select only one field with an abstract
-                    **answers[id_].model_dump(),
-                ).with_inputs(*model_input.keys())
-            )(model_input.model_dump())
-            for id_, model_input in inputs.items()
-        ]
+        kept_ids, examples = zip(
+            *(
+                (
+                    id_,
+                    (
+                        lambda model_input: dspy.Example(
+                            **model_input,
+                            # TODO: select only one field with an abstract
+                            **answers[id_].model_dump(),
+                        ).with_inputs(*model_input.keys())
+                    )(inputs[id_].model_dump()),
+                )
+                for id_ in inputs.keys()
+            )
+        )
+        return kept_ids, examples
 
     def _dspy_metric(
         self, example: dspy.Example, prediction: dspy.Prediction, trace=None
@@ -324,11 +331,11 @@ generically from dictionnary expansion
         """
         sample_weight = sample_weight  # unused
 
-        devset = self._compute_devset(X, y)
+        _, devset = self._compute_devset(X, y)
 
         with dspy.settings.context(lm=self._infer_language_model()):
             evaluator = dspy.Evaluate(
-                devset=devset,
+                devset=list(devset[1]),
                 metric=self._dspy_metric,
                 return_outputs=False,
                 provide_traceback=True,  # TODO: remove it for traceback
@@ -341,22 +348,46 @@ generically from dictionnary expansion
 
     @override
     def score_and_transform(self, X, y):
-        devset = self._compute_devset(X, y)
-        evaluator = dspy.Evaluate(
-            devset=devset,
-            metric=self._dspy_metric,
-            return_outputs=True,
-            provide_traceback=True,  # TODO: remove it for traceback
-            num_threads=1,  # TODO: set it
-            display_progress=True,
-            display_table=5,
-        )
-        results = cast(
-            tuple[float, EvalDetailedResult],
-            evaluator(self.prompt_model_),
-        )
-        # TODO: return a df after the score
-        return results
+        kept_ids, devset = self._compute_devset(X, y)
+        with dspy.settings.context(lm=self._infer_language_model()):
+            evaluator = dspy.Evaluate(
+                devset=list(devset),
+                metric=self._dspy_metric,
+                return_outputs=True,
+                provide_traceback=True,  # TODO: remove it for traceback
+                num_threads=1,  # TODO: set it
+                display_progress=True,
+                display_table=5,
+            )
+            score, score_table = cast(
+                tuple[float, EvalDetailedResult],
+                evaluator(self.prompt_model_),
+            )
+            return score, ResultSchema.validate(
+                pd.DataFrame(
+                    [
+                        {
+                            "id": id_,
+                            "field_name": self.field_to_be_extracted(),
+                            "metric_value": score,
+                            # TODO: specify the evaluation method
+                            "evaluation_method": "not specified yet",
+                            "expected_value": {
+                                k: ex_dict[k] for k in pred_dict
+                            },
+                            "predicted_value": pred_dict,
+                        }
+                        for id_, (ex_dict, pred_dict, score) in zip(
+                            kept_ids,
+                            (
+                                (ex.toDict(), pred.toDict(), score)
+                                for ex, pred, score in score_table
+                            ),
+                        )
+                    ]
+                ),
+                lazy=True,
+            )
 
     @staticmethod
     @abstractmethod
