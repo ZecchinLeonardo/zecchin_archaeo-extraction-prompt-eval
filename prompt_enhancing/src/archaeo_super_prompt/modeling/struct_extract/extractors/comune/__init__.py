@@ -4,7 +4,6 @@ import re
 from typing import cast, override
 
 import dspy
-import pandas as pd
 import pydantic
 from pandera.typing.pandas import Series
 

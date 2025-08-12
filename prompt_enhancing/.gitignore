@@ -1,10 +1,8 @@
 __pycache__
 arch-env/
 .env
-outputs/*
-!outputs/.gitkeep
-inputs/*
-!inputs/.gitkeep
+models/compiled/*
+!models/compiled/.gitkeep
 data/external/*
 data/interim/*
 data/processed/*

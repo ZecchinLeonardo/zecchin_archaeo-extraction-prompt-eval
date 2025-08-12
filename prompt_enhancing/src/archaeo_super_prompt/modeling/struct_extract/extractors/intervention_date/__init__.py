@@ -19,6 +19,7 @@ from typing import Literal, Optional, cast, override
 import dspy
 import pandas as pd
 import pandera.pandas as pa
+from pandera.typing.pandas import Series
 import pydantic
 
 from archaeo_super_prompt.dataset.load import MagohDataset
@@ -134,10 +135,11 @@ class EstimateInterventionDate(
             Data | None, result.get("data_minima_di_inizio")
         )
         data_massima_di_inizio = cast(
-            Data, result.get("data_minima_di_inizio", DEFAULT_WRONG_DATE)
+            Data, result.get("data_massima_di_inizio", DEFAULT_WRONG_DATE)
         )
         precisione = cast(
-            Literal["giorno", "mese", "anno"], result.get("precisione", "day")
+            Literal["giorno", "mese", "anno"],
+            result.get("precisione", "giorno"),
         )
 
         return self._to_prediction(
@@ -181,7 +183,7 @@ class DateFeatSchema(BasePerInterventionFeatureSchema):
         nullable=True
     )
     intervention_start_date_max: datetime.date
-    intervention_start_date_precision: Literal["day", "month", "year"] = (
+    intervention_start_date_precision: Series[str] = (
         pa.Field(isin=["day", "month", "year"])
     )
 

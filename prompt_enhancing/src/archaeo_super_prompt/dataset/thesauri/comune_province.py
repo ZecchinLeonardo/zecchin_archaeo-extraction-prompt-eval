@@ -21,7 +21,7 @@ def load_comune() -> list[tuple[int, str]]:
     df = pd.read_csv(_get_comune_file())
     return list(
         (id_, nome)
-        for _, id_, nome in df[["id", "nome"]][
+        for _, id_, nome in df[["id_com", "nome"]][
             df["nome"].notnull()
         ].itertuples()
     )

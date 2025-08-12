@@ -8,26 +8,27 @@ each Transformer to be implement the following methods:
 """
 
 from abc import ABC, abstractmethod
-from sklearn.base import ClassifierMixin, BaseEstimator, TransformerMixin
+from sklearn.base import ClassifierMixin, BaseEstimator
 from typing import Any, override
 
 
 class DetailedEvaluatorMixin[InputBatch, TargetDataSet, EvaluationDetail](
-    ClassifierMixin, BaseEstimator, TransformerMixin, ABC
+    ClassifierMixin, BaseEstimator, ABC
 ):
-    """A transformer which can be evaluated and trained if needed."""
+    """A model which can be evaluated and must be trained."""
 
-    def fit(self, X: InputBatch, y: TargetDataSet):
+    def fit(self, X: InputBatch, y: TargetDataSet, **kwargs):
         """Train the model with the given targey data.
 
         Override it to implement a training.
         """
+        kwargs = kwargs  # unused
         X = X  # unused
         y = y  # unused
         return self
 
     @abstractmethod
-    def transform(self, X: InputBatch) -> Any:
+    def predict(self, X: InputBatch) -> Any:
         """The transform method to be implemented."""
         raise NotImplementedError
 

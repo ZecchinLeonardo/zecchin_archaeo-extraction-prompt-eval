@@ -6,7 +6,7 @@ Powered by sklearn base class
 from abc import ABC, abstractmethod
 from sklearn.base import BaseEstimator, TransformerMixin
 
-class BaseTransformer(BaseEstimator, TransformerMixin, ABC):
+class BaseTransformer(TransformerMixin, BaseEstimator, ABC):
     """Base class for initiate a function transformer with params."""
     def __init__(self) -> None:
         """Neutral init."""

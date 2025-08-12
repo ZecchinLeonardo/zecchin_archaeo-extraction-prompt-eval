@@ -82,7 +82,7 @@ class MagohDataExtractor(
     # TODO: code an optimization in overriding the fit method
 
     @override
-    def transform(
+    def predict(
         self, X: PDFChunkDataset
     ) -> DataFrame[OutputStructuredDataSchema]:
         with dspy.settings.context(lm=self._llm):

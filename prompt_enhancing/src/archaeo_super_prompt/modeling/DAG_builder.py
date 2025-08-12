@@ -1,7 +1,7 @@
 """Interface over the DAG builder of skdag."""
 
 from typing import Literal, NamedTuple
-from sklearn.base import TransformerMixin
+from sklearn.base import BaseEstimator
 from functools import reduce
 import skdag
 
@@ -10,7 +10,7 @@ class DAGComponent(NamedTuple):
     """A component for the."""
 
     component_id: str  # the identifier also used for the visualization
-    component: TransformerMixin | Literal["passthrough"]
+    component: BaseEstimator | Literal["passthrough"]
 
 
 class DAGBuilder:

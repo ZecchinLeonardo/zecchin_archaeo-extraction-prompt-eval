@@ -6,6 +6,7 @@ This transformer is a classifier which scorable and trainable.
 from abc import ABC, abstractmethod
 from collections.abc import Iterator
 from logging import warning
+from pathlib import Path
 from typing import Literal, cast, override
 from pydantic import BaseModel
 from pandera.typing.pandas import DataFrame
@@ -93,7 +94,6 @@ the DSPy model as input in its forward method.
         model: TypedDspyModule[DSPyInput, DSPyOutput],
         example: tuple[DSPyInput, DSPyOutput],
         output_constructor: type[DSPyOutput],
-        optimized: TypedDspyModule[DSPyInput, DSPyOutput] | None = None,
     ) -> None:
         """Initialize the abstract class with the custom dspy module.
 
@@ -108,7 +108,6 @@ inference
 runtime the genericity and also to be able to log the model in mlflow
             output_constructor: the type of the output model for building it \
 generically from dictionnary expansion
-            optimized: the already trained prompt model, if existing
 
         Environment variables:
             According to the llm provider, either the following env vars is
@@ -118,15 +117,10 @@ generically from dictionnary expansion
                VLLM_SERVER_BASE_URL (default to http://localhost:8006/v1)
         """
         super().__init__()
-        self.llm_model_provider: LLMProvider = (
-            llm_model_provider
-        )
+        self.llm_model_provider: LLMProvider = llm_model_provider
         self.llm_model_id = llm_model_id
         self.llm_temperature = llm_temperature
-        self._prompt_model = model
-        self._optimized_prompt_model: (
-            TypedDspyModule[DSPyInput, DSPyOutput] | None
-        ) = optimized
+        self.prompt_model_ = model
         self._example = example
         self._output_constructor = output_constructor
 
@@ -208,18 +202,23 @@ generically from dictionnary expansion
         self,
         X: DataFrame[InputDataFrameWithKnowledge],
         y: MagohDataset,
+        *,
+        compiled_dspy_model_path: Path | None = None,
+        **kwargs,
     ):
         """Optimize the dspy model according to the given dataset."""
-        if self._optimized_prompt_model is not None:
+        kwargs = kwargs  # unused
+        if compiled_dspy_model_path is not None:
+            self.prompt_model_.load(compiled_dspy_model_path)
             return self
         with dspy.settings.context(lm=self._infer_language_model()):
             tp = dspy.MIPROv2(
                 metric=self._dspy_metric, auto="medium", num_threads=24
             )
-            self._optimized_prompt_model = cast(
+            self.prompt_model_ = cast(
                 TypedDspyModule[DSPyInput, DSPyOutput],
                 tp.compile(
-                    self._prompt_model,
+                    self.prompt_model_,
                     trainset=self._compute_devset(X, y),
                     max_bootstrapped_demos=2,
                     max_labeled_demos=2,
@@ -229,7 +228,7 @@ generically from dictionnary expansion
         return self
 
     @override
-    def transform(
+    def predict(
         self,
         X: DataFrame[InputDataFrameWithKnowledge],
     ) -> DataFrame[DFOutput]:
@@ -242,7 +241,7 @@ generically from dictionnary expansion
             return self._transform_dspy_output(
                 (
                     intervention_id,
-                    self._prompt_model.typed_forward(inpt),
+                    self.prompt_model_.typed_forward(inpt),
                 )
                 for intervention_id, inpt in tqdm.tqdm(
                     inputs,
@@ -337,7 +336,7 @@ generically from dictionnary expansion
                 display_progress=True,
                 display_table=5,
             )
-            score = cast(float, evaluator(self._prompt_model))
+            score = cast(float, evaluator(self.prompt_model_))
         return score
 
     @override
@@ -354,17 +353,10 @@ generically from dictionnary expansion
         )
         results = cast(
             tuple[float, EvalDetailedResult],
-            evaluator(self._prompt_model),
+            evaluator(self.prompt_model_),
         )
         # TODO: return a df after the score
         return results
-
-    @property
-    def prompt_model(self):
-        """Return the dspy prompt model, optimized if the model has been fitted."""
-        if self._optimized_prompt_model is not None:
-            return self._optimized_prompt_model
-        return self._prompt_model
 
     @staticmethod
     @abstractmethod

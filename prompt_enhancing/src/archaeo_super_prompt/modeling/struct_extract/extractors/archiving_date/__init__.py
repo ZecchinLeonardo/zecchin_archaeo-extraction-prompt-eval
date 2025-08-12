@@ -6,19 +6,18 @@ with loading from the dataset.
 """
 
 import datetime
-from typing import cast, override
+from typing import Any, cast, override
 
 import pandas as pd
 from pandera.typing.pandas import DataFrame, Series
 
-from archaeo_super_prompt.dataset.load import MagohDataset
+from .....dataset.load import MagohDataset
+from .....types.intervention_id import InterventionId
 from .....types.pdfchunks import PDFChunkDataset
-from archaeo_super_prompt.types.intervention_id import InterventionId
-
 from .....types.per_intervention_feature import (
     BasePerInterventionFeatureSchema,
 )
-from ....types.base_transformer import BaseTransformer
+from ....types.detailed_evaluator import DetailedEvaluatorMixin
 
 
 class ArchivingDateOutputSchema(BasePerInterventionFeatureSchema):
@@ -27,7 +26,7 @@ class ArchivingDateOutputSchema(BasePerInterventionFeatureSchema):
     data_protocollo: datetime.date
 
 
-class ArchivingDateProvider(BaseTransformer):
+class ArchivingDateProvider(DetailedEvaluatorMixin[Any, MagohDataset, Any]):
     """Give the answer of the ArchivingDate."""
 
     def __init__(self) -> None:
@@ -36,8 +35,9 @@ class ArchivingDateProvider(BaseTransformer):
         self._mds: MagohDataset | None = None
 
     @override
-    def fit(self, X, y: MagohDataset):
+    def fit(self, X, y: MagohDataset, **kwargs):
         X = X  # unused
+        kwargs = kwargs  # unused
         self._mds = y
         return self
 
@@ -51,7 +51,7 @@ class ArchivingDateProvider(BaseTransformer):
         )
 
     @override
-    def transform(
+    def predict(
         self,
         X: PDFChunkDataset,
     ) -> DataFrame[ArchivingDateOutputSchema]:
@@ -77,3 +77,16 @@ class ArchivingDateProvider(BaseTransformer):
                 ]
             ).set_index("id")
         )
+
+    @override
+    def score(
+        self, X, y, sample_weight=None
+    ) -> float:
+        X = X  # unused
+        y = y  # unused
+        sample_weight = sample_weight  # unused
+        return 1.0
+
+    @override
+    def score_and_transform(self, X, y):
+        return self.score(X, y), self.predict(X)
