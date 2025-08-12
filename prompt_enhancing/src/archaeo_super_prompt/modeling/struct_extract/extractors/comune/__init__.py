@@ -1,8 +1,10 @@
 """Comune LLM extractor."""
 
-from typing import cast, override
-import dspy
 import re
+from typing import cast, override
+
+import dspy
+import pandas as pd
 import pydantic
 from pandera.typing.pandas import Series
 
@@ -17,7 +19,6 @@ from archaeo_super_prompt.types.intervention_id import InterventionId
 from .....types.per_intervention_feature import (
     BasePerInterventionFeatureSchema,
 )
-
 from ...field_extractor import FieldExtractor, LLMProvider, TypedDspyModule
 
 # -- DSPy part
@@ -113,12 +114,12 @@ class ComuneExtractor(
 ):
     """Dspy-LLM-based extractor of the comune data."""
 
-    def __init__(self,
-
+    def __init__(
+        self,
         llm_model_provider: LLMProvider,
         llm_model_id: str,
         llm_temperature: float,
-                 ) -> None:
+    ) -> None:
         """Initialize the extractor with providing it the llm which will be used."""
         example = (
             ComuneInputData(
@@ -147,27 +148,40 @@ L'evento si è svolto a Lucca.""",
 
     @override
     def _to_dspy_input(self, x) -> ComuneInputData:
-        possible_comuni = [
-            self._thesaurus[th_id] for th_id in x.identified_thesaurus
-        ]
+        comuni, province = self._thesaurus
+        possible_comuni = comuni.iloc[x.identified_thesaurus].merge(
+            province, on="province_id", suffixes=("_comune", "_province")
+        )
         return ComuneInputData(
             fragmenti_relazione=x.merged_chunks,
             possibili_comuni=[
                 Comune(
-                    citta_nome=c.comune,
-                    provicia_nome=c.provincia.name,
-                    provincia_sigla=c.provincia.sigla,
+                    citta_nome=cast(str, c.name_comune),
+                    provicia_nome=cast(str, c.name_province),
+                    provincia_sigla=cast(str, c.sigla),
                 )
-                for c in possible_comuni
+                for c in possible_comuni.itertuples()
             ],
         )
 
     @override
     def _transform_dspy_output(self, y):
-        # DEBUG
-        print("Here we are")
+        comuni, province = self._thesaurus
         return ComuneFeatSchema.validate(
-            self._identity_output_set_transform_to_df(y),
+            self._identity_output_set_transform_to_df(y)
+            .assign(schedaid=lambda df: df.index)
+            .merge(
+                province[["name"]].assign(provincia_id=province.index),
+                left_on="provincia",
+                right_on="name",
+            )[["schedaid", "comune", "provincia_id"]]
+            .merge(
+                comuni.assign(comune_id=comuni.index),
+                left_on=["comune", "provincia_id"],
+                right_on=["name", "province_id"],
+            )[["schedaid", "comune_id", "provincia_id"]]
+            .rename(columns={"schedaid": "id"})
+            .set_index("id"),
             # TODO: add this after tests
             # lazy=True
         )
@@ -186,7 +200,8 @@ L'evento si è svolto a Lucca.""",
         cls, y: MagohDataset, ids: set[InterventionId]
     ) -> set[InterventionId]:
         return y.filter_good_records_for_training(
-            ids, lambda df: cast(Series[bool], df["university__Comune"].notnull())
+            ids,
+            lambda df: cast(Series[bool], df["university__Comune"].notnull()),
         )
 
     @override

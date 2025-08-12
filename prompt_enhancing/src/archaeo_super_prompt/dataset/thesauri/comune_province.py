@@ -1,7 +1,9 @@
 """Loading of thesauri related to the comune and the province."""
 
-from typing import NamedTuple, cast
+from typing import NamedTuple
 import pandas as pd
+from pandera.pandas import DataFrameModel
+from pandera.typing.pandas import DataFrame, Index, Series
 
 from ...utils.cache import get_cache_dir_for
 
@@ -27,6 +29,7 @@ def load_comune() -> list[tuple[int, str]]:
 
 class Provincia(NamedTuple):
     """Exhaustive data about a Province."""
+
     id_: int
     name: str
     sigla: str
@@ -34,25 +37,47 @@ class Provincia(NamedTuple):
 
 class ComuneProvincia(NamedTuple):
     """Exhaustive data about a Comune."""
+
     comune: str  # the name and the id
     provincia: Provincia
 
 
-def load_comune_with_provincie() -> dict[int, ComuneProvincia]:
+class ComuneData(DataFrameModel):
+    """Data about a Comune."""
+
+    comune_id: Index[int]
+    name: Series[str]
+    province_id: Series[int]
+
+
+class ProvinciaData(DataFrameModel):
+    """Data about a Province."""
+
+    province_id: Index[int]
+    name: Series[str]
+    sigla: Series[str]  # 2-chars
+
+
+def load_comune_with_provincie() -> tuple[
+    DataFrame[ComuneData], DataFrame[ProvinciaData]
+]:
     """Load the set of provincie thesaurus from an external reference table."""
     comune = pd.read_csv(_get_comune_file())
-    provincie = pd.read_csv(_get_provincie_file(), keep_default_na=False)
-    return {
-        cast(int, row.id): ComuneProvincia(
-            cast(str, row.nome_x),
-            Provincia(
-                cast(int, row.id_prov),
-                cast(str, row.nome_y),
-                cast(str, row.sigla),
-            ),
+    province = pd.read_csv(_get_provincie_file(), keep_default_na=False)
+    return ComuneData.validate(
+        comune[comune["nome"].notnull() & comune["provincia"].notnull()][
+            ["id_com", "nome", "provincia"]
+        ]
+        .rename(
+            columns={
+                "id_com": "comune_id",
+                "nome": "name",
+                "provincia": "province_id",
+            }
         )
-        for row in comune.merge(
-            provincie, "right", left_on="provincia", right_on="id_prov"
-        ).itertuples()
-    }
-
+        .set_index("comune_id")
+    ), ProvinciaData.validate(
+        province[["id_prov", "nome", "sigla"]]
+        .rename(columns={"id_prov": "province_id", "nome": "name"})
+        .set_index("province_id")
+    )
