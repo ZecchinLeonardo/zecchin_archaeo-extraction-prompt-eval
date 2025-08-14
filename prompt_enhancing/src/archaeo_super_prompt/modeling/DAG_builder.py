@@ -6,11 +6,11 @@ from functools import reduce
 import skdag
 
 
-class DAGComponent(NamedTuple):
+class DAGComponent[Estimator: BaseEstimator](NamedTuple):
     """A component for the."""
 
     component_id: str  # the identifier also used for the visualization
-    component: BaseEstimator | Literal["passthrough"]
+    component: Estimator | Literal["passthrough"]
 
 
 class DAGBuilder:

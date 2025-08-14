@@ -40,7 +40,7 @@ def save_models(extractorModel: FieldExtractor):
     """Save the dspy model for an inspection."""
     # TODO: log the sklearn pipeline model too
     mldspy.log_model(
-        extractorModel.prompt_model,
+        extractorModel.prompt_model_,
         extractorModel.field_to_be_extracted(),
         # WARN: no signature is inferrable for now in cause of the usage of
         # pydantic models which is not supported by the current dspy

@@ -27,39 +27,23 @@ from ..types.detailed_evaluator import DetailedEvaluatorMixin
 from . import language_model as lm_provider_mod
 
 
-class TypedDspyModule[DInput: BaseModel, DOutput: BaseModel](dspy.Module):
-    """A dspy module but with a typed wrapper for the forward function.
-
-    It extends an mlflow util class to fit its signature API for logging.
-    """
-
-    def __init__(self, output_cls: type[DOutput]):
-        """Init with the class of the output so an instance of it can be built."""
-        super().__init__()
-        self._output_cls = output_cls
-
-    def _to_prediction(self, output: DOutput) -> dspy.Prediction:
-        """Call this function with the pydantic-typed output for return in forward."""
-        return dspy.Prediction(**output.model_dump())
-
-    def _prediction_to_output(self, pred: dspy.Prediction) -> DOutput:
-        """Inverse of the method above.
-
-        Expect the prediction to be built from the _to_prediction method above
-        """
-        return self._output_cls(**pred.toDict())
-
-    def typed_forward(self, inpt: DInput) -> DOutput:
-        """Carry out a type safe forward on the module."""
-        return self._prediction_to_output(
-            cast(dspy.Prediction, self(**inpt.model_dump()))
-        )
-
-
-# TODO: uniformize this type into a dataframe for better handling during
-# visualization
 EvalDetailedResult = list[tuple[dspy.Example, dspy.Prediction, float]]
 LLMProvider = Literal["vllm", "ollama", "openai"]
+
+
+def to_prediction(output: BaseModel) -> dspy.Prediction:
+    """Call this function with the pydantic-typed output for return in forward."""
+    return dspy.Prediction(**output.model_dump())
+
+
+def prediction_to_output[DSPyOutput](
+    output_constructor: type[DSPyOutput], pred: dspy.Prediction
+) -> DSPyOutput:
+    """Inverse of the method above.
+
+    Expect the prediction to be built from the _to_prediction method above
+    """
+    return output_constructor(**pred.toDict())
 
 
 class FieldExtractor[
@@ -92,7 +76,7 @@ the DSPy model as input in its forward method.
         llm_model_provider: LLMProvider,
         llm_model_id: str,
         llm_temperature: float,
-        model: TypedDspyModule[DSPyInput, DSPyOutput],
+        model: dspy.Module,
         example: tuple[DSPyInput, DSPyOutput],
         output_constructor: type[DSPyOutput],
     ) -> None:
@@ -121,7 +105,7 @@ generically from dictionnary expansion
         self.llm_model_provider: LLMProvider = llm_model_provider
         self.llm_model_id = llm_model_id
         self.llm_temperature = llm_temperature
-        self.prompt_model_ = model
+        self._base_dspy_module = model
         self._example = example
         self._output_constructor = output_constructor
 
@@ -210,23 +194,28 @@ generically from dictionnary expansion
         """Optimize the dspy model according to the given dataset."""
         kwargs = kwargs  # unused
         if compiled_dspy_model_path is not None:
-            self.prompt_model_.load(compiled_dspy_model_path)
+            self._base_dspy_module.load(compiled_dspy_model_path)
+            self.prompt_model_ = self._base_dspy_module
             return self
         with dspy.settings.context(lm=self._infer_language_model()):
             tp = dspy.MIPROv2(
                 metric=self._dspy_metric, auto="medium", num_threads=24
             )
-            self.prompt_model_ = cast(
-                TypedDspyModule[DSPyInput, DSPyOutput],
-                tp.compile(
-                    self.prompt_model_,
-                    trainset=list(self._compute_devset(X, y)[1]),
-                    max_bootstrapped_demos=2,
-                    max_labeled_demos=2,
-                    requires_permission_to_run=False,
-                ),
+            self.prompt_model_ = tp.compile(
+                self._base_dspy_module,
+                trainset=list(self._compute_devset(X, y)[1]),
+                max_bootstrapped_demos=2,
+                max_labeled_demos=2,
+                requires_permission_to_run=False,
             )
-        return self
+            return self
+
+    def _typed_forward(self, inpt: DSPyInput) -> DSPyOutput:
+        """Carry out a type safe forward on the dspy module."""
+        return prediction_to_output(
+            self._output_constructor,
+            cast(dspy.Prediction, self.prompt_model_(**inpt.model_dump())),
+        )
 
     @override
     def predict(
@@ -242,7 +231,7 @@ generically from dictionnary expansion
             return self._transform_dspy_output(
                 (
                     intervention_id,
-                    self.prompt_model_.typed_forward(inpt),
+                    self._typed_forward(inpt),
                 )
                 for intervention_id, inpt in tqdm.tqdm(
                     inputs,

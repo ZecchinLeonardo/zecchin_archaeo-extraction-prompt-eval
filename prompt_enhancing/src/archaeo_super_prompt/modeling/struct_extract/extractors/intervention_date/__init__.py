@@ -32,7 +32,7 @@ from archaeo_super_prompt.types.intervention_id import InterventionId
 from .....types.per_intervention_feature import (
     BasePerInterventionFeatureSchema,
 )
-from ...field_extractor import FieldExtractor, LLMProvider, TypedDspyModule
+from ...field_extractor import FieldExtractor, LLMProvider, to_prediction
 from .type_models import ITALIAN_MONTHS, Data, Precision, Precisione
 
 
@@ -99,13 +99,12 @@ def _get_max_date(output_model: DataInterventoOutputData):
 
 
 class EstimateInterventionDate(
-    TypedDspyModule[DataInterventoInputData, DataInterventoOutputData]
+    dspy.Module
 ):
     """DSPy model for the extraction of the date of the intervention."""
 
     def __init__(self):
         """Initialize only a chain of thought."""
-        super().__init__(DataInterventoOutputData)
         self._estrattore_della_data = dspy.ChainOfThought(
             StimareDataDellIntervento
         )
@@ -142,7 +141,7 @@ class EstimateInterventionDate(
             result.get("precisione", "giorno"),
         )
 
-        return self._to_prediction(
+        return to_prediction(
             DataInterventoOutputData(
                 start_day=data_minima_di_inizio.giorno
                 if data_minima_di_inizio is not None

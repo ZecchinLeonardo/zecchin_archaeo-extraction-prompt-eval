@@ -18,7 +18,7 @@ from archaeo_super_prompt.types.intervention_id import InterventionId
 from .....types.per_intervention_feature import (
     BasePerInterventionFeatureSchema,
 )
-from ...field_extractor import FieldExtractor, LLMProvider, TypedDspyModule
+from ...field_extractor import FieldExtractor, LLMProvider, to_prediction
 
 # -- DSPy part
 
@@ -61,12 +61,11 @@ class ComuneOutputData(pydantic.BaseModel):
     provincia: str
 
 
-class FindComune(TypedDspyModule[ComuneInputData, ComuneOutputData]):
+class FindComune(dspy.Module):
     """DSPy model for the extraction of the comune."""
 
     def __init__(self):
         """Initialize only a chain of thought."""
-        super().__init__(ComuneOutputData)
         self._estrattore_di_comune = dspy.ChainOfThought(IdentificaComune)
 
     def forward(
@@ -82,7 +81,7 @@ class FindComune(TypedDspyModule[ComuneInputData, ComuneOutputData]):
         )
         WRONG_COMUNE = "%ERROR_COMUNE%"
         WRONG_PROVINCIA = "%ERROR_PROVINCIA%"
-        return self._to_prediction(
+        return to_prediction(
             ComuneOutputData(
                 comune=cast(str, predicted_output.get("comune", WRONG_COMUNE)),
                 provincia=cast(
