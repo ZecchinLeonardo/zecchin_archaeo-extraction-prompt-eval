@@ -189,10 +189,22 @@ generically from dictionnary expansion
         y: MagohDataset,
         *,
         compiled_dspy_model_path: Path | None = None,
+        skip_optimization=False,
         **kwargs,
     ):
-        """Optimize the dspy model according to the given dataset."""
+        """Optimize the dspy model according to the given dataset.
+
+        Arguments:
+           X: the input dataframe with the required fields for the FieldExtractor
+           y: the Magoh training dataset
+           compiled_dspy_model_path: if given, a path to an already optimized dspy model, so this prompt model is directly used without reoptimize the program
+           skip_optimization: if set to True, then the model is fitted with the not optimized dspy program
+           kwargs: nothing usefull (just to fit the initial overriding)
+        """
         kwargs = kwargs  # unused
+        if skip_optimization:
+            self.prompt_model_ = self._base_dspy_module
+            return self
         if compiled_dspy_model_path is not None:
             self._base_dspy_module.load(compiled_dspy_model_path)
             self.prompt_model_ = self._base_dspy_module
