@@ -1,0 +1,323 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="2207pt" height="249pt" viewBox="0.00 0.00 2207.00 249.00">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 244.52)">
+<polygon fill="white" stroke="none" points="-4,4 -4,-244.52 2203.05,-244.52 2203.05,4 -4,4"/>
+<!-- vision&#45;lm&#45;Reader -->
+<g id="node1" class="node">
+<title>vision-lm-Reader</title>
+<g id="a_node1"><a xlink:title="VLLM_Preprocessing(embedding_model_hf_id='nomic-ai/nomic-embed-text-v1.5',&#10;                   incipit_only=True,&#10;                   prompt='OCR this part of Italian document for '&#10;                          'markdown-based processing.',&#10;                   vlm_model_id='ibm-granite/granite-vision-3.3-2b',&#10;                   vlm_provider='vllm')">
+<polygon fill="none" stroke="black" points="127,-132.52 0,-132.52 0,-96.52 127,-96.52 127,-132.52"/>
+<text xml:space="preserve" text-anchor="middle" x="63.5" y="-110.97" font-family="SANS" font-size="14.00">vision-lm-Reader</text>
+</a>
+</g>
+</g>
+<!-- NER&#45;Extractor -->
+<g id="node2" class="node">
+<title>NER-Extractor</title>
+<g id="a_node2"><a xlink:title="NerModel()">
+<polygon fill="none" stroke="black" points="269.75,-132.52 163,-132.52 163,-96.52 269.75,-96.52 269.75,-132.52"/>
+<text xml:space="preserve" text-anchor="middle" x="216.38" y="-110.97" font-family="SANS" font-size="14.00">NER-Extractor</text>
+</a>
+</g>
+</g>
+<!-- vision&#45;lm&#45;Reader&#45;&gt;NER&#45;Extractor -->
+<g id="edge1" class="edge">
+<title>vision-lm-Reader-&gt;NER-Extractor</title>
+<path fill="none" stroke="black" d="M127.17,-114.52C135.12,-114.52 143.25,-114.52 151.22,-114.52"/>
+<polygon fill="black" stroke="black" points="151.21,-118.02 161.21,-114.52 151.21,-111.02 151.21,-118.02"/>
+</g>
+<!-- ner&#45;featured -->
+<g id="node3" class="node">
+<title>ner-featured</title>
+<g id="a_node3"><a xlink:title="'passthrough'">
+<polygon fill="none" stroke="black" points="469.05,-160.52 428.22,-182.98 346.57,-182.98 305.75,-160.52 346.57,-138.07 428.22,-138.07 469.05,-160.52"/>
+<text xml:space="preserve" text-anchor="middle" x="387.4" y="-156.97" font-family="SANS" font-size="14.00">ner-featured</text>
+</a>
+</g>
+</g>
+<!-- vision&#45;lm&#45;Reader&#45;&gt;ner&#45;featured -->
+<g id="edge2" class="edge">
+<title>vision-lm-Reader-&gt;ner-featured</title>
+<path fill="none" stroke="black" d="M125.06,-132.99C137.51,-136.26 150.61,-139.32 163,-141.52 207.49,-149.44 257.56,-154.09 299.01,-156.8"/>
+<polygon fill="black" stroke="black" points="298.76,-160.29 308.95,-157.42 299.19,-153.3 298.76,-160.29"/>
+</g>
+<!-- archiving&#45;date&#45;Oracle -->
+<g id="node4" class="node">
+<title>archiving-date-Oracle</title>
+<g id="a_node4"><a xlink:title="ArchivingDateProvider()">
+<ellipse fill="none" stroke="black" cx="765.56" cy="-59.52" rx="111.02" ry="19.45"/>
+<text xml:space="preserve" text-anchor="middle" x="765.56" y="-55.97" font-family="SANS" font-size="14.00">archiving-date-Oracle</text>
+</a>
+</g>
+</g>
+<!-- vision&#45;lm&#45;Reader&#45;&gt;archiving&#45;date&#45;Oracle -->
+<g id="edge3" class="edge">
+<title>vision-lm-Reader-&gt;archiving-date-Oracle</title>
+<path fill="none" stroke="black" d="M123.68,-96.03C136.53,-92.65 150.13,-89.56 163,-87.52 328.1,-61.38 521.62,-56.97 643.66,-57.35"/>
+<polygon fill="black" stroke="black" points="643.35,-60.84 653.37,-57.39 643.38,-53.84 643.35,-60.84"/>
+</g>
+<!-- NER&#45;Extractor&#45;&gt;ner&#45;featured -->
+<g id="edge4" class="edge">
+<title>NER-Extractor-&gt;ner-featured</title>
+<path fill="none" stroke="black" d="M269.93,-128.83C286.07,-133.22 304.03,-138.11 320.92,-142.7"/>
+<polygon fill="black" stroke="black" points="319.81,-146.03 330.37,-145.28 321.64,-139.27 319.81,-146.03"/>
+</g>
+<!-- comune&#45;CF -->
+<g id="node5" class="node">
+<title>comune-CF</title>
+<g id="a_node5"><a xlink:title="NeSelector(compatible_entities={'CODICE_POSTALE', 'INDIRIZZO', 'LUOGO'},&#10;           field_name='comune',&#10;           wanted_matches=&lt;function load_comune at 0x7d6e92a4e160&gt;)">
+<polygon fill="none" stroke="black" points="607.3,-132.52 516.3,-132.52 516.3,-96.52 607.3,-96.52 607.3,-132.52"/>
+<text xml:space="preserve" text-anchor="middle" x="561.8" y="-110.97" font-family="SANS" font-size="14.00">comune-CF</text>
+</a>
+</g>
+</g>
+<!-- ner&#45;featured&#45;&gt;comune&#45;CF -->
+<g id="edge5" class="edge">
+<title>ner-featured-&gt;comune-CF</title>
+<path fill="none" stroke="black" d="M442.95,-145.97C462.66,-140.71 484.95,-134.76 504.79,-129.47"/>
+<polygon fill="black" stroke="black" points="505.62,-132.87 514.38,-126.91 503.81,-126.11 505.62,-132.87"/>
+</g>
+<!-- interv&#45;start&#45;CF -->
+<g id="node6" class="node">
+<title>interv-start-CF</title>
+<g id="a_node6"><a xlink:title="NeSelector(compatible_entities={'DATA'}, field_name='data',&#10;           keep_chunks_without_identified_values=True,&#10;           wanted_matches=&lt;function get_advanced_pipeline.&lt;locals&gt;.&lt;lambda&gt; at 0x7d6d8a8c3920&gt;)">
+<polygon fill="none" stroke="black" points="617.42,-186.52 506.17,-186.52 506.17,-150.52 617.42,-150.52 617.42,-186.52"/>
+<text xml:space="preserve" text-anchor="middle" x="561.8" y="-164.97" font-family="SANS" font-size="14.00">interv-start-CF</text>
+</a>
+</g>
+</g>
+<!-- ner&#45;featured&#45;&gt;interv&#45;start&#45;CF -->
+<g id="edge6" class="edge">
+<title>ner-featured-&gt;interv-start-CF</title>
+<path fill="none" stroke="black" d="M463.51,-164.01C473.86,-164.49 484.43,-164.98 494.61,-165.45"/>
+<polygon fill="black" stroke="black" points="494.23,-168.94 504.38,-165.9 494.55,-161.94 494.23,-168.94"/>
+</g>
+<!-- functionary&#45;CF -->
+<g id="node7" class="node">
+<title>functionary-CF</title>
+<g id="a_node7"><a xlink:title="NeSelector(compatible_entities={'COGNOME', 'NOME'}, field_name='functionary',&#10;           keep_chunks_without_identified_values=True,&#10;           wanted_matches=&lt;function get_advanced_pipeline.&lt;locals&gt;.&lt;lambda&gt; at 0x7d6d8a114180&gt;)">
+<polygon fill="none" stroke="black" points="618.55,-240.52 505.05,-240.52 505.05,-204.52 618.55,-204.52 618.55,-240.52"/>
+<text xml:space="preserve" text-anchor="middle" x="561.8" y="-218.97" font-family="SANS" font-size="14.00">functionary-CF</text>
+</a>
+</g>
+</g>
+<!-- ner&#45;featured&#45;&gt;functionary&#45;CF -->
+<g id="edge7" class="edge">
+<title>ner-featured-&gt;functionary-CF</title>
+<path fill="none" stroke="black" d="M437.34,-178.12C456.49,-185.01 478.69,-192.99 498.93,-200.27"/>
+<polygon fill="black" stroke="black" points="497.61,-203.52 508.21,-203.61 499.98,-196.93 497.61,-203.52"/>
+</g>
+<!-- interv&#45;start&#45;entrypoint -->
+<g id="node8" class="node">
+<title>interv-start-entrypoint</title>
+<g id="a_node8"><a xlink:title="'passthrough'">
+<polygon fill="none" stroke="black" points="1182.43,-164.52 1114.97,-186.98 980.04,-186.98 912.58,-164.52 980.04,-142.07 1114.97,-142.07 1182.43,-164.52"/>
+<text xml:space="preserve" text-anchor="middle" x="1047.51" y="-160.97" font-family="SANS" font-size="14.00">interv-start-entrypoint</text>
+</a>
+</g>
+</g>
+<!-- archiving&#45;date&#45;Oracle&#45;&gt;interv&#45;start&#45;entrypoint -->
+<g id="edge8" class="edge">
+<title>archiving-date-Oracle-&gt;interv-start-entrypoint</title>
+<path fill="none" stroke="black" d="M835.2,-75C849.03,-78.67 863.38,-82.89 876.58,-87.52 916.02,-101.36 958.87,-120.81 991.68,-136.7"/>
+<polygon fill="black" stroke="black" points="990.07,-139.81 1000.6,-141.06 993.15,-133.52 990.07,-139.81"/>
+</g>
+<!-- fonte&#45;informaz&#45;entrypoint -->
+<g id="node9" class="node">
+<title>fonte-informaz-entrypoint</title>
+<g id="a_node9"><a xlink:title="'passthrough'">
+<polygon fill="none" stroke="black" points="1781.26,-69.52 1704,-91.98 1549.48,-91.98 1472.22,-69.52 1549.48,-47.07 1704,-47.07 1781.26,-69.52"/>
+<text xml:space="preserve" text-anchor="middle" x="1626.74" y="-65.97" font-family="SANS" font-size="14.00">fonte-informaz-entrypoint</text>
+</a>
+</g>
+</g>
+<!-- archiving&#45;date&#45;Oracle&#45;&gt;fonte&#45;informaz&#45;entrypoint -->
+<g id="edge9" class="edge">
+<title>archiving-date-Oracle-&gt;fonte-informaz-entrypoint</title>
+<path fill="none" stroke="black" d="M876.69,-60.8C1025.93,-62.54 1293.44,-65.65 1465.1,-67.65"/>
+<polygon fill="black" stroke="black" points="1464.97,-71.15 1475.01,-67.77 1465.05,-64.15 1464.97,-71.15"/>
+</g>
+<!-- FINAL -->
+<g id="node10" class="node">
+<title>FINAL</title>
+<g id="a_node10"><a xlink:title="'passthrough'">
+<polygon fill="none" stroke="black" points="2199.05,-119.52 2176.6,-141.98 2131.69,-141.98 2109.24,-119.52 2131.69,-97.07 2176.6,-97.07 2199.05,-119.52"/>
+<text xml:space="preserve" text-anchor="middle" x="2154.15" y="-115.97" font-family="SANS" font-size="14.00">FINAL</text>
+</a>
+</g>
+</g>
+<!-- archiving&#45;date&#45;Oracle&#45;&gt;FINAL -->
+<g id="edge10" class="edge">
+<title>archiving-date-Oracle-&gt;FINAL</title>
+<path fill="none" stroke="black" d="M859.52,-48.8C970.46,-36.95 1161.67,-19.52 1326.32,-19.52 1326.32,-19.52 1326.32,-19.52 1627.74,-19.52 1826,-19.52 1891.35,36.37 2073.24,-42.52 2095.82,-52.31 2115.76,-71.5 2130.07,-88.28"/>
+<polygon fill="black" stroke="black" points="2127.02,-90.08 2136.07,-95.59 2132.44,-85.64 2127.02,-90.08"/>
+</g>
+<!-- comune&#45;CM -->
+<g id="node11" class="node">
+<title>comune-CM</title>
+<g id="a_node11"><a xlink:title="FunctionTransformer(func=&lt;function ChunksToText.&lt;locals&gt;.ChunksToPromptContent at 0x7d6d8a114540&gt;)">
+<polygon fill="none" stroke="black" points="813.69,-132.52 717.44,-132.52 717.44,-96.52 813.69,-96.52 813.69,-132.52"/>
+<text xml:space="preserve" text-anchor="middle" x="765.56" y="-110.97" font-family="SANS" font-size="14.00">comune-CM</text>
+</a>
+</g>
+</g>
+<!-- comune&#45;CF&#45;&gt;comune&#45;CM -->
+<g id="edge11" class="edge">
+<title>comune-CF-&gt;comune-CM</title>
+<path fill="none" stroke="black" d="M607.58,-114.52C636.53,-114.52 674.52,-114.52 705.88,-114.52"/>
+<polygon fill="black" stroke="black" points="705.59,-118.02 715.59,-114.52 705.59,-111.02 705.59,-118.02"/>
+</g>
+<!-- interv&#45;start&#45;CM -->
+<g id="node12" class="node">
+<title>interv-start-CM</title>
+<g id="a_node12"><a xlink:title="FunctionTransformer(func=&lt;function ChunksToText.&lt;locals&gt;.ChunksToPromptContent at 0x7d6d8a3c7ba0&gt;)">
+<polygon fill="none" stroke="black" points="823.82,-186.52 707.31,-186.52 707.31,-150.52 823.82,-150.52 823.82,-186.52"/>
+<text xml:space="preserve" text-anchor="middle" x="765.56" y="-164.97" font-family="SANS" font-size="14.00">interv-start-CM</text>
+</a>
+</g>
+</g>
+<!-- interv&#45;start&#45;CF&#45;&gt;interv&#45;start&#45;CM -->
+<g id="edge12" class="edge">
+<title>interv-start-CF-&gt;interv-start-CM</title>
+<path fill="none" stroke="black" d="M617.66,-168.52C641.65,-168.52 670.05,-168.52 695.45,-168.52"/>
+<polygon fill="black" stroke="black" points="695.37,-172.02 705.37,-168.52 695.37,-165.02 695.37,-172.02"/>
+</g>
+<!-- functionary&#45;CM -->
+<g id="node13" class="node">
+<title>functionary-CM</title>
+<g id="a_node13"><a xlink:title="FunctionTransformer(func=&lt;function ChunksToText.&lt;locals&gt;.ChunksToPromptContent at 0x7d6d8a1140e0&gt;)">
+<polygon fill="none" stroke="black" points="1106.88,-240.52 988.13,-240.52 988.13,-204.52 1106.88,-204.52 1106.88,-240.52"/>
+<text xml:space="preserve" text-anchor="middle" x="1047.51" y="-218.97" font-family="SANS" font-size="14.00">functionary-CM</text>
+</a>
+</g>
+</g>
+<!-- functionary&#45;CF&#45;&gt;functionary&#45;CM -->
+<g id="edge13" class="edge">
+<title>functionary-CF-&gt;functionary-CM</title>
+<path fill="none" stroke="black" d="M618.76,-222.52C707.3,-222.52 879.53,-222.52 976.25,-222.52"/>
+<polygon fill="black" stroke="black" points="976.15,-226.02 986.15,-222.52 976.15,-219.02 976.15,-226.02"/>
+</g>
+<!-- interv&#45;start&#45;Extractor -->
+<g id="node14" class="node">
+<title>interv-start-Extractor</title>
+<g id="a_node14"><a xlink:title="InterventionStartExtractor(llm_model_id='google/gemma-3-27b-it',&#10;                           llm_model_provider='vllm', llm_temperature=0.05)">
+<ellipse fill="none" stroke="black" cx="1327.32" cy="-171.52" rx="108.89" ry="19.45"/>
+<text xml:space="preserve" text-anchor="middle" x="1327.32" y="-167.97" font-family="SANS" font-size="14.00">interv-start-Extractor</text>
+</a>
+</g>
+</g>
+<!-- interv&#45;start&#45;entrypoint&#45;&gt;interv&#45;start&#45;Extractor -->
+<g id="edge14" class="edge">
+<title>interv-start-entrypoint-&gt;interv-start-Extractor</title>
+<path fill="none" stroke="black" d="M1174.41,-167.69C1185.49,-167.97 1196.68,-168.26 1207.7,-168.53"/>
+<polygon fill="black" stroke="black" points="1207.51,-172.03 1217.6,-168.78 1207.69,-165.03 1207.51,-172.03"/>
+</g>
+<!-- fonte&#45;informaz&#45;Deductor -->
+<g id="node15" class="node">
+<title>fonte-informaz-Deductor</title>
+<g id="a_node15"><a xlink:title="ArchivingDateProvider()">
+<ellipse fill="none" stroke="black" cx="1945.25" cy="-70.52" rx="127.99" ry="19.45"/>
+<text xml:space="preserve" text-anchor="middle" x="1945.25" y="-66.97" font-family="SANS" font-size="14.00">fonte-informaz-Deductor</text>
+</a>
+</g>
+</g>
+<!-- fonte&#45;informaz&#45;entrypoint&#45;&gt;fonte&#45;informaz&#45;Deductor -->
+<g id="edge15" class="edge">
+<title>fonte-informaz-entrypoint-&gt;fonte-informaz-Deductor</title>
+<path fill="none" stroke="black" d="M1781.36,-70.01C1789.5,-70.03 1797.65,-70.06 1805.73,-70.09"/>
+<polygon fill="black" stroke="black" points="1805.58,-73.58 1815.59,-70.12 1805.6,-66.58 1805.58,-73.58"/>
+</g>
+<!-- comune&#45;Extractor -->
+<g id="node16" class="node">
+<title>comune-Extractor</title>
+<g id="a_node16"><a xlink:title="ComuneExtractor(llm_model_id='google/gemma-3-27b-it', llm_model_provider='vllm',&#10;                llm_temperature=0.05)">
+<ellipse fill="none" stroke="black" cx="1327.32" cy="-114.52" rx="94.58" ry="19.45"/>
+<text xml:space="preserve" text-anchor="middle" x="1327.32" y="-110.97" font-family="SANS" font-size="14.00">comune-Extractor</text>
+</a>
+</g>
+</g>
+<!-- comune&#45;CM&#45;&gt;comune&#45;Extractor -->
+<g id="edge16" class="edge">
+<title>comune-CM-&gt;comune-Extractor</title>
+<path fill="none" stroke="black" d="M813.81,-114.52C903.2,-114.52 1099.06,-114.52 1221.1,-114.52"/>
+<polygon fill="black" stroke="black" points="1220.8,-118.02 1230.8,-114.52 1220.8,-111.02 1220.8,-118.02"/>
+</g>
+<!-- interv&#45;start&#45;CM&#45;&gt;interv&#45;start&#45;entrypoint -->
+<g id="edge17" class="edge">
+<title>interv-start-CM-&gt;interv-start-entrypoint</title>
+<path fill="none" stroke="black" d="M824.23,-167.7C847.97,-167.36 876.6,-166.95 905.31,-166.54"/>
+<polygon fill="black" stroke="black" points="905.27,-170.04 915.22,-166.4 905.17,-163.04 905.27,-170.04"/>
+</g>
+<!-- functionary&#45;entrypoint -->
+<g id="node17" class="node">
+<title>functionary-entrypoint</title>
+<g id="a_node17"><a xlink:title="'passthrough'">
+<polygon fill="none" stroke="black" points="1763.51,-207.52 1695.12,-229.98 1558.36,-229.98 1489.98,-207.52 1558.36,-185.07 1695.12,-185.07 1763.51,-207.52"/>
+<text xml:space="preserve" text-anchor="middle" x="1626.74" y="-203.97" font-family="SANS" font-size="14.00">functionary-entrypoint</text>
+</a>
+</g>
+</g>
+<!-- functionary&#45;CM&#45;&gt;functionary&#45;entrypoint -->
+<g id="edge18" class="edge">
+<title>functionary-CM-&gt;functionary-entrypoint</title>
+<path fill="none" stroke="black" d="M1107.3,-220.99C1195.94,-218.69 1366.29,-214.26 1487.52,-211.11"/>
+<polygon fill="black" stroke="black" points="1487.31,-214.62 1497.22,-210.86 1487.13,-207.62 1487.31,-214.62"/>
+</g>
+<!-- interv&#45;start&#45;Extractor&#45;&gt;FINAL -->
+<g id="edge19" class="edge">
+<title>interv-start-Extractor-&gt;FINAL</title>
+<path fill="none" stroke="black" d="M1435.94,-169.57C1581.03,-166.09 1847.26,-156.75 2073.24,-132.52 2083.39,-131.43 2094.22,-129.92 2104.52,-128.3"/>
+<polygon fill="black" stroke="black" points="2105.06,-131.76 2114.37,-126.7 2103.93,-124.85 2105.06,-131.76"/>
+</g>
+<!-- interv&#45;start&#45;Extractor&#45;&gt;functionary&#45;entrypoint -->
+<g id="edge20" class="edge">
+<title>interv-start-Extractor-&gt;functionary-entrypoint</title>
+<path fill="none" stroke="black" d="M1418.37,-182.42C1448.65,-186.09 1482.8,-190.22 1514.51,-194.06"/>
+<polygon fill="black" stroke="black" points="1513.77,-197.49 1524.11,-195.22 1514.61,-190.55 1513.77,-197.49"/>
+</g>
+<!-- fonte&#45;informaz&#45;Deductor&#45;&gt;FINAL -->
+<g id="edge21" class="edge">
+<title>fonte-informaz-Deductor-&gt;FINAL</title>
+<path fill="none" stroke="black" d="M2016.3,-87.11C2045.94,-94.13 2079.68,-102.12 2106.25,-108.42"/>
+<polygon fill="black" stroke="black" points="2105.15,-111.75 2115.69,-110.65 2106.76,-104.94 2105.15,-111.75"/>
+</g>
+<!-- comune&#45;Extractor&#45;&gt;fonte&#45;informaz&#45;entrypoint -->
+<g id="edge22" class="edge">
+<title>comune-Extractor-&gt;fonte-informaz-entrypoint</title>
+<path fill="none" stroke="black" d="M1404.53,-102.99C1437.36,-98.02 1476.44,-92.11 1512.55,-86.65"/>
+<polygon fill="black" stroke="black" points="1512.79,-90.15 1522.15,-85.2 1511.74,-83.23 1512.79,-90.15"/>
+</g>
+<!-- comune&#45;Extractor&#45;&gt;FINAL -->
+<g id="edge23" class="edge">
+<title>comune-Extractor-&gt;FINAL</title>
+<path fill="none" stroke="black" d="M1422.14,-115.09C1595.04,-116.14 1958.96,-118.35 2097.76,-119.19"/>
+<polygon fill="black" stroke="black" points="2097.39,-122.68 2107.41,-119.25 2097.43,-115.68 2097.39,-122.68"/>
+</g>
+<!-- comune&#45;Extractor&#45;&gt;functionary&#45;entrypoint -->
+<g id="edge24" class="edge">
+<title>comune-Extractor-&gt;functionary-entrypoint</title>
+<path fill="none" stroke="black" d="M1387.88,-129.81C1403.65,-134.05 1420.63,-138.8 1436.22,-143.52 1474.17,-155.02 1515.97,-168.99 1550.64,-180.95"/>
+<polygon fill="black" stroke="black" points="1549.13,-184.13 1559.73,-184.09 1551.42,-177.51 1549.13,-184.13"/>
+</g>
+<!-- functionary&#45;Extractor -->
+<g id="node18" class="node">
+<title>functionary-Extractor</title>
+<g id="a_node18"><a xlink:title="ArchivingDateProvider()">
+<ellipse fill="none" stroke="black" cx="1945.25" cy="-205.52" rx="110.49" ry="19.45"/>
+<text xml:space="preserve" text-anchor="middle" x="1945.25" y="-201.97" font-family="SANS" font-size="14.00">functionary-Extractor</text>
+</a>
+</g>
+</g>
+<!-- functionary&#45;entrypoint&#45;&gt;functionary&#45;Extractor -->
+<g id="edge25" class="edge">
+<title>functionary-entrypoint-&gt;functionary-Extractor</title>
+<path fill="none" stroke="black" d="M1762.43,-206.67C1782.64,-206.54 1803.37,-206.41 1823.27,-206.29"/>
+<polygon fill="black" stroke="black" points="1823.06,-209.79 1833.03,-206.23 1823.01,-202.79 1823.06,-209.79"/>
+</g>
+<!-- functionary&#45;Extractor&#45;&gt;FINAL -->
+<g id="edge26" class="edge">
+<title>functionary-Extractor-&gt;FINAL</title>
+<path fill="none" stroke="black" d="M2018.14,-190.49C2036.51,-185.52 2055.94,-179.23 2073.24,-171.52 2088.93,-164.53 2105.04,-154.66 2118.64,-145.39"/>
+<polygon fill="black" stroke="black" points="2120.63,-148.27 2126.82,-139.67 2116.62,-142.53 2120.63,-148.27"/>
+</g>
+</g>
+</svg>
