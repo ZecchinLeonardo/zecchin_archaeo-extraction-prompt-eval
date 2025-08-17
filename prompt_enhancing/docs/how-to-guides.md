@@ -112,8 +112,20 @@ all the per-field metrics in MLFlow
 
 To extend the DAG with the extraction of another field, you can implement the
 `FieldExtractor` abstract class in a new child class inside the
-`archaeo_super_prompt.modeling.struct_extract.extractors` submodule. See the
-`ComuneExtractor` implementation for an example.
+`archaeo_super_prompt.modeling.struct_extract.extractors` submodule.
+
+You will have to implement a DSPy module which fit two input and output
+pydantic `BaseModel`s that you will have to define according to your extraction
+model. The `forward` method will have to be defined suitably according to these
+models to type-safely bind your DSPy module to your `FieldExtractor` child
+class:
+
+1. The input arguments of the method will be the fields of the input pydantic
+   model
+2. The return value of the method will be a `dspy.Prediction` built from an
+   instance of the output pydantic model.
+
+See the `ComuneExtractor` implementation for an example.
 
 > Please pay attention to the implementation of `filter_training_dataset`, which
 > can be done according to knowledge about the field to be predicted. Some fields
