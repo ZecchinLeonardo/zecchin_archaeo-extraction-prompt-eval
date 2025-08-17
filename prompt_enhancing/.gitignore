@@ -12,5 +12,7 @@ data/raw/*
 !data/processed/.gitkeep
 !data/raw/.gitkeep
 
+site
+
 mlruns/
 mlartifacts/
