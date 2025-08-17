@@ -6,18 +6,46 @@ We describe here how the evaluations have been carried out.
    - digitally-born
    - to be scanned but clean
    - to be scanned and dirty
-2. If there is no optimization to be done for the prompt models, then we evaluate over
-every processable document (we name "processable" a document for which the scan
-by the vision LLM does not raise a timeout).
+2. If there is no optimization to be done for the prompt models, then we
+   evaluate over every processable document (we name "processable" a document
+for which the scan by the vision LLM does not raise a timeout).
 3. If there is an optimization to do, we split randomly the set between a
 training and an evaluation set (with 20% of the records kept for the
 training).
 4. In the analysis, we do not pay attention for now to the class of the PDF
 documents mentioned above.
 
-The evaluation is defined for each field among a perfect match or a close
-match. On the last specialized models, the evaluation method is more accurately
+## Metric definitions
+
+### Legacy model
+
+The evaluation is defined for each field among those 3 methods:
+
+- a **perfect match** metric returning 1 only if the predicted answer exactly
+equals the expected one
+- a **closeness match** returning 1 only if the cosine similarity of both the
+answers in an embedding space is higher than 0.75. This treshold has been set
+arbitrarily.
+- an **llm evaluation** carried out by the LLM. It is only used to compare the
+  output dates with the unnormalized dates of the Magoh dataset.
+
+Some fields do not have a meaningful extractor implementation. For instance,
+
+- the extractor of the sigla always return None (for "Unknown" value)
+- some fields such as the OGM or the habilitated functionary are questioned to
+the LLM while it does not have any knowledge to suitably predict them. Indeed,
+this requires the LLM to be taught about rules and knowledge about the
+archaeological institutions and moreover this information is not mentioned in
+the PDF documents.
+
+Therefore, the tracked plots are produced from evaluations where a better
+selection of the records of Magoh should have been carried out for each field,
+and where some fields should have been excluded.
+
+### Specialized models
+
+On the last specialized models, the evaluation method is more accurately
 defined. In fact, even the implementation of a tolerance (e.g. for the guessed
 date) is handled thanks to the data which is cleaner than at the epocha of the
-first model. The metric setting is also better for these models, which has
-enabled them to be optimized by DSPy.
+first model. The setting of the metric values is also better for these models,
+which has enabled them to be optimized by DSPy.

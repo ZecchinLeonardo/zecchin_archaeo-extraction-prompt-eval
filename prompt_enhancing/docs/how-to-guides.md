@@ -73,6 +73,10 @@ score = comune_extractor.score(
 See the `notebooks/exploratory/3.0-Convolutio-complete_pipeline.ipynb` notebook
 for a complete overview of the training and the evaluation of the model.
 
+> To help the developer choosing useful Magoh's records for the training and
+> the evaluation of a `FieldExtractor`, the `filter_training_dataset` method
+> is useful.
+
 ## Inspect the prompts
 
 The previous notebook contains also the management of MLFlow to autotrace the
@@ -103,3 +107,17 @@ more details.
 
 It is also possible to use the `mlflow.log_metric` method to save and visualize
 all the per-field metrics in MLFlow
+
+## Implement another `FieldExtractor`
+
+To extend the DAG with the extraction of another field, you can implement the
+`FieldExtractor` abstract class in a new child class inside the
+`archaeo_super_prompt.modeling.struct_extract.extractors` submodule. See the
+`ComuneExtractor` implementation for an example.
+
+> Please pay attention to the implementation of `filter_training_dataset`, which
+> can be done according to knowledge about the field to be predicted. Some fields
+> have in face their values which might cause problems in cause of errors of
+> insertion from the contributors or cases of intervention which are not useful
+> for a training or an evaluation. An example is the duration of an
+> intervention (see the page in `references/` directory for more details).
