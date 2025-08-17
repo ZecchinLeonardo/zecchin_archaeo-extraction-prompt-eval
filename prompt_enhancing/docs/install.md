@@ -51,6 +51,44 @@ the cells' outputs for the git diffs and also the nbdiff):
 just init-nb-git-workspace
 ```
 
-## 3. Raw data to install
+## 3. Required data
 
-TODO
+### Remote databases
+
+1. A postgresql with the following tables must be available:
+    - featured_intervention_data
+    - findings
+2. A minio file store must also be available.
+
+To set the credentials to these databases, fill a `.env` file from the
+`.env.example` file.
+
+### Local csv files
+
+The following csv files must be present in the the `data/raw` directory
+
+```sh
+data/raw/
+└── thesaurus
+    ├── comune.csv
+    └── provincie.csv
+```
+
+The keys of these files must be at least the following:
+
+- `comune.csv`: id (`int`), id_com (`int`), nome (`str`), provincia (`int`)
+- `provincie.csv`: id_prov (`int`), nome (`str`), sigla (`char[2]`)
+
+## 4. Remote AI models
+
+According to the components you use in the extraction model, you will need AI
+models to be run in other processes. The program fetches them through HTTP
+requests.
+
+See the `models/README.md` file to set those models.
+
+Once you can connect to them, set those environment variables if needed:
+
+- `NER_MODEL_HOST_URL`
+- `VLM_HOST_URL`
+- `VLLM_SERVER_BASE_URL` or `OLLAMA_SERVER_BASE_URL` or `OPENAI_API_KEY`

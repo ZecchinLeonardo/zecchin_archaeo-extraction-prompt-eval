@@ -8,9 +8,7 @@ The usage code directly in the pipeline is programmed in the
 
 ## List of used models
 
-- Vision Large Language Model for the OCR
-- Tokenizer Model
-- Embedding Model for query-content similarity estimation. The previous
-Tokenizer must be set [according to
-it](https://docling-project.github.io/docling/examples/hybrid_chunking/#basic-usage)
-- Large Language Model for the data extraction
+- Vision Large Language Model for the OCR (with ollama or vllm)
+- Large Language Model for the data extraction (with ollama or vllm)
+- A named-entity recognition model (see the `custom-remote-models/README.md`
+file to set it)
