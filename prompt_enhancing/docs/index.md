@@ -1,17 +1,25 @@
-# Welcome to MkDocs
+# Code material for AI experiments with Magoh's contributions
 
-For full documentation visit [mkdocs.org](https://www.mkdocs.org).
+This documentation enables to understand all the content of this repository and
+how to handle it to go further in experimenting AI models to imitate the
+contributors of the Magoh app.
 
-## Commands
+## Run some code
 
-* `mkdocs new [dir-name]` - Create a new project.
-* `mkdocs serve` - Start the live-reloading docs server.
-* `mkdocs build` - Build the documentation site.
-* `mkdocs -h` - Print help message and exit.
+See the [Installation section](./install.md) to reproduce all the development
+environment to run the experiments.
 
-## Project layout
+Once the environment is set, you can compose, train and evaluate the models in
+following the [How-to pages](./how-to-guides.md).
 
-    mkdocs.yml    # The configuration file.
-    docs/
-        index.md  # The documentation homepage.
-        ...       # Other markdown pages, images and other files.
+To understand how the repository has been structured and the software
+architecture opinions, see the [Explanation section](./explanation.md). A
+reference of the Python classes is also reachable in [this section](./api).
+
+## About the project
+
+All the acquired knowledge about the data is described in the `references`
+directory of the repository.
+
+The current caveats in the code and its initially wanted, but incomplete
+features are reported in [this section](./about.md).
