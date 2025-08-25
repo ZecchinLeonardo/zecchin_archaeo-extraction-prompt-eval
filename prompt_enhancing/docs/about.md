@@ -22,6 +22,22 @@ Finally, some evaluation plots have been let in the `reports` directory, but
 please read the notes about the experimental conditions before considering them
 as a reference.
 
+## Project limitations
+
+- The repository currently acts as an evaluation sandbox; accuracy metrics are
+  not yet formalized.
+- Running the pipeline requires external tooling like `poetry`, `just`, and an
+  accessible Ollama server.
+- Training data must be reachable through external PostgreSQL and Minio
+  services.
+- Notebook experimentation depends on a separate Jupyter environment because
+  development dependencies omit the Jupyter stack.
+
+## TODO items mentioned in READMEs
+
+- Extend the vLLM setup to also serve embedding models beyond the existing LLM
+  endpoints【F:prompt_enhancing/models/vllm-models/README.md†L1-L11】.
+
 ## Main caveat
 
 The `fit` call of the `FieldExtractor` child classes is supposed to compile an

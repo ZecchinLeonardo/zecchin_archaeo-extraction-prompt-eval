@@ -45,3 +45,28 @@ other fields.
 
 Finally, the whole framework relies on the union of features of Pandas
 dataframes.
+
+### Model roles in the pipeline
+
+- **Vision/OCR and embeddings** – The preprocessing step `VLLM_Preprocessing`
+  calls the vision model `ibm-granite/granite-vision-3.3-2b` and produces text
+  embeddings with `nomic-ai/nomic-embed-text-v1.5` as configured in the
+  training DAG【F:prompt_enhancing/src/archaeo_super_prompt/modeling/train.py†L42-L55】.
+- **Field extraction LLMs** – Extractors such as
+  `InterventionStartExtractor` and `ComuneExtractor` query
+  `google/gemma-3-27b-it` with a temperature of `0.05`, also defined in the
+  training DAG【F:prompt_enhancing/src/archaeo_super_prompt/modeling/train.py†L42-L45】【F:prompt_enhancing/src/archaeo_super_prompt/modeling/train.py†L84-L90】.
+- **Named‑entity recognition** – A FastAPI service wraps the
+  `DeepMount00/Italian_NER_XXL` transformer to supply entity tags for chunk
+  filtering【F:prompt_enhancing/models/custom-remote-models/src/magoh_ai_sup_server/inference.py†L8-L18】.
+
+### Supported model providers
+
+- **OpenAI** – `gpt-4.1` via `get_openai_model`, though it is not invoked in
+  the current pipeline【F:prompt_enhancing/src/archaeo_super_prompt/modeling/struct_extract/language_model.py†L8-L24】.
+- **Ollama** – hosts `granite3.2-vision:latest`, `nomic-embed-text:latest`,
+  and `gemma3:27b`【F:prompt_enhancing/models/ollama-models/README.md†L1-L13】.
+- **vLLM** – serves `ibm-granite/granite-vision-3.3-2b` and
+  `google/gemma-3-27b-it`; embedding model support is planned【F:prompt_enhancing/models/vllm-models/README.md†L1-L11】.
+- **Custom NER service** – exposes `DeepMount00/Italian_NER_XXL` through a
+  dedicated API【F:prompt_enhancing/models/custom-remote-models/src/magoh_ai_sup_server/inference.py†L8-L18】.
