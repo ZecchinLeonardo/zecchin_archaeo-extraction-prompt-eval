@@ -46,7 +46,7 @@ class MagohDataExtractor(
         """The main hyperparametre is the temperature of the llm model."""
         super().__init__()
         self._module = ExtractDataFromInterventionReport()
-        self._llm = llm
+        self.llm = llm
 
     @property
     def dspy_model(self):
@@ -85,7 +85,7 @@ class MagohDataExtractor(
     def predict(
         self, X: PDFChunkDataset
     ) -> DataFrame[OutputStructuredDataSchema]:
-        with dspy.settings.context(lm=self._llm):
+        with dspy.settings.context(lm=self.llm):
             answers = {
                 id_: answer
                 for id_, answer in {
@@ -126,7 +126,7 @@ class MagohDataExtractor(
         # for a per-field evaluation
         evaluate = get_evaluator(devset, return_outputs=True)
         print_log("Tracing ready!\n")
-        with dspy.settings.context(lm=self._llm):
+        with dspy.settings.context(lm=self.llm):
             results = cast(
                 tuple[float, list[tuple[Example, Prediction, float]]],
                 evaluate(self._module),

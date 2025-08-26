@@ -2,11 +2,11 @@
 
 from typing import Any, TypeVar, cast
 from collections.abc import Callable
-from ....types.structured_data import (
+from archaeo_super_prompt.types.structured_data import (
     ExtractedStructuredDataSeries,
     OutputStructuredDataSchema,
 )
-from ....utils.norm import flatten_dict
+from archaeo_super_prompt.utils.norm import flatten_dict
 from dspy import Example, Prediction
 import dspy
 from dspy.evaluate.metrics import answer_exact_match
