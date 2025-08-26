@@ -6,6 +6,8 @@ from archaeo_super_prompt.dataset.load import MagohDataset
 from archaeo_super_prompt.modeling.struct_extract.field_extractor import (
     FieldExtractor,
 )
+from .struct_extract.legacy_extractor.main_transformer import MagohDataExtractor
+from .struct_extract import language_model as lm_provider_mod
 
 from ..dataset.thesauri import load_comune
 from ..types.pdfpaths import PDFPathDataset
@@ -27,7 +29,7 @@ class ExtractionDAGParts(NamedTuple):
     final_component: tuple[DAGComponent, list[DAGComponent]]
 
 
-def get_training_dag() -> ExtractionDAGParts:
+def get_training_dag(include_legacy: bool = False) -> ExtractionDAGParts:
     """Return the most advanced pre-processing DAG for the model.
 
     All its estimators and transformers are initialized with particular
@@ -134,23 +136,43 @@ def get_training_dag() -> ExtractionDAGParts:
             (comune_extractor, comune_chunk_merger),
         ],
     )
-    final_part = (
-        final_results,
-        [
-            archiving_date,
-            intervention_date_extractor,
-            comune_extractor,
-        ],
-    )
+
+    final_dependencies: list[DAGComponent] = [
+        archiving_date,
+        intervention_date_extractor,
+        comune_extractor,
+    ]
+
+    if include_legacy:
+        lm_getter = {
+            "vllm": lm_provider_mod.get_vllm_model,
+            "ollama": lm_provider_mod.get_ollama_model,
+            "openai": lm_provider_mod.get_openai_model,
+        }[llm_provider]
+        legacy_extractor = DAGComponent(
+            "legacy-Extractor",
+            MagohDataExtractor(lm_getter(llm_model_id, llm_model_temp)),
+        )
+        extraction_part.append((legacy_extractor, vllm))
+        final_dependencies.append(legacy_extractor)
+
+    final_part = (final_results, final_dependencies)
+
     return ExtractionDAGParts(preprocessing_part, extraction_part, final_part)
 
 
-def train_from_scratch(training_input: PDFPathDataset, ds: MagohDataset) -> ExtractionDAGParts:
+def train_from_scratch(
+    training_input: PDFPathDataset,
+    ds: MagohDataset,
+    include_legacy: bool = False,
+) -> ExtractionDAGParts:
     """Return the most advanced DAG model, fitted from the data.
 
     Apply a training for each FieldExtractor model.
     """
-    preprocessing_part, extraction_part, final_part = get_training_dag()
+    preprocessing_part, extraction_part, final_part = get_training_dag(
+        include_legacy=include_legacy
+    )
     preprocess_pipeline = preprocessing_part.make_dag()
     preprocessed_inputs = preprocess_pipeline.fit_transform(training_input, ds)
     for fe_component, dep in extraction_part:
@@ -165,13 +187,19 @@ def train_from_scratch(training_input: PDFPathDataset, ds: MagohDataset) -> Extr
     return ExtractionDAGParts(preprocessing_part, extraction_part, final_part)
 
 
-def get_fitted_model(training_input: PDFPathDataset, ds: MagohDataset):
+def get_fitted_model(
+    training_input: PDFPathDataset,
+    ds: MagohDataset,
+    include_legacy: bool = False,
+):
     """Return the most advanced DAG model, mockly fitted from the data.
 
     The FieldExtractor model are supposed already fitted from saved dspy
     models in get_model_store_dir() path.
     """
-    preprocessing_part, extraction_part, final_part = get_training_dag()
+    preprocessing_part, extraction_part, final_part = get_training_dag(
+        include_legacy=include_legacy
+    )
     preprocess_pipeline = preprocessing_part.make_dag()
     preprocessed_inputs = preprocess_pipeline.fit_transform(training_input, ds)
     for fe_component, dep in extraction_part:
