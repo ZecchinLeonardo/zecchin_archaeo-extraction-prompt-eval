@@ -68,7 +68,7 @@ document (default to 3 minutes)
     # One possibility is self-hosting model, e.g. via LM Studio, Ollama or others.
     options = ApiVlmOptions(
         url=AnyUrl(
-            f"{getenv_or_throw("VLM_HOST_URL")}/v1/chat/completions"
+            f"{getenv_or_throw("OLLAMA_SERVER_BASE_URL")}/v1/chat/completions"
         ),  # the default Ollama endpoint
         params=dict(
             model=model,
