@@ -42,13 +42,13 @@ def get_training_dag(include_legacy: bool = False) -> ExtractionDAGParts:
         in inference mode.
     """
     llm_model_id = "google/gemma-3-27b-it"
-    llm_provider = "ollama"
+    llm_provider = "vllm"
     llm_model_temp = 0.05
 
     vllm = DAGComponent(
         "vision-lm-Reader",
         VLLM_Preprocessing(
-            vlm_provider="ollama",
+            vlm_provider="vllm",
             vlm_model_id="ibm-granite/granite-vision-3.3-2b",
             incipit_only=True,
             prompt="OCR this part of Italian document for markdown-based processing.",
