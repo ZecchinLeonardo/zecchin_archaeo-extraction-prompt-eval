@@ -16,11 +16,11 @@ from .DAG_builder import DAGBuilder, DAGComponent
 from .entity_extractor import NerModel, NeSelector
 from .pdf_to_text import VLLM_Preprocessing
 from .struct_extract.chunks_to_text import ChunksToText
-from .struct_extract.extractors.archiving_date import ArchivingDateProvider
+# from .struct_extract.extractors.archiving_date import ArchivingDateProvider
 from .struct_extract.extractors.comune import ComuneExtractor
-from .struct_extract.extractors.intervention_date import (
-    InterventionStartExtractor,
-)
+# from .struct_extract.extractors.intervention_date import (
+#     InterventionStartExtractor,
+# )
 
 class ExtractionDAGParts(NamedTuple):
     """A decomposition of the general DAG into different parts for a better handling between the training, the inference and the evaluation modes."""
@@ -57,36 +57,36 @@ def get_training_dag(include_legacy: bool = False) -> ExtractionDAGParts:
     )
     ner = DAGComponent("NER-Extractor", NerModel())
     ner_featured = DAGComponent("ner-featured", "passthrough")
-    archiving_date = DAGComponent(
-        "archiving-date-Oracle", ArchivingDateProvider()
-    )
-    intervention_date_chunk_filter = DAGComponent(
-        "interv-start-CF",
-        NeSelector(
-            "data",
-            {
-                "DATA",
-            },
-            lambda: list(
-                enumerate(
-                    [
-                        "primavera",
-                        "estate",
-                        "autunno",
-                        "inverno",
-                    ]
-                )
-            ),
-            True,
-        ),
-    )
-    intervention_date_chunk_merger = DAGComponent(
-        "interv-start-CM", ChunksToText()
-    )
-    intervention_date_extractor = DAGComponent(
-        "interv-start-Extractor",
-        InterventionStartExtractor(llm_provider, llm_model_id, llm_model_temp),
-    )
+    # archiving_date = DAGComponent(
+    #     "archiving-date-Oracle", ArchivingDateProvider()
+    # )
+    # intervention_date_chunk_filter = DAGComponent(
+    #     "interv-start-CF",
+    #     NeSelector(
+    #         "data",
+    #         {
+    #             "DATA",
+    #         },
+    #         lambda: list(
+    #             enumerate(
+    #                 [
+    #                     "primavera",
+    #                     "estate",
+    #                     "autunno",
+    #                     "inverno",
+    #                 ]
+    #             )
+    #         ),
+    #         True,
+    #     ),
+    # )
+    # intervention_date_chunk_merger = DAGComponent(
+    #     "interv-start-CM", ChunksToText()
+    # )
+    # intervention_date_extractor = DAGComponent(
+    #     "interv-start-Extractor",
+    #     InterventionStartExtractor(llm_provider, llm_model_id, llm_model_temp),
+    # )   
     comune_extractor = DAGComponent(
         "comune-Extractor",
         ComuneExtractor(llm_provider, llm_model_id, llm_model_temp),
@@ -105,9 +105,9 @@ def get_training_dag(include_legacy: bool = False) -> ExtractionDAGParts:
     )
     comune_chunk_merger = DAGComponent("comune-CM", ChunksToText())
 
-    intervention_date_entrypoint = DAGComponent(
-        "interv-start-entrypoint", "passthrough"
-    )
+    # intervention_date_entrypoint = DAGComponent(
+    #     "interv-start-entrypoint", "passthrough"
+    # )
     final_results = DAGComponent[FieldExtractor]("FINAL", "passthrough")
 
     preprocessing_part = (
@@ -115,31 +115,31 @@ def get_training_dag(include_legacy: bool = False) -> ExtractionDAGParts:
         .add_node(vllm)
         .add_node(ner, [vllm])
         .add_node(ner_featured, [vllm, ner])
-        .add_node(archiving_date, [vllm])
+        # .add_node(archiving_date, [vllm])
         .add_linearly_chained_nodes(
             [comune_chunk_filter, comune_chunk_merger],
             [ner_featured],
         )
-        .add_linearly_chained_nodes(
-            [intervention_date_chunk_filter, intervention_date_chunk_merger],
-            [ner_featured],
-        )
-        .add_node(
-            intervention_date_entrypoint,
-            [intervention_date_chunk_merger, archiving_date],
-        )
+        # .add_linearly_chained_nodes(
+        #     [intervention_date_chunk_filter, intervention_date_chunk_merger],
+        #     [ner_featured],
+        # )
+        # .add_node(
+        #     intervention_date_entrypoint,
+        #     [intervention_date_chunk_merger, archiving_date],
+        # )
     )
     extraction_part = cast(
         list[tuple[DAGComponent[FieldExtractor], DAGComponent]],
         [
-            (intervention_date_extractor, intervention_date_entrypoint),
+            # (intervention_date_extractor, intervention_date_entrypoint),
             (comune_extractor, comune_chunk_merger),
         ],
     )
 
     final_dependencies: list[DAGComponent] = [
-        archiving_date,
-        intervention_date_extractor,
+        # archiving_date,
+        # intervention_date_extractor,
         comune_extractor,
     ]
 
@@ -175,6 +175,9 @@ def train_from_scratch(
     )
     preprocess_pipeline = preprocessing_part.make_dag()
     preprocessed_inputs = preprocess_pipeline.fit_transform(training_input, ds)
+    
+    print("preprocessed inputs:", preprocessed_inputs.keys())
+
     for fe_component, dep in extraction_part:
         field_extractor = fe_component.component
         if isinstance(field_extractor, str):
