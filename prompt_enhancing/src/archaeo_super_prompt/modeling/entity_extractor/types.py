@@ -18,6 +18,8 @@ NerXXLEntities = Literal[
     "STATO",
     "NOME",
     "COGNOME",
+    "ORGANIZZAZIONE",
+    "ESEGUITO",
     "CODICE_POSTALE",
     "IP",
     "ORARIO",
