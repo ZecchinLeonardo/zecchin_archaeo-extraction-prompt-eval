@@ -32,7 +32,7 @@ class Comune(pydantic.BaseModel):
 
 
 class IdentificaComune(dspy.Signature):
-    """Identifica il unico comune in cui si sono svolti i lavori archeologici descritti in questi frammenti di relazione. I comuni possibili sono indicati."""
+    """Identifica il comune specifico in cui si sono svolti i lavori archeologici descritti in questi frammenti di relazione. I comuni possibili sono indicati."""
 
     fragmenti_relazione: str = dspy.InputField(
         desc="In ogni frammento sono indicati il nome del file pdf e la sua posizione nel file."

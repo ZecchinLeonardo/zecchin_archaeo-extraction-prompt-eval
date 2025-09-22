@@ -25,7 +25,8 @@ def display_results(score_results: DataFrame[ResultSchema]) -> DashComponent:
     }
     fieldNames = list(resultsPerField.keys())
 
-    DEFAULT_SELECTED_FIELD = "Comune"
+    # DEFAULT_SELECTED_FIELD = "comune"
+    DEFAULT_SELECTED_FIELD =  fieldNames[0] 
 
     layout = [
         html.H1(children="Results", style={"textAlign": "center"}),
