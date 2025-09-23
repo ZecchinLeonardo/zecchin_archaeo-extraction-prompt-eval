@@ -20,6 +20,27 @@ from .....types.per_intervention_feature import (
 )
 from ...field_extractor import FieldExtractor, LLMProvider, to_prediction
 
+
+# @override
+# @staticmethod
+def split_nome_cognome_initial(nome_cognome: str) -> tuple[str, str, str]:
+    """
+    Splits a full name string into nome and cognome, and returns initial of nome.
+    """
+    if not nome_cognome:
+        return "", "", ""
+    
+    parts = nome_cognome.strip().split()
+    if len(parts) == 1:
+        nome = parts[0]
+        cognome = ""
+    else:
+        nome = parts[0]
+        cognome = " ".join(parts[1:])
+    
+    initial = nome[0] if nome else ""
+    
+    return nome, cognome, initial
 # -- DSPy part
 
 
@@ -34,6 +55,8 @@ class IdentificaEsecutore(dspy.Signature):
     """Identifica la persona che ha eseguito i lavori archeologici descritti in questi frammenti di relazione.
     
     Cerca una stringa come "Eseguito da"
+
+    Considera solo il nome e il cognome senza titoli come "Dott.", "Ing.", "Arch."
     """
 
     fragmenti_relazione: str = dspy.InputField(
@@ -61,7 +84,9 @@ class EsecutoreOutputData(pydantic.BaseModel):
     """A predicted person who performed the intervention."""
 
     nome_cognome: str
-    #cognome: str
+    nome: str
+    cognome: str
+    iniziale: str
 
 
 class FindEsecutore(dspy.Module):
@@ -82,27 +107,21 @@ class FindEsecutore(dspy.Module):
                 #possibili_esecutori=possibili_esecutori,
             ),
         )
-        # WRONG_COMUNE = "%ERROR_COMUNE%"
-        # WRONG_PROVINCIA = "%ERROR_PROVINCIA%"
+
         UNIDENTIFIED = "%CHECK REQUIRED%"
+        # Extract nome_cognome and split it into components
+        nome_cognome = cast(str, predicted_output.get("esecutore", UNIDENTIFIED))
+        nome, cognome, iniziale = split_nome_cognome_initial(nome_cognome)
+
+        # Return the prediction
         return to_prediction(
             EsecutoreOutputData(
-                nome_cognome=cast(str, predicted_output.get("esecutore", UNIDENTIFIED)),
-                # provincia=cast(
-                #     str, predicted_output.get("provincia", WRONG_PROVINCIA)
-                # ),
+                nome_cognome=nome_cognome,
+                nome=nome,
+                cognome=cognome,
+                iniziale=iniziale,
             )
         )
-
-
-# -- SKlearn part
-
-
-# class ComuneFeatSchema(BasePerInterventionFeatureSchema):
-#     """Extracted data about the Comune."""
-
-#     comune_id: int
-#     provincia_id: int
 
 
 class EsecutoreExtractor(
@@ -136,7 +155,10 @@ L'intervento è stato eseguito da Mario Rossi in data 12/05/2023.""",
                 #     )
                 # ],
             ),
-            EsecutoreOutputData(nome_cognome="Mario Rossi"),
+            EsecutoreOutputData(nome_cognome="Mario Rossi",
+                                nome="Mario",
+                                cognome="Rossi",
+                                iniziale="M"),
         )
         # TODO: load this more lazily
         # self._thesaurus = load_comune_with_provincie()
@@ -154,30 +176,14 @@ L'intervento è stato eseguito da Mario Rossi in data 12/05/2023.""",
     def field_to_be_extracted():
         # Return the exact field name you want to extract
         return "university__Eseguito_da"
-
-    # def _compare_values(self, a, b):
-    #     # Implement logic to compare two values for this field (ground truth vs prediction)
-    #     # Simple example:
-    #     return a == b
         
     @override
     @classmethod
-    def _compare_values(cls, a, b):
-        score = int(a == b)  # 1 if match, 0 otherwise
-        return score, 0.95
-
-
-    # def _transform_dspy_output(self, dspy_output):
-    #     # Transform the raw output from your prompt/model into your output schema
-    #     # Example (adapt as needed to your EsecutoreOutputData):
-    #     return EsecutoreOutputData(**dspy_output)
-    
-    # @override
-    # def _transform_dspy_output(self, dspy_output):
-    #     # Defensive: get 'esecutore', fallback to empty string
-    #     return EsecutoreOutputData(
-    #         nome_cognome=dspy_output.get("esecutore", "")
-    #     )
+    def _compare_values(cls, predicted, expected):
+        TRESHOLD = 0.95
+        # Simple comparison: 1 if cognome matches, else 0
+        score = int(predicted.cognome == expected.cognome)  # 1 if match, 0 otherwise
+        return score, TRESHOLD
 
     @override
     def _transform_dspy_output(self, dspy_output):
@@ -186,33 +192,18 @@ L'intervento è stato eseguito da Mario Rossi in data 12/05/2023.""",
         If the output is missing or has unexpected keys, handle gracefully.
         """
         # Defensive mapping: look for common keys, fallback to empty string or 'N/A'
-        nome = dspy_output.get("esecutore") or dspy_output.get("nome_cognome") or dspy_output.get("pred_nome_cognome") or ""
+        nome_cognome = dspy_output.get("esecutore") or dspy_output.get("nome_cognome") or dspy_output.get("pred_nome_cognome") or ""
         method = dspy_output.get("method", "LLM")  # You can set this to whatever method name you want
 
+        nome, cognome, iniziale = split_nome_cognome_initial(nome_cognome)
+
         return EsecutoreOutputData(
-            nome_cognome=nome,
+            nome_cognome=nome_cognome,
+            nome=nome,
+            cognome=cognome,
+            iniziale=iniziale,
             method=method  # Only include this if your schema expects it!
         )
-
-    
-    # @override
-    # def _to_dspy_input(self, x) -> EsecutoreInputData:
-    #     # comuni, province = self._thesaurus
-    #     # possible_comuni = comuni.iloc[x.identified_thesaurus].merge(
-    #     #     province, on="province_id", suffixes=("_comune", "_province")
-    #     # )
-
-    #     return EsecutoreInputData(
-    #         fragmenti_relazione=x.merged_chunks,
-    #         # possibili_comuni=[
-    #         #     Comune(
-    #         #         citta_nome=cast(str, c.name_comune),
-    #         #         provicia_nome=cast(str, c.name_province),
-    #         #         provincia_sigla=cast(str, c.sigla),
-    #         #     )
-    #         #     for c in possible_comuni.itertuples()
-    #         # ],
-    #     )
 
     @override
     def _to_dspy_input(self, x) -> EsecutoreInputData:
@@ -228,37 +219,7 @@ L'intervento è stato eseguito da Mario Rossi in data 12/05/2023.""",
             fragmenti_relazione=getattr(row, "merged_chunks", ""),
             esecutore_raw=getattr(row, "university__Eseguito_da", None),
         )
-
-    # @override
-    # def _transform_dspy_output(self, y):
-    #     # comuni, province = self._thesaurus
-    #     return ComuneFeatSchema.validate(
-    #         self._identity_output_set_transform_to_df(y)
-    #         .assign(schedaid=lambda df: df.index)
-    #         .merge(
-    #             province[["name"]].assign(provincia_id=province.index),
-    #             left_on="provincia",
-    #             right_on="name",
-    #         )[["schedaid", "comune", "provincia_id"]]
-    #         .merge(
-    #             comuni.assign(comune_id=comuni.index),
-    #             left_on=["comune", "provincia_id"],
-    #             right_on=["name", "province_id"],
-    #         )[["schedaid", "comune_id", "provincia_id"]]
-    #         .rename(columns={"schedaid": "id"})
-    #         .set_index("id"),
-    #         # TODO: add this after tests
-    #         # lazy=True
-    #     )
-
-    # @override
-    # @classmethod
-    # def _compare_values(cls, predicted, expected):
-    #     TRESHOLD = 0.95
-    #     return 0.7 * int(predicted.comune == expected.comune) + 0.3 * int(
-    #         predicted.provincia == expected.provincia
-    #     ), TRESHOLD
-
+    
 ##############################################################################
 
     @override
@@ -276,15 +237,19 @@ L'intervento è stato eseguito da Mario Rossi in data 12/05/2023.""",
     def _select_answers(
         cls, y: MagohDataset, ids: set[InterventionId]
     ) -> dict[InterventionId, EsecutoreOutputData]:
-        return {
-            InterventionId(t.id): EsecutoreOutputData(nome_cognome=t.university__Eseguito_da)
-            for t in y.get_answers(ids)
-            if t.university__Eseguito_da is not None  # skip if no ground truth
-        }
-
+ 
+        result = {}
+        for t in y.get_answers(ids):
+            if t.university__Eseguito_da is not None:  # Skip if no ground truth
+                nome_cognome_base = t.university__Eseguito_da
+                nome_base, cognome_base, iniziale_base = split_nome_cognome_initial(nome_cognome_base)
+                # print(f"Nome: {nome_base}, Cognome: {cognome_base}, Iniziale: {iniziale_base}")  # Print nome, cognome, and iniziale
+                result[InterventionId(t.id)] = EsecutoreOutputData(
+                    nome_cognome=nome_cognome_base,
+                    nome=nome_base,
+                    cognome=cognome_base,
+                    iniziale=iniziale_base,
+                )
+        return result
+    
 ##############################################################################
-
-    # @override
-    # @staticmethod
-    # def field_to_be_extracted():
-    #     return "comune"
