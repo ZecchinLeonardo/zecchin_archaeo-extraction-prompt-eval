@@ -8,7 +8,6 @@ import pydantic
 from pandera.typing.pandas import Series
 
 from archaeo_super_prompt.dataset.load import MagohDataset
-from archaeo_super_prompt.dataset.thesauri import load_comune_with_provincie
 from archaeo_super_prompt.modeling.struct_extract.types import (
     InputForExtractionWithSuggestedThesauri,
     InputForExtractionWithSuggestedThesauriRowSchema,

@@ -286,6 +286,12 @@ generically from dictionnary expansion
             for row in self._itertuples(X[X.index.isin(good_ids)])
         }
         answers = self._select_answers(y, set(inputs.keys()))
+
+        # Only use ids present in BOTH inputs and answers (avoid KeyError)
+        valid_ids = [id_ for id_ in inputs if id_ in answers]
+        if not valid_ids:
+            return tuple(), tuple()
+
         kept_ids, examples = zip(
             *(
                 (
@@ -298,7 +304,8 @@ generically from dictionnary expansion
                         ).with_inputs(*model_input.keys())
                     )(inputs[id_].model_dump()),
                 )
-                for id_ in inputs.keys()
+                # for id_ in inputs.keys()
+                for id_ in valid_ids
             )
         )
         return kept_ids, examples
@@ -369,7 +376,12 @@ generically from dictionnary expansion
                     [
                         {
                             "id": id_,
-                            "field_name": self.field_to_be_extracted(),
+                            # "field_name": self.field_to_be_extracted(),
+                            "field_name": (
+                                ",".join(self.field_to_be_extracted())
+                                if isinstance(self.field_to_be_extracted(), tuple)
+                                else self.field_to_be_extracted()
+                            ),
                             "metric_value": score,
                             # TODO: specify the evaluation method
                             "evaluation_method": "not specified yet",

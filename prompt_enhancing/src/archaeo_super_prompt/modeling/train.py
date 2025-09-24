@@ -9,7 +9,7 @@ from archaeo_super_prompt.modeling.struct_extract.field_extractor import (
 from .struct_extract.legacy_extractor.main_transformer import MagohDataExtractor
 from .struct_extract import language_model as lm_provider_mod
 
-from ..dataset.thesauri import load_comune, load_esecutore_candidates
+from ..dataset.thesauri import load_comune, load_esecutore_candidates, load_protocollo_candidates
 from ..types.pdfpaths import PDFPathDataset
 from ..utils.result import get_model_store_dir
 from .DAG_builder import DAGBuilder, DAGComponent
@@ -22,6 +22,7 @@ from .struct_extract.extractors.intervention_date import (
     InterventionStartExtractor,
 )
 from .struct_extract.extractors.esecuzione import EsecutoreExtractor
+from .struct_extract.extractors.protocollo import ProtocolloExtractor
 
 class ExtractionDAGParts(NamedTuple):
     """A decomposition of the general DAG into different parts for a better handling between the training, the inference and the evaluation modes."""
@@ -131,6 +132,29 @@ def get_training_dag(include_legacy: bool = False) -> ExtractionDAGParts:
         "esecutore-Extractor",
         EsecutoreExtractor(llm_provider, llm_model_id, llm_model_temp),
     )
+
+    protocollo_chunk_filter = DAGComponent(
+        "protocollo-CF",
+        NeSelector(
+            "protocollo",  # <-- the NER label for your field
+            {
+                "PROTOCOLLO",
+                "NUMERO_PROTOCOLLO",
+                "NR_PROT",
+                "PROT_N",
+            },
+            load_protocollo_candidates,  # <-- pass a function or None if not needed, e.g. for thesauri
+            True,  # or False, depending on your selector logic
+        ),
+    )
+
+    protocollo_chunk_merger = DAGComponent("protocollo-CM", ChunksToText())
+
+    protocollo_extractor = DAGComponent(
+        "protocollo-Extractor",
+        ProtocolloExtractor(llm_provider, llm_model_id, llm_model_temp),
+    )
+
     final_results = DAGComponent[FieldExtractor]("FINAL", "passthrough")
 
     preprocessing_part = (
@@ -148,6 +172,10 @@ def get_training_dag(include_legacy: bool = False) -> ExtractionDAGParts:
             [ner_featured],
         )
         .add_linearly_chained_nodes(
+            [protocollo_chunk_filter, protocollo_chunk_merger],
+            [ner_featured],
+        )
+        .add_linearly_chained_nodes(
             [intervention_date_chunk_filter, intervention_date_chunk_merger],
             [ner_featured],
         )
@@ -162,6 +190,7 @@ def get_training_dag(include_legacy: bool = False) -> ExtractionDAGParts:
             # (intervention_date_extractor, intervention_date_entrypoint),
             (comune_extractor, comune_chunk_merger),
             (esecutore_extractor, esecutore_chunk_merger),
+            (protocollo_extractor, protocollo_chunk_merger),
         ],
     )
 
@@ -170,6 +199,7 @@ def get_training_dag(include_legacy: bool = False) -> ExtractionDAGParts:
         # intervention_date_extractor,
         comune_extractor,
         esecutore_extractor,
+        protocollo_extractor,
     ]
 
     if include_legacy:
