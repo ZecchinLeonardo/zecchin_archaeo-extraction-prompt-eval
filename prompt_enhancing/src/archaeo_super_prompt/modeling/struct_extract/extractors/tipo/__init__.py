@@ -7,6 +7,8 @@ import dspy
 import pydantic
 from pandera.typing.pandas import Series
 
+import difflib
+
 from archaeo_super_prompt.dataset.load import MagohDataset
 from archaeo_super_prompt.dataset.thesauri import load_comune_with_provincie
 from archaeo_super_prompt.modeling.struct_extract.types import (
@@ -154,8 +156,17 @@ class TipoExtractor(
     @classmethod
     def _compare_values(cls, predicted, expected):
         TRESHOLD = 0.95
-        score = 0.5 * int(predicted.TipoIntervento == expected.TipoIntervento) + \
-            0.5 * int(predicted.TipoDocumento == expected.TipoDocumento) 
+
+        # Compute similarity ratio for each field (between 0 and 1)
+        tipo_intervento_sim = difflib.SequenceMatcher(None, str(predicted.TipoIntervento), str(expected.TipoIntervento)).ratio()
+        tipo_documento_sim = difflib.SequenceMatcher(None, str(predicted.TipoDocumento), str(expected.TipoDocumento)).ratio()
+        
+        # Weighted average as before
+        score = 0.5 * tipo_intervento_sim + 0.5 * tipo_documento_sim
+
+        # Defensive clamp
+        score = max(0.0, min(1.0, score))
+
         return score, TRESHOLD
 
     @override

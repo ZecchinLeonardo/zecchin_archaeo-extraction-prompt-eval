@@ -190,8 +190,7 @@ L'intervento è stato eseguito dal dott. Mario Rossi in data 12/05/2023.""",
     @classmethod
     def _compare_values(cls, predicted, expected):
         TRESHOLD = 0.95
-        # Simple comparison: 1 if cognome matches, else 0
-        score = int(predicted.cognome == expected.cognome)  # 1 if match, 0 otherwise
+        score = 0.8 * int(predicted.cognome == expected.cognome) + 0.2 * int(predicted.iniziale == expected.iniziale)
         return score, TRESHOLD
 
     @override
