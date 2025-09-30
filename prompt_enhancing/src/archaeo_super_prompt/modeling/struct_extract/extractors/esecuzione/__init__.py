@@ -53,8 +53,12 @@ class Esecuzione(pydantic.BaseModel):
 class IdentificaEsecutore(dspy.Signature):
     """Identifica la persona che ha eseguito i lavori archeologici descritti in questi frammenti di relazione.
     
-    Cerca una stringa come "Eseguito da"
+    Cerca una stringa come "Eseguito da" 
+    
+    Se manca la stringa "Eseguito da" cerca una sigla sull'intestazione della pagina.
 
+    Può essere identificato da sigle come "s.n.c.", "s.r.l.", "S.p.A.", "S.a.s.", "Dott.", "Ing.", "Arch.", o da parole come "società", "cooperativa", "consorzio", "università", "museo".
+    
     Considera solo il nome e il cognome senza titoli come "Dott.", "Ing.", "Arch."
     """
 
@@ -73,6 +77,12 @@ class EsecutoreInputData(pydantic.BaseModel):
     """Chunks of reports of an archaeological intervention with supposed information about the person who carried out the operations.
     
     Find in the text a string like "Eseguito da"
+
+    If the string is missing, find a mark or a stamp on the header of the page
+    
+    It can be identified by abbreviations such as "s.n.c.", "s.r.l.", "S.p.A.", "S.a.s.", "Dott.", "Ing.", "Arch.", or by words like "società", "cooperativa", "consorzio", "università", "museo".
+
+    Consider only the first and last name without titles like "Dott.", "Ing.", "Arch."
     """
 
     fragmenti_relazione: str
@@ -145,7 +155,7 @@ class EsecutoreExtractor(
         example = (
             EsecutoreInputData(
                 fragmenti_relazione=""""Relazione_scavo.pdf, Pagina 1 :
-L'intervento è stato eseguito da Mario Rossi in data 12/05/2023.""",
+L'intervento è stato eseguito dal dott. Mario Rossi in data 12/05/2023.""",
                 # possibili_esecutori=[
                 #     Esecuzione(
                 #         esecutore="Mario Rossi",

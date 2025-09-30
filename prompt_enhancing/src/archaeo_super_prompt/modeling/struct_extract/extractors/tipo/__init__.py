@@ -25,52 +25,57 @@ from ...field_extractor import FieldExtractor, LLMProvider, to_prediction
 # -- DSPy part
 
 
-class Protocollo(pydantic.BaseModel):
-    """Questo elemento fornisce informazioni sulla data e il numero di protocollo. È possibile trovare questo tipo di informazioni nel testo."""
+class Tipo(pydantic.BaseModel):
+    """Questo elemento fornisce informazioni sul tipo di intervento e sul tipo di documento. 
 
-    NrProt: str
-    DataProt: str
+    È possibile trovare questo tipo di informazioni nel testo."""
+
+    Documento: str
+    Intervento: str
     
-class IdentificaProtocollo(dspy.Signature):
-    """Identifica il numero e la data di protocollo.
-    
-    Cerca una stringa come 'Protocollo ... del ...' o 'Prot.  ... del ...'
+class IdentificaTipo(dspy.Signature):
+    """Identifica il tipo di documento e il tipo di intervento.
 
-    La data è nel formato gg/mm/aaaa.
+    Cerca una stringa come 'Tipologia di documento: ...' e 'Tipologia di intervento: ...'
 
-    Cerca all'inizio o alla fine del testo
+    La tipologia di intervento contiene parole chiave come 'scavo', 'ricognizione', assistenza'
+
+    La tipologia di documento contiene parole chiave come 'relazione'
+
+    Cerca all'inizio del testo
     """
 
     fragmenti_relazione: str = dspy.InputField(
         desc="In ogni frammento sono indicati il nome del file pdf e la sua posizione nel file."
     )
 
-    NumeroProtocollo: str = dspy.OutputField(desc="Il numero di protocollo.")
-    DataProtocollo: str = dspy.OutputField(desc="La data di protocollo.")
+    TipoDocumento: str = dspy.OutputField(desc="Il tipo di documento.")
+    TipoIntervento: str = dspy.OutputField(desc="Il tipo di intervento.")
 
-class ProtocolloInputData(pydantic.BaseModel):
-    """Chunks of reports of an archaeological intervention with supposed information about the date of protocollo.
+class TipoInputData(pydantic.BaseModel):
+    """Chunks of reports of an archaeological intervention with supposed information about the type of intervention and type of document.
 
-    Find in the text a string like "Protocollo n. ... del ..." or "Prot. n. ... del ..."
+    For type of intervention look for keywords like "scavo", "ricognizione", "assistenza"
+    
+    For type of document look for keywords like "relazione"
     """
 
     fragmenti_relazione: str
 
 
-class ProtocolloOutputData(pydantic.BaseModel):
-    """A predicted number and date of protocollo."""
+class TipoOutputData(pydantic.BaseModel):
+    """A predicted type of document and type of intervention."""
 
-    NumeroProtocollo: str
-    DataProtocollo: str
-    
+    TipoDocumento: str
+    TipoIntervento: str
 
 
-class FindProtocollo(dspy.Module):
-    """DSPy model for the extraction of  Protocollo."""
+class FindTipo(dspy.Module):
+    """DSPy model for the extraction of  Tipo."""
 
     def __init__(self):
         """Initialize only a chain of thought."""
-        self._estrattore_protocollo = dspy.ChainOfThought(IdentificaProtocollo)
+        self._estrattore_tipo = dspy.ChainOfThought(IdentificaTipo)
 
     def forward(
         self, fragmenti_relazione: str
@@ -78,30 +83,30 @@ class FindProtocollo(dspy.Module):
         """Direct forward."""
         predicted_output = cast(
             dspy.Prediction,
-            self._estrattore_protocollo(
+            self._estrattore_tipo(
                 fragmenti_relazione=fragmenti_relazione,
             ),
         )
 
-        NR_UNIDENTIFIED = "%CHECK REQUIRED%"
-        DATE_UNIDENTIFIED = "%CHECK REQUIRED%"
+        DOCUMENT_UNIDENTIFIED = "%CHECK REQUIRED%"
+        INTERVENTION_UNIDENTIFIED = "%CHECK REQUIRED%"
 
-        numero = cast(str, predicted_output.get("NumeroProtocollo", NR_UNIDENTIFIED))
-        data = cast(str, predicted_output.get("DataProtocollo", DATE_UNIDENTIFIED))
+        document = cast(str, predicted_output.get("TipoDocumento", DOCUMENT_UNIDENTIFIED))
+        intervention = cast(str, predicted_output.get("TipoIntervento", INTERVENTION_UNIDENTIFIED))
 
         # Return the prediction
         return to_prediction(
-            ProtocolloOutputData(
-                NumeroProtocollo=numero,
-                DataProtocollo=data,
+            TipoOutputData(
+                TipoDocumento=document,
+                TipoIntervento=intervention,
             )
         )
 
 
-class ProtocolloExtractor(
+class TipoExtractor(
     FieldExtractor[
-        ProtocolloInputData,
-        ProtocolloOutputData,
+        TipoInputData,
+        TipoOutputData,
         InputForExtractionWithSuggestedThesauri,
         InputForExtractionWithSuggestedThesauriRowSchema,
         None,
@@ -118,13 +123,14 @@ class ProtocolloExtractor(
     ) -> None:
         """Initialize the extractor with providing it the llm which will be used."""
         example = (
-            ProtocolloInputData(
+            TipoInputData(
                 fragmenti_relazione=""""Relazione_scavo.pdf, Pagina 1 :
-                            Prot. 9 Pisa 7 n. 1546 del 12/05/1998.""",
+                            Tipologia di documento: Relazione di scavo
+                            Tipologia di intervento: Scavo preventivo""",
             ),
-            ProtocolloOutputData(
-                NumeroProtocollo="9 Pisa 7 n. 15467",
-                DataProtocollo="12/05/1998"
+            TipoOutputData(
+                TipoDocumento="Relazione di scavo",
+                TipoIntervento="Scavo preventivo"
             ),
         )
         # TODO: load this more lazily
@@ -133,22 +139,23 @@ class ProtocolloExtractor(
             llm_model_provider,
             llm_model_id,
             llm_temperature,
-            FindProtocollo(),
+            FindTipo(),
             example,
-            ProtocolloOutputData,
+            TipoOutputData,
         )
 
     @override
     @staticmethod
     def field_to_be_extracted():
         # Return the exact field name you want to extract
-        return "building__Protocollo", "building__Data_Protocollo"
+        return "university__Tipo_di_intervento", "building__Tipo_di_documento"
         
     @override
     @classmethod
     def _compare_values(cls, predicted, expected):
         TRESHOLD = 0.95
-        score = 0.7 * int(predicted.NumeroProtocollo == expected.NumeroProtocollo) + 0.3 * int(predicted.DataProtocollo == expected.DataProtocollo) 
+        score = 0.5 * int(predicted.TipoIntervento == expected.TipoIntervento) + \
+            0.5 * int(predicted.TipoDocumento == expected.TipoDocumento) 
         return score, TRESHOLD
 
     @override
@@ -158,31 +165,31 @@ class ProtocolloExtractor(
         If the output is missing or has unexpected keys, handle gracefully.
         """
         # Defensive mapping: look for common keys, fallback to empty string or 'N/A'
-        numero= dspy_output.get("numero_protocollo") or dspy_output.get("pred_numero_protocollo") or ""
-        data = dspy_output.get("data_protocollo") or dspy_output.get("pred_data_protocollo") or ""
+        documento= dspy_output.get("tipo_documento") or dspy_output.get("pred_tipo_documento") or ""
+        intervento = dspy_output.get("tipo_intervento") or dspy_output.get("pred_tipo_intervento") or ""
         method = dspy_output.get("method", "LLM")  # You can set this to whatever method name you want
 
 
-        return ProtocolloOutputData(
-            numero_protocollo=numero,
-            data_protocollo=data,
+        return TipoOutputData(
+            TipoDocumento=documento,
+            TipoIntervento=intervento,
             method=method  # Only include this if your schema expects it!
         )
 
     @override
-    def _to_dspy_input(self, x) -> ProtocolloInputData:
+    def _to_dspy_input(self, x) -> TipoInputData:
         # x is just a dict with 'id' (and maybe 'filepath')
         # You need to fetch the full row from the dataset
         intervention_id = x['id']
         full_row = self.dataset.intervention_data[self.dataset.intervention_data['id'] == intervention_id]
         if full_row.empty:
             # handle missing case
-            return ProtocolloInputData(fragmenti_relazione="", protocollo_numero_raw=None, protocollo_data_raw=None)
+            return TipoInputData(fragmenti_relazione="", tipo_documento_raw=None, tipo_intervento_raw=None)
         row = full_row.iloc[0]
-        return ProtocolloInputData(
+        return TipoInputData(
             fragmenti_relazione=getattr(row, "merged_chunks", ""),
-            protocollo_numero_raw=getattr(row, "building__Protocollo", None),
-            protocollo_data_raw=getattr(row, "building__Data_Protocollo", None),
+            tipo_documento_raw=getattr(row, "university__Tipo_di_intervento", None),
+            tipo_intervento_raw=getattr(row, "building__Tipo_di_documento", None),
         )
     
 ##############################################################################
@@ -194,28 +201,29 @@ class ProtocolloExtractor(
     ) -> set[InterventionId]:
         return y.filter_good_records_for_training(
             ids,
-            lambda df: cast(Series[bool], df["building__Protocollo"].notnull()),
+            lambda df: cast(Series[bool], df["university__Tipo_di_intervento"].notnull()),
+            # lambda df: cast(Series[bool], df["building__Tipo_di_documento"].notnull()),
         )
 
     @override
     @classmethod
     def _select_answers(
         cls, y: MagohDataset, ids: set[InterventionId]
-    ) -> dict[InterventionId, ProtocolloOutputData]:
+    ) -> dict[InterventionId, TipoOutputData]:
  
         result = {}
         for t in y.get_answers(ids):
-            if t.building__Protocollo is not None:  # Skip if no ground truth
-                protocollo_nr = t.building__Protocollo
+            if t.building__Tipo_di_documento is not None:  # Skip if no ground truth
+                tipo_documento = t.building__Tipo_di_documento
 
-            if t.building__Data_Protocollo is not None:
-                protocollo_data = t.building__Data_Protocollo  # Skip if no ground truth
+            if t.university__Tipo_di_intervento is not None:  # Skip if no ground truth
+                tipo_intervento = t.university__Tipo_di_intervento
 
                 # print(f"Nome: {nome_base}, Cognome: {cognome_base}, Iniziale: {iniziale_base}")  # Print nome, cognome, and iniziale
-                
-                result[InterventionId(t.id)] = ProtocolloOutputData(
-                    NumeroProtocollo=protocollo_nr,
-                    DataProtocollo=protocollo_data,
+
+                result[InterventionId(t.id)] = TipoOutputData(
+                    TipoDocumento=tipo_documento,
+                    TipoIntervento=tipo_intervento,
                 )
         return result
     

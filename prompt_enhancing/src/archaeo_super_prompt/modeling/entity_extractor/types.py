@@ -70,6 +70,10 @@ NerXXLEntities = Literal[
     "DOSAGGIO",
     "FORM",
     "PROTOCOLLO",
+    "TIPO",
+    "INTERVENTO",
+    "TIPOLOGIA",
+    "DOCUMENTO"
 ]
 
 
