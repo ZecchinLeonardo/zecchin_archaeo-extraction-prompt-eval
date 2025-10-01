@@ -9,7 +9,7 @@ from archaeo_super_prompt.modeling.struct_extract.field_extractor import (
 from .struct_extract.legacy_extractor.main_transformer import MagohDataExtractor
 from .struct_extract import language_model as lm_provider_mod
 
-from ..dataset.thesauri import load_comune, load_esecutore_candidates, load_protocollo_candidates, load_tipo_candidates
+from ..dataset.thesauri import load_comune, load_esecutore_candidates, load_protocollo_candidates, load_tipo_candidates, load_ogd_candidates
 from ..types.pdfpaths import PDFPathDataset
 from ..utils.result import get_model_store_dir
 from .DAG_builder import DAGBuilder, DAGComponent
@@ -24,6 +24,7 @@ from .struct_extract.extractors.intervention_date import (
 from .struct_extract.extractors.esecuzione import EsecutoreExtractor
 from .struct_extract.extractors.protocollo import ProtocolloExtractor
 from .struct_extract.extractors.tipo import TipoExtractor
+from .struct_extract.extractors.ogd import OGDExtractor
 
 class ExtractionDAGParts(NamedTuple):
     """A decomposition of the general DAG into different parts for a better handling between the training, the inference and the evaluation modes."""
@@ -177,6 +178,28 @@ def get_training_dag(include_legacy: bool = False) -> ExtractionDAGParts:
         TipoExtractor(llm_provider, llm_model_id, llm_model_temp),
     )
 
+    OGD_chunk_filter = DAGComponent(
+        "OGD-CF",
+        NeSelector(
+            "OGD",  # <-- the NER label for your field
+            {
+                "OGD",
+                "OGD_DOCUMENTO",
+                "OGD_INTERVENTO",
+            },
+            load_ogd_candidates,  # <-- pass a function or None if not needed, e.g. for thesauri
+            True,  # or False, depending on your selector logic
+        ),
+    )
+
+    OGD_chunk_merger = DAGComponent("OGD-CM", ChunksToText())
+
+    OGD_extractor = DAGComponent(
+        "OGD-Extractor",
+        OGDExtractor(llm_provider, llm_model_id, llm_model_temp),
+    )
+
+
     final_results = DAGComponent[FieldExtractor]("FINAL", "passthrough")
 
     preprocessing_part = (
@@ -195,6 +218,10 @@ def get_training_dag(include_legacy: bool = False) -> ExtractionDAGParts:
         )
         .add_linearly_chained_nodes(
             [protocollo_chunk_filter, protocollo_chunk_merger],
+            [ner_featured],
+        )
+        .add_linearly_chained_nodes(
+            [OGD_chunk_filter, OGD_chunk_merger],
             [ner_featured],
         )
         .add_linearly_chained_nodes(
@@ -218,6 +245,7 @@ def get_training_dag(include_legacy: bool = False) -> ExtractionDAGParts:
             (esecutore_extractor, esecutore_chunk_merger),
             (protocollo_extractor, protocollo_chunk_merger),
             (tipo_extractor, tipo_chunk_merger),
+            (OGD_extractor, OGD_chunk_merger),
         ],
     )
 
@@ -228,6 +256,7 @@ def get_training_dag(include_legacy: bool = False) -> ExtractionDAGParts:
         esecutore_extractor,
         protocollo_extractor,
         tipo_extractor,
+        OGD_extractor,
     ]
 
     if include_legacy:

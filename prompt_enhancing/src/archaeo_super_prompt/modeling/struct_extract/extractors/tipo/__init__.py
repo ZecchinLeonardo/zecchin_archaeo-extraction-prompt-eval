@@ -40,11 +40,11 @@ class IdentificaTipo(dspy.Signature):
 
     Cerca una stringa come 'Tipologia di documento: ...' e 'Tipologia di intervento: ...'
 
-    La tipologia di intervento contiene parole chiave come 'scavo', 'ricognizione', assistenza'
+    La tipologia di intervento contiene parole chiave come 'scavo', 'ricognizione', assistenza', 'sopralluogo'. 
+    Se trovi la parola chiave 'scavo' cerca se ha un aggettivo dopo come 'preventivo', 'programmato', 'di emergenza', 'di monitoraggio', 'di sorveglianza', 'di vigilanza', 'di controllo'.
 
-    La tipologia di documento contiene parole chiave come 'relazione'
+    La tipologia di documento contiene parole chiave come 'relazione', se la trovi cerca se è accompaganta da stringhe come 'di scavo', 'di missione', 'di ricognizione'
 
-    Cerca all'inizio del testo
     """
 
     fragmenti_relazione: str = dspy.InputField(
@@ -57,7 +57,8 @@ class IdentificaTipo(dspy.Signature):
 class TipoInputData(pydantic.BaseModel):
     """Chunks of reports of an archaeological intervention with supposed information about the type of intervention and type of document.
 
-    For type of intervention look for keywords like "scavo", "ricognizione", "assistenza"
+    For type of intervention look for keywords like "scavo", "ricognizione", "assistenza", "sopralluogo".
+    If you find the keywork 'scavo' look for adjectives like 'preventivo', 'programmato','di emergenza', 'di monitoraggio', 'di sorveglianza', 'di vigilanza', 'di controllo'.
     
     For type of document look for keywords like "relazione"
     """
