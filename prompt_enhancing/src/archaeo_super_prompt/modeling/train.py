@@ -9,7 +9,7 @@ from archaeo_super_prompt.modeling.struct_extract.field_extractor import (
 from .struct_extract.legacy_extractor.main_transformer import MagohDataExtractor
 from .struct_extract import language_model as lm_provider_mod
 
-from ..dataset.thesauri import load_comune, load_esecutore_candidates, load_protocollo_candidates, load_tipo_candidates, load_ogd_candidates
+from ..dataset.thesauri import load_comune, load_esecutore_candidates, load_protocollo_candidates, load_tipo_candidates, load_ogd_candidates, load_luogo_candidates
 from ..types.pdfpaths import PDFPathDataset
 from ..utils.result import get_model_store_dir
 from .DAG_builder import DAGBuilder, DAGComponent
@@ -25,6 +25,7 @@ from .struct_extract.extractors.esecuzione import EsecutoreExtractor
 from .struct_extract.extractors.protocollo import ProtocolloExtractor
 from .struct_extract.extractors.tipo import TipoExtractor
 from .struct_extract.extractors.ogd import OGDExtractor
+from .struct_extract.extractors.luogo import LuogoExtractor
 
 class ExtractionDAGParts(NamedTuple):
     """A decomposition of the general DAG into different parts for a better handling between the training, the inference and the evaluation modes."""
@@ -199,6 +200,39 @@ def get_training_dag(include_legacy: bool = False) -> ExtractionDAGParts:
         OGDExtractor(llm_provider, llm_model_id, llm_model_temp),
     )
 
+    luogo_chunk_filter = DAGComponent(
+        "luogo-CF",
+        NeSelector(
+            "luogo",  # <-- the NER label for your field
+            {
+                "LUOGO",
+                "VIA",
+                "PIAZZA",
+                "VIALE",
+                "CORSO",
+                "STRADA",
+                "CONTRADA",
+                "FRAZIONE",
+                "PRESSO",
+                "NEI PRESSI DI",
+                "VICINO A",
+                "POGGIO",
+                "VALLE",
+                "COLLE",
+                "FABBRICA",
+                "FOSSO",
+            },
+            load_luogo_candidates,  # <-- pass a function or None if not needed, e.g. for thesauri
+            True,  # or False, depending on your selector logic
+        ),
+    )
+
+    luogo_chunk_merger = DAGComponent("luogo-CM", ChunksToText())
+
+    luogo_extractor = DAGComponent(
+        "luogo-Extractor",
+        LuogoExtractor(llm_provider, llm_model_id, llm_model_temp),
+    )
 
     final_results = DAGComponent[FieldExtractor]("FINAL", "passthrough")
 
@@ -229,6 +263,10 @@ def get_training_dag(include_legacy: bool = False) -> ExtractionDAGParts:
             [ner_featured],
         )
         .add_linearly_chained_nodes(
+            [luogo_chunk_filter, luogo_chunk_merger],
+            [ner_featured],
+        )
+        .add_linearly_chained_nodes(
             [intervention_date_chunk_filter, intervention_date_chunk_merger],
             [ner_featured],
         )
@@ -243,9 +281,10 @@ def get_training_dag(include_legacy: bool = False) -> ExtractionDAGParts:
             # (intervention_date_extractor, intervention_date_entrypoint),
             (comune_extractor, comune_chunk_merger),
             (esecutore_extractor, esecutore_chunk_merger),
-            (protocollo_extractor, protocollo_chunk_merger),
+            # (protocollo_extractor, protocollo_chunk_merger),
             (tipo_extractor, tipo_chunk_merger),
             (OGD_extractor, OGD_chunk_merger),
+            (luogo_extractor, luogo_chunk_merger),
         ],
     )
 
@@ -254,9 +293,10 @@ def get_training_dag(include_legacy: bool = False) -> ExtractionDAGParts:
         # intervention_date_extractor,
         comune_extractor,
         esecutore_extractor,
-        protocollo_extractor,
+        # protocollo_extractor,
         tipo_extractor,
         OGD_extractor,
+        luogo_extractor,
     ]
 
     if include_legacy:

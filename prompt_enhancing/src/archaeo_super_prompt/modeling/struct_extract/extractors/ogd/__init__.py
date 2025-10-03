@@ -8,7 +8,7 @@ import pydantic
 from pandera.typing.pandas import Series
 
 from archaeo_super_prompt.dataset.load import MagohDataset
-from archaeo_super_prompt.dataset.thesauri import load_comune_with_provincie
+# from archaeo_super_prompt.dataset.thesauri import load_comune_with_provincie
 from archaeo_super_prompt.modeling.struct_extract.types import (
     InputForExtractionWithSuggestedThesauri,
     InputForExtractionWithSuggestedThesauriRowSchema,
@@ -31,7 +31,7 @@ class OGD(pydantic.BaseModel):
     description: str
     
 class IdentificaOGD(dspy.Signature):
-    """Identifica il numero e la data di protocollo.
+    """Identifica se sono presenti tracce archeologiche nella relazione.
 
     Cerca una stringa come "privo di" o "senza rinvenimenti" o "senza ritrovamenti" o "non sono stati rinvenuti" o "non sono stati trovati" o "nulla è stato rinvenuto" o "nulla è stato trovato" o "niente è stato rinvenuto" o "niente è stato trovato" o "nessun reperto è stato rinvenuto" o "nessun reperto è stato trovato" o "assenza di reperti" o simile
 
