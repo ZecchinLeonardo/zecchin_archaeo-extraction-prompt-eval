@@ -26,6 +26,7 @@ from .struct_extract.extractors.protocollo import ProtocolloExtractor
 from .struct_extract.extractors.tipo import TipoExtractor
 from .struct_extract.extractors.ogd import OGDExtractor
 from .struct_extract.extractors.luogo import LuogoExtractor
+from .struct_extract.extractors.year import YearExtractor
 
 class ExtractionDAGParts(NamedTuple):
     """A decomposition of the general DAG into different parts for a better handling between the training, the inference and the evaluation modes."""
@@ -234,6 +235,42 @@ def get_training_dag(include_legacy: bool = False) -> ExtractionDAGParts:
         LuogoExtractor(llm_provider, llm_model_id, llm_model_temp),
     )
 
+    year_chunk_filter = DAGComponent(
+        "year-CF",
+        NeSelector(
+            "data",
+            {
+                "DATA",
+            },
+            # lambda: list(
+            #     enumerate(
+            #        range(1850,2026)
+            #     )
+            # ),
+            lambda: list(
+                enumerate(
+                    [
+                        "primavera",
+                        "estate",
+                        "autunno",
+                        "inverno",
+                    ]
+                )
+            ),
+            # lambda: [(i, str(year)) for i, year in enumerate(range(1850, 2026))],
+            # load_year_candidates,
+
+            True,
+        ),
+    )
+    year_chunk_merger = DAGComponent(
+        "year-CM", ChunksToText()
+    )
+    year_extractor = DAGComponent(
+        "year-Extractor",
+        YearExtractor(llm_provider, llm_model_id, llm_model_temp),
+    )
+
     final_results = DAGComponent[FieldExtractor]("FINAL", "passthrough")
 
     preprocessing_part = (
@@ -267,6 +304,10 @@ def get_training_dag(include_legacy: bool = False) -> ExtractionDAGParts:
             [ner_featured],
         )
         .add_linearly_chained_nodes(
+            [year_chunk_filter, year_chunk_merger],
+            [ner_featured],
+        )
+        .add_linearly_chained_nodes(
             [intervention_date_chunk_filter, intervention_date_chunk_merger],
             [ner_featured],
         )
@@ -285,6 +326,7 @@ def get_training_dag(include_legacy: bool = False) -> ExtractionDAGParts:
             (tipo_extractor, tipo_chunk_merger),
             (OGD_extractor, OGD_chunk_merger),
             (luogo_extractor, luogo_chunk_merger),
+            (year_extractor, year_chunk_merger),
         ],
     )
 
@@ -297,6 +339,7 @@ def get_training_dag(include_legacy: bool = False) -> ExtractionDAGParts:
         tipo_extractor,
         OGD_extractor,
         luogo_extractor,
+        year_extractor,
     ]
 
     if include_legacy:

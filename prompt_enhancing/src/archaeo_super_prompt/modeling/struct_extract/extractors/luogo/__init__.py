@@ -28,7 +28,7 @@ from ...field_extractor import FieldExtractor, LLMProvider, to_prediction
 
 
 class Luogo(pydantic.BaseModel):
-    """Questo elemento fornisce informazioni sulla data e il numero di protocollo. È possibile trovare questo tipo di informazioni nel testo."""
+    """Questo elemento fornisce informazioni sul luogo. È possibile trovare questo tipo di informazioni nel testo."""
 
     luogo: str
     
