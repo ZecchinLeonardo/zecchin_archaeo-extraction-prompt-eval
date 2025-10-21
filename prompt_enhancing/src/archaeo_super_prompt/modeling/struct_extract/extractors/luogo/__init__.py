@@ -8,6 +8,8 @@ import pydantic
 from pandera.typing.pandas import Series
 
 import difflib
+from rapidfuzz import fuzz
+from sentence_transformers import SentenceTransformer, util
 
 from archaeo_super_prompt.dataset.load import MagohDataset
 from archaeo_super_prompt.dataset.thesauri import load_comune_with_provincie
@@ -121,6 +123,8 @@ class LuogoExtractor(
 ):
     """Dspy-LLM-based extractor of the comune data."""
 
+    # _model = SentenceTransformer("all-MiniLM-L6-v2")
+    
     def __init__(
         self,
         llm_model_provider: LLMProvider,
@@ -162,9 +166,22 @@ class LuogoExtractor(
         TRESHOLD = 0.95
 
         # # Compute similarity ratio for each field (between 0 and 1)
-        indirizzo_sim = difflib.SequenceMatcher(None, str(predicted.indirizzo), str(expected.indirizzo)).ratio()
-        localita_sim = difflib.SequenceMatcher(None, str(predicted.localita), str(expected.localita)).ratio()
-        ubicazione_sim = difflib.SequenceMatcher(None, str(predicted.ubicazione), str(expected.ubicazione)).ratio()
+        # indirizzo_sim = difflib.SequenceMatcher(None, str(predicted.indirizzo), str(expected.indirizzo)).ratio()
+        # localita_sim = difflib.SequenceMatcher(None, str(predicted.localita), str(expected.localita)).ratio()
+        # ubicazione_sim = difflib.SequenceMatcher(None, str(predicted.ubicazione), str(expected.ubicazione)).ratio()
+
+        # indirizzo_sim = fuzz.token_sort_ratio(str(predicted.indirizzo), str(expected.indirizzo)) /100
+        # localita_sim = fuzz.token_sort_ratio(str(predicted.localita), str(expected.localita)) / 100
+        # ubicazione_sim = fuzz.token_sort_ratio(str(predicted.ubicazione), str(expected.ubicazione)) / 100
+
+        indirizzo_sim = fuzz.token_set_ratio(str(predicted.indirizzo), str(expected.indirizzo)) /100
+        localita_sim = fuzz.token_set_ratio(str(predicted.localita), str(expected.localita)) / 100
+        ubicazione_sim = fuzz.token_set_ratio(str(predicted.ubicazione), str(expected.ubicazione)) / 100
+
+        # indirizzo_sim = cls._similarity(str(predicted.indirizzo), str(expected.indirizzo))
+        # localita_sim  = cls._similarity(str(predicted.localita), str(expected.localita))
+        # ubicazione_sim = cls._similarity(str(predicted.ubicazione), str(expected.ubicazione))
+
 
         # Weighted average as before
         score = 0.34 * ubicazione_sim + 0.33 * localita_sim + 0.33 * indirizzo_sim
@@ -247,3 +264,13 @@ class LuogoExtractor(
         return result
     
 ##############################################################################
+    @classmethod
+    def _similarity(cls, a: str, b: str) -> float:
+        """Compute semantic cosine similarity between two strings."""
+        if not a or not b:
+            return 0.0
+        
+        emb1 = cls._model.encode(a, convert_to_tensor=True)
+        emb2 = cls._model.encode(b, convert_to_tensor=True)
+        
+        return util.cos_sim(emb1, emb2).item()

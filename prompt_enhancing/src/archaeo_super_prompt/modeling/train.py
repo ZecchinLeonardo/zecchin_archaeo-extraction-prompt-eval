@@ -9,7 +9,7 @@ from archaeo_super_prompt.modeling.struct_extract.field_extractor import (
 from .struct_extract.legacy_extractor.main_transformer import MagohDataExtractor
 from .struct_extract import language_model as lm_provider_mod
 
-from ..dataset.thesauri import load_comune, load_esecutore_candidates, load_protocollo_candidates, load_tipo_candidates, load_ogd_candidates, load_luogo_candidates
+from ..dataset.thesauri import load_comune, load_esecutore_candidates, load_protocollo_candidates, load_tipo_candidates, load_ogd_candidates, load_luogo_candidates, load_funzionario_candidates
 from ..types.pdfpaths import PDFPathDataset
 from ..utils.result import get_model_store_dir
 from .DAG_builder import DAGBuilder, DAGComponent
@@ -27,6 +27,7 @@ from .struct_extract.extractors.tipo import TipoExtractor
 from .struct_extract.extractors.ogd import OGDExtractor
 from .struct_extract.extractors.luogo import LuogoExtractor
 from .struct_extract.extractors.year import YearExtractor
+from .struct_extract.extractors.direzione_funzionario import DirezioneFunzionarioExtractor
 
 class ExtractionDAGParts(NamedTuple):
     """A decomposition of the general DAG into different parts for a better handling between the training, the inference and the evaluation modes."""
@@ -125,8 +126,8 @@ def get_training_dag(include_legacy: bool = False) -> ExtractionDAGParts:
                 "COGNOME",
                 "ORGANIZZAZIONE",
             },
-            load_esecutore_candidates,  # <-- pass a function or None if not needed, e.g. for thesauri
-            True,  # or False, depending on your selector logic
+            load_esecutore_candidates,  
+            True,  
         ),
     )
 
@@ -147,8 +148,8 @@ def get_training_dag(include_legacy: bool = False) -> ExtractionDAGParts:
                 "NR_PROT",
                 "PROT_N",
             },
-            load_protocollo_candidates,  # <-- pass a function or None if not needed, e.g. for thesauri
-            True,  # or False, depending on your selector logic
+            load_protocollo_candidates,  
+            True,  
         ),
     )
 
@@ -168,8 +169,8 @@ def get_training_dag(include_legacy: bool = False) -> ExtractionDAGParts:
                 "TIPO_DOCUMENTO",
                 "TIPO_INTERVENTO",
             },
-            load_tipo_candidates,  # <-- pass a function or None if not needed, e.g. for thesauri
-            True,  # or False, depending on your selector logic
+            load_tipo_candidates,  
+            True,  
         ),
     )
 
@@ -189,8 +190,8 @@ def get_training_dag(include_legacy: bool = False) -> ExtractionDAGParts:
                 "OGD_DOCUMENTO",
                 "OGD_INTERVENTO",
             },
-            load_ogd_candidates,  # <-- pass a function or None if not needed, e.g. for thesauri
-            True,  # or False, depending on your selector logic
+            load_ogd_candidates,  
+            True, 
         ),
     )
 
@@ -223,8 +224,8 @@ def get_training_dag(include_legacy: bool = False) -> ExtractionDAGParts:
                 "FABBRICA",
                 "FOSSO",
             },
-            load_luogo_candidates,  # <-- pass a function or None if not needed, e.g. for thesauri
-            True,  # or False, depending on your selector logic
+            load_luogo_candidates,  
+            True,  
         ),
     )
 
@@ -242,11 +243,7 @@ def get_training_dag(include_legacy: bool = False) -> ExtractionDAGParts:
             {
                 "DATA",
             },
-            # lambda: list(
-            #     enumerate(
-            #        range(1850,2026)
-            #     )
-            # ),
+
             lambda: list(
                 enumerate(
                     [
@@ -257,18 +254,42 @@ def get_training_dag(include_legacy: bool = False) -> ExtractionDAGParts:
                     ]
                 )
             ),
-            # lambda: [(i, str(year)) for i, year in enumerate(range(1850, 2026))],
-            # load_year_candidates,
-
             True,
         ),
     )
+
     year_chunk_merger = DAGComponent(
         "year-CM", ChunksToText()
     )
+
     year_extractor = DAGComponent(
         "year-Extractor",
         YearExtractor(llm_provider, llm_model_id, llm_model_temp),
+    )
+
+    funzionario_chunk_filter = DAGComponent(
+        "funzionario-CF",
+        NeSelector(
+            "funzionario",
+            # "direzione",  # <-- the NER label for your field
+            {
+                "FUNZIONARIO",
+                # "DIREZIONE SCIENTIFICA",
+                "FUNZIONARIO COMPETENTE",
+                "FUNZIONARIO RESPONSABILE",
+                "RESPONSABILE",
+
+            },
+            load_funzionario_candidates,  
+            True,  
+        ),
+    )
+
+    funzionario_chunk_merger = DAGComponent("funzionario-CM", ChunksToText())
+
+    funzionario_extractor = DAGComponent(
+        "funzionario-Extractor",
+        DirezioneFunzionarioExtractor(llm_provider, llm_model_id, llm_model_temp),
     )
 
     final_results = DAGComponent[FieldExtractor]("FINAL", "passthrough")
@@ -311,6 +332,10 @@ def get_training_dag(include_legacy: bool = False) -> ExtractionDAGParts:
             [intervention_date_chunk_filter, intervention_date_chunk_merger],
             [ner_featured],
         )
+        .add_linearly_chained_nodes(
+            [funzionario_chunk_filter, funzionario_chunk_merger],
+            [ner_featured],
+        )
         .add_node(
             intervention_date_entrypoint,
             [intervention_date_chunk_merger, archiving_date],
@@ -327,6 +352,7 @@ def get_training_dag(include_legacy: bool = False) -> ExtractionDAGParts:
             (OGD_extractor, OGD_chunk_merger),
             (luogo_extractor, luogo_chunk_merger),
             (year_extractor, year_chunk_merger),
+            (funzionario_extractor, funzionario_chunk_merger),
         ],
     )
 
@@ -340,6 +366,7 @@ def get_training_dag(include_legacy: bool = False) -> ExtractionDAGParts:
         OGD_extractor,
         luogo_extractor,
         year_extractor,
+        funzionario_extractor,
     ]
 
     if include_legacy:
