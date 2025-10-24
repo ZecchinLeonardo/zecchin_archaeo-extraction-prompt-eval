@@ -143,12 +143,15 @@ print(f"Processing {n_inputs} inputs in chunks of {chunk_size}...")
 
 # Read existing scanned ids if scans.csv exists and skip them
 existing_ids = set()
+# track number of existing rows so we can continue the unnamed leading index
+existing_row_count = 0
 if out_path.exists():
     try:
         existing_df = pd.read_csv(out_path)
         if 'id' in existing_df.columns:
             existing_ids = set(existing_df['id'].astype(str).tolist())
-            print(f"Found {len(existing_ids)} already-scanned ids in {out_path}")
+            existing_row_count = len(existing_df)
+            print(f"Found {len(existing_ids)} already-scanned ids in {out_path} (rows: {existing_row_count})")
     except Exception as e:
         print(f"Warning: could not read existing scans CSV {out_path}: {e}")
 
@@ -194,14 +197,49 @@ for start in range(0, n_inputs, chunk_size):
         ids_seen.update(new_ids)
         existing_ids.update(new_ids)
 
+    # Minimal validation: expect the scanner to return the canonical columns.
+    desired_cols = [
+        'id', 'filename', 'chunk_type', 'chunk_page_position',
+        'chunk_index', 'chunk_embedding_content', 'chunk_content'
+    ]
+
+    missing = [c for c in desired_cols if c not in out_chunk.columns]
+    if missing:
+        print(f"Warning: scanner output missing columns {missing}; filling defaults for them.")
+        # fill sensible defaults for missing columns
+        if 'filename' in missing:
+            out_chunk['filename'] = ''
+        if 'chunk_type' in missing:
+            out_chunk['chunk_type'] = [['text']] if len(out_chunk) > 0 else []
+        if 'chunk_page_position' in missing:
+            out_chunk['chunk_page_position'] = [[0] for _ in range(len(out_chunk))]
+        if 'chunk_index' in missing:
+            out_chunk['chunk_index'] = list(range(len(out_chunk)))
+        if 'chunk_embedding_content' in missing:
+            out_chunk['chunk_embedding_content'] = ''
+        if 'chunk_content' in missing:
+            out_chunk['chunk_content'] = ''
+
+    # Reorder to canonical columns (any extra columns are dropped)
+    out_chunk = out_chunk.reindex(columns=desired_cols)
+
     # Write/appends
     try:
+        # assign a running integer index that continues from existing_row_count
+        start_index = existing_row_count
+        out_chunk.index = range(start_index, start_index + len(out_chunk))
+
         if first_write:
-            out_chunk.to_csv(out_path, index=False)
+            # write header and include the index (unnamed leading column)
+            out_chunk.to_csv(out_path, index=True)
             first_write = False
         else:
-            out_chunk.to_csv(out_path, index=False, header=False, mode='a')
-        print(f"Wrote chunk {start}-{end-1} ({len(out_chunk)} rows) to {out_path}")
+            # append without header but include the index so the leading column continues
+            out_chunk.to_csv(out_path, index=True, header=False, mode='a')
+
+        # update the running count so future chunks continue numbering
+        existing_row_count += len(out_chunk)
+        print(f"Wrote chunk {start}-{end-1} ({len(out_chunk)} rows) to {out_path} (rows now: {existing_row_count})")
     except Exception as e:
         print(f"Failed to write chunk {start}-{end-1} to CSV: {e}")
 
