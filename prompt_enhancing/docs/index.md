@@ -4,6 +4,14 @@ This documentation enables to understand all the content of this repository and
 how to handle it to go further in experimenting AI models to imitate the
 contributors of the Magoh app.
 
+## Notebook Documentation
+
+### 4.1.1 Complete Pipeline Notebook
+The most comprehensive notebook demonstrating the full archaeological data extraction pipeline:
+
+- **[Detailed Technical Explanation](./4.1.1-notebook-explanation.md)**: Complete overview of what the notebook does and how it works
+- **[Results Interpretation Guide](./how-to-read-4.1.1-results.md)**: How to understand and analyze the output and results
+
 ## Run some code
 
 See the [Installation section](./install.md) to reproduce all the development
