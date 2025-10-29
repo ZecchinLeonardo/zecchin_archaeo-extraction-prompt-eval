@@ -98,7 +98,7 @@ from archaeo_super_prompt.modeling.struct_extract.extractors.year import YearExt
 from archaeo_super_prompt.modeling.struct_extract.extractors.direzione_funzionario import DirezioneFunzionarioExtractor, DirezioneFunzionarioInputData
 
 # change working directory similar to the notebook
-os.chdir(os.path.join(os.getcwd(), '..', '..', 'src'))
+os.chdir(os.path.join(os.getcwd(),  '..', 'src'))
 print("Current working directory:", os.getcwd())
 
 
@@ -222,9 +222,12 @@ def _read_comuni_tables_strict():
         print(f"[warn] dropping {dups} duplicated comuni by comune_id")
         comuni = comuni.drop_duplicates(subset=["comune_id"], keep="first")
 
+    # Ensure the province id column from the CSV (`id_prov`) is mapped to `province_id`.
+    # Previously this incorrectly attempted to rename `province_id` -> `province_id`,
+    # which left `province_id` missing and triggered a KeyError.
     province = pd.read_csv(cp._get_provincie_file())[
         ["id_prov","nome","sigla"]
-    ].rename(columns={"province_id":"province_id","nome":"province_name"})
+    ].rename(columns={"id_prov":"province_id","nome":"province_name"})
     province["province_id"] = province["province_id"].astype(int)
     province = province.drop_duplicates(subset=["province_id"], keep="first")
 
@@ -357,6 +360,19 @@ class LoadScans(BaseEstimator, TransformerMixin):
         if "id" in X.columns:
             X["id"] = X["id"].astype(int)
         return X.merge(self._df, on="id", how="inner")
+    
+# load scans CSV with a robust loader (if you don't already have one)
+def load_scans_safe(path):
+    df = pd.read_csv(path, encoding='utf-8-sig')
+    # drop leading saved index column if it looks numeric
+    if df.columns[0].startswith("Unnamed") or df.columns[0] == "":
+        sample = df.iloc[:,0].dropna().astype(str).head(20).tolist()
+        if sample and all(s.strip().lstrip("-").isdigit() for s in sample):
+            df = df.iloc[:,1:].copy()
+    df.columns = df.columns.str.strip()
+    if "id" in df.columns:
+        df["id"] = pd.to_numeric(df["id"].astype(str).str.strip(), errors="coerce").astype("Int64")
+    return df
 
 
 cp.load_comune = load_comune_aligned
@@ -365,7 +381,8 @@ DATE_RE = re.compile(r"\\b(\\d{1,2}[\\/\\.-]\\d{1,2}[\\/\\.-]\\d{2,4}|gennaio|fe
 
 
 # cache location
-CACHE_CSV = get_cache_dir_for("interim", "miscel") / "scans.csv"
+csv_file = input("Enter the name of the scans CSV file (default: 'scans.csv'): ") or "scans.csv"
+CACHE_CSV = get_cache_dir_for("interim", "miscel") / csv_file
 SCANS_DF = pd.read_csv(CACHE_CSV)
 
 EXP_NAME = "Complete training test"
@@ -424,6 +441,24 @@ inputs = ds.files.merge(SCANS_DF[["id"]].drop_duplicates(), on="id", how="inner"
 train_inputs, eval_inputs = inputs.iloc[:10], inputs.iloc[10:]
 # print(f"train inputs columns are {train_inputs.columns} \n")
 # print(eval_inputs.columns)
+
+##############################################################################
+
+scans = load_scans_safe(CACHE_CSV)
+# inspect ds.files
+ds.files["id"] = pd.to_numeric(ds.files["id"].astype(str).str.strip(), errors="coerce").astype("Int64")
+# recreate the eval_inputs you used for score_dag (if you built it by merging)
+eval_inputs = ds.files.merge(scans[["id"]].drop_duplicates(), on="id", how="inner")
+
+
+# # intersection check
+# sc_ids = set(scans["id"].dropna().astype(int)) if "id" in scans.columns else set()
+# ds_ids = set(ds.files["id"].dropna().astype(int))
+# print("counts -> scans:", len(sc_ids), "ds.files:", len(ds_ids), "intersection:", len(sc_ids & ds_ids))
+# print("example ids only in scans (up to 10):", sorted(list(sc_ids - ds_ids))[:10])
+# print("example ids only in ds.files (up to 10):", sorted(list(ds_ids - sc_ids))[:10])
+
+##############################################################################
 
 # delete openai in env if present, we have a local model
 for k in ("OPENAI_BASE_URL", "OPENAI_API_BASE"):
