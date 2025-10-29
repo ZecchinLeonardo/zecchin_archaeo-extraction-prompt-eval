@@ -242,7 +242,7 @@ Lo scavo è iniziato il 18 marzo 1985 ed è terminato il 20 marzo.""",
             stripped = data_intervento.strip()
 
             # Special case: handle "pre, 1987", "pre -, 1980", etc.
-            pre_match = re.match(r"pre[\s,-]*([\d]{4})", stripped, re.IGNORECASE)
+            pre_match = re.match(r"(?:pre|ante)[\s,-]*([\d]{4})", stripped, re.IGNORECASE)
             if pre_match:
                 anno = int(pre_match.group(1))
                 return Data(giorno=1, mese="Gennaio", anno=anno)
@@ -273,13 +273,30 @@ Lo scavo è iniziato il 18 marzo 1985 ed è terminato il 20 marzo.""",
                         if 1 <= mese_int <= 12:
                             mese = ITALIAN_MONTHS[mese_int - 1]
                     except Exception:
-                        m = groups[1].capitalize()
-                        for m_it in ITALIAN_MONTHS:
-                            if m_it.lower() == m.lower():
-                                mese = m_it
-                                break
-                        else:
-                            mese = m
+                        # m = groups[1].capitalize()
+                        # for m_it in ITALIAN_MONTHS:
+                        #     if m_it.lower() == m.lower():
+                        #         mese = m_it
+                        #         break
+                        # else:
+                        #     mese = m
+                        # textual month: normalize and try to match known italian months
+                            m = groups[1].strip().capitalize()
+                            # remove trailing punctuation
+                            m = re.sub(r"[^\wàèéìòù]", "", m, flags=re.UNICODE)
+                            for m_it in ITALIAN_MONTHS:
+                                if m_it.lower() == m.lower():
+                                    mese = m_it
+                                    break
+                            # try partial match (e.g. "giu" -> "Giugno")
+                            if mese is None:
+                                m_lower = m.lower()
+                                for m_it in ITALIAN_MONTHS:
+                                    if m_it.lower().startswith(m_lower) or m_lower.startswith(m_it.lower()[:3]):
+                                        mese = m_it
+                                        break
+                            # if still unknown, leave mese None (will fallback later)
+
                 if groups[0]:
                     try:
                         giorno = int(groups[0])

@@ -35,10 +35,29 @@ class NerModel(BaseTransformer):
         chunk_contents = list(
             map(lambda row: cast(str, row.chunk_content), X.itertuples())
         )
+        # result = ner_module.fetch_entities(chunk_contents)
+        # result = ner_module.postrocess_entities(
+        #     result, self.allowed_ner_confidence
+        # )
+        # return EntitiesPerChunkSchema.validate(
+        #     pd.DataFrame([{"named_entities": lst} for lst in result])
+        # )
+    
+    
         result = ner_module.fetch_entities(chunk_contents)
-        result = ner_module.postrocess_entities(
-            result, self.allowed_ner_confidence
-        )
-        return EntitiesPerChunkSchema.validate(
-            pd.DataFrame([{"named_entities": lst} for lst in result])
-        )
+        result = ner_module.postrocess_entities(result, self.allowed_ner_confidence)
+
+        # Ensure we always create a DataFrame with the expected column, even when result == []
+        rows = [{"named_entities": lst} for lst in result]
+        # Create DataFrame with explicit columns so we have the named_entities column even if rows == []
+        df = pd.DataFrame(rows, columns=["named_entities"])
+
+        # Debug: if lengths mismatch, warn (optional)
+        if len(df) != len(chunk_contents):
+            import warnings
+            warnings.warn(
+                f"NerModel: number of fetch_entities results ({len(df)}) != number of inputs ({len(chunk_contents)})"
+            )
+
+        return EntitiesPerChunkSchema.validate(df)
+    
