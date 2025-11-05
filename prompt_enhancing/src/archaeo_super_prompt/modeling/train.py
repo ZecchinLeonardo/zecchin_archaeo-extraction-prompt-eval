@@ -28,6 +28,11 @@ from .struct_extract.extractors.ogd import OGDExtractor
 from .struct_extract.extractors.luogo import LuogoExtractor
 from .struct_extract.extractors.year import YearExtractor
 from .struct_extract.extractors.direzione_funzionario import DirezioneFunzionarioExtractor
+from .struct_extract.extractors.summary import RiassuntoExtractor
+from .struct_extract.extractors.summary.summarize_node import (
+    SummarizeFromChunks,
+)
+
 
 class ExtractionDAGParts(NamedTuple):
     """A decomposition of the general DAG into different parts for a better handling between the training, the inference and the evaluation modes."""
@@ -67,6 +72,9 @@ def get_training_dag(include_legacy: bool = False) -> ExtractionDAGParts:
     archiving_date = DAGComponent(
         "archiving-date-Oracle", ArchivingDateProvider()
     )
+    
+    
+    
     intervention_date_chunk_filter = DAGComponent(
         "interv-start-CF",
         NeSelector(
@@ -90,10 +98,7 @@ def get_training_dag(include_legacy: bool = False) -> ExtractionDAGParts:
     intervention_date_chunk_merger = DAGComponent(
         "interv-start-CM", ChunksToText()
     )
-    intervention_date_extractor = DAGComponent(
-        "interv-start-Extractor",
-        InterventionStartExtractor(llm_provider, llm_model_id, llm_model_temp),
-    )   
+    
     comune_extractor = DAGComponent(
         "comune-Extractor",
         ComuneExtractor(llm_provider, llm_model_id, llm_model_temp),
@@ -291,6 +296,24 @@ def get_training_dag(include_legacy: bool = False) -> ExtractionDAGParts:
         "funzionario-Extractor",
         DirezioneFunzionarioExtractor(llm_provider, llm_model_id, llm_model_temp),
     )
+    
+    
+    riassunto_chunk_filter = DAGComponent(
+        "riassunto-CF",
+        # choose a NeSelector that is suitable (or a neutral one that returns empty sets)
+        NeSelector(
+            "any",           # NER label set name (or an existing selector)
+            set(),           # if you don't need specific labels pass empty set to keep behaviour minimal
+            lambda *_: [],   # load candidates -> simple no-op loader if not needed
+            True,
+        ),
+    )
+    riassunto_chunk_merger = DAGComponent("riassunto-CM", ChunksToText())
+    
+    riassunto_extractor = DAGComponent(
+        "riassunto-Extractor",
+        RiassuntoExtractor(llm_provider, llm_model_id, llm_model_temp),
+    )
 
     final_results = DAGComponent[FieldExtractor]("FINAL", "passthrough")
 
@@ -300,6 +323,7 @@ def get_training_dag(include_legacy: bool = False) -> ExtractionDAGParts:
         .add_node(ner, [vllm])
         .add_node(ner_featured, [vllm, ner])
         .add_node(archiving_date, [vllm])
+        
         .add_linearly_chained_nodes(
             [comune_chunk_filter, comune_chunk_merger],
             [ner_featured],
@@ -336,6 +360,11 @@ def get_training_dag(include_legacy: bool = False) -> ExtractionDAGParts:
             [funzionario_chunk_filter, funzionario_chunk_merger],
             [ner_featured],
         )
+        .add_linearly_chained_nodes(
+            [riassunto_chunk_filter,riassunto_chunk_merger],
+            [ner_featured],
+        )
+
         .add_node(
             intervention_date_entrypoint,
             [intervention_date_chunk_merger, archiving_date],
@@ -353,6 +382,7 @@ def get_training_dag(include_legacy: bool = False) -> ExtractionDAGParts:
             (luogo_extractor, luogo_chunk_merger),
             (year_extractor, year_chunk_merger),
             (funzionario_extractor, funzionario_chunk_merger),
+            (riassunto_extractor, riassunto_chunk_merger)
         ],
     )
 
@@ -367,6 +397,8 @@ def get_training_dag(include_legacy: bool = False) -> ExtractionDAGParts:
         luogo_extractor,
         year_extractor,
         funzionario_extractor,
+        riassunto_extractor,
+        
     ]
 
     if include_legacy:
