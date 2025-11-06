@@ -1,7 +1,7 @@
-"""Comune LLM extractor."""
+"""Summary (riassunto) extractor with chunk+summarize strategy."""
 
 import re
-from typing import cast, override
+from typing import Any, cast, Iterable, List, override
 
 import dspy
 import pydantic
@@ -21,6 +21,8 @@ from .....types.per_intervention_feature import (
 from archaeo_super_prompt.modeling.struct_extract.types import (
     BaseInputForExtraction,
     BaseInputForExtractionRowSchema,
+    InputForExtractionWithSuggestedThesauri,
+    InputForExtractionWithSuggestedThesauriRowSchema,
 )
 
 import difflib
@@ -29,12 +31,8 @@ from sentence_transformers import SentenceTransformer, util
 
 from ...field_extractor import FieldExtractor, LLMProvider, to_prediction
 
-
-# class Esecuzione(pydantic.BaseModel):
-#     """Questo elemento fornisce informazioni sulla persona che ha eseguito il lavoro. È possibile trovare questo tipo di informazioni nel testo."""
-
-#     esecutore: str
-    
+# new import for chunking helpers
+from .chunking import chunk_text_by_tokens, estimate_token_count
 
 
 class Riassunto(dspy.Signature):
@@ -47,10 +45,6 @@ class Riassunto(dspy.Signature):
         desc="In ogni frammento sono indicati il nome del file pdf e la sua posizione nel file."
     )
 
-    # possibili_esecutori: list[Esecuzione] = dspy.InputField(
-    #     desc="Scegliete una di queste persone che hanno eseguito i lavori archeologici."
-    # )
-
     riassunto: str = dspy.OutputField(desc="Il riassunto del documento.")
 
 
@@ -60,53 +54,101 @@ class RiassuntoInputData(pydantic.BaseModel):
     """
 
     fragmenti_relazione: str
-    # possibili_esecutori: list[Esecuzione]
 
 
 class RiassuntoOutputData(pydantic.BaseModel):
-    """A predicted person who performed the intervention."""
+    """A summary of the document including names, dates, places, people involved, findings."""
 
     riassunto: str
 
 
 class WriteSummary(dspy.Module):
-    """DSPy model for the extraction of the Riassunto."""
+    """DSPy module to produce a summary using chunk+summarize strategy."""
 
-    def __init__(self):
-        """Initialize only a chain of thought."""
+    def __init__(self, max_chunk_tokens: int = 16000, final_max_tokens: int = 2048):
+        """
+        max_chunk_tokens: maximum tokens for each chunk summary job (keep well below model max).
+        final_max_tokens: requested max tokens for the final summarization call (controls length).
+        """
         self._estrattore_riassunto = dspy.ChainOfThought(Riassunto)
+        self._max_chunk_tokens = int(max_chunk_tokens)
+        self._final_max_tokens = int(final_max_tokens)
 
     def forward(
         self, fragmenti_relazione: str
     ) -> dspy.Prediction:
-        """Direct forward."""
-        predicted_output = cast(
-            dspy.Prediction,
-            self._estrattore_riassunto(
-                fragmenti_relazione=fragmenti_relazione,
-            ),
-        )
+        """If the input is short, call the chain once. Otherwise chunk, summarize chunks, then summarize summaries."""
+        predicted_summary = "%CANNOT_SUMMARIZE_THE_DOCUMENT%"
 
-        UNIDENTIFIED = "%CANNOT SUMMARIZE THE DOCUMENT%"
-        # Extract summary
-        summary = cast(str, predicted_output.get("riassunto", UNIDENTIFIED))
+        # Estimate token count and decide whether chunking is needed
+        try:
+            n_tokens = estimate_token_count(fragmenti_relazione)
+        except Exception:
+            # fallback conservative estimate
+            n_tokens = max(1, len(fragmenti_relazione.split()))
 
-        # Return the prediction
-        return to_prediction(
-            RiassuntoOutputData(
-                riassunto=summary,
-            )
-        )
-class InputForRiassunto(BaseInputForExtraction):
-    """Riassunto input data schema."""
+        # If short enough, single call
+        if n_tokens <= max(1, int(self._max_chunk_tokens)):
+            out = cast(dspy.Prediction, self._estrattore_riassunto(fragmenti_relazione=fragmenti_relazione))
+            predicted_summary = cast(str, out.get("riassunto", predicted_summary))
+            return to_prediction(RiassuntoOutputData(riassunto=predicted_summary))
 
-    summarizeIn: str
+        # Otherwise: chunk + summarize each chunk
+        chunks: List[str] = list(chunk_text_by_tokens(fragmenti_relazione, max_tokens=self._max_chunk_tokens))
+        chunk_summaries: List[str] = []
+        for chunk in chunks:
+            try:
+                out = cast(dspy.Prediction, self._estrattore_riassunto(fragmenti_relazione=chunk))
+                s = str(out.get("riassunto", "") or "")
+                if s:
+                    chunk_summaries.append(s)
+            except Exception:
+                # continue on errors in a chunk to keep the pipeline robust
+                continue
+
+        # If we got no chunk summaries, fallback to empty
+        if not chunk_summaries:
+            return to_prediction(RiassuntoOutputData(riassunto=""))
+
+        # Merge chunk summaries; if merged is still too long, we may re-chunk it automatically
+        merged = "\n\n".join(chunk_summaries)
+
+        # If merged is small enough, make a final single summarization call
+        try:
+            merged_tokens = estimate_token_count(merged)
+        except Exception:
+            merged_tokens = len(merged.split())
+
+        if merged_tokens <= max(1, int(self._final_max_tokens)):
+            final_out = cast(dspy.Prediction, self._estrattore_riassunto(fragmenti_relazione=merged))
+            predicted_summary = str(final_out.get("riassunto", predicted_summary))
+            return to_prediction(RiassuntoOutputData(riassunto=predicted_summary))
+
+        # Otherwise, recursively summarize merged in smaller pieces (rare)
+        recursive_chunks = list(chunk_text_by_tokens(merged, max_tokens=self._final_max_tokens))
+        recursive_summaries: List[str] = []
+        for rc in recursive_chunks:
+            try:
+                out = cast(dspy.Prediction, self._estrattore_riassunto(fragmenti_relazione=rc))
+                recursive_summaries.append(str(out.get("riassunto", "") or ""))
+            except Exception:
+                continue
+        final_merged = "\n\n".join(recursive_summaries)
+        if final_merged:
+            final_out = cast(dspy.Prediction, self._estrattore_riassunto(fragmenti_relazione=final_merged))
+            predicted_summary = str(final_out.get("riassunto", predicted_summary))
+        return to_prediction(RiassuntoOutputData(riassunto=predicted_summary))
 
 
-class InputForRiassuntoRowSchema(BaseInputForExtractionRowSchema):
-    """When indentifying the date of an intervention, we refer first to the date of protocol."""
+class InputForRiassunto(InputForExtractionWithSuggestedThesauri):
+    """Riassunto input data schema (uses the suggested-thesauri base so the pipeline provides identified_thesaurus)."""
+    # No extra fields needed: merged_chunks and identified_thesaurus come from the base
 
-    summarizeInRow: str
+
+class InputForRiassuntoRowSchema(InputForExtractionWithSuggestedThesauriRowSchema):
+    """Row schema (keeps the same semantics as the other extractors)."""
+    # No extra fields required
+
 
 class RiassuntoExtractor(
     FieldExtractor[
@@ -117,19 +159,8 @@ class RiassuntoExtractor(
         None,
     ]
 ):
-
-
-# class EsecutoreExtractor(
-#     FieldExtractor[
-#         EsecutoreInputData,
-#         EsecutoreOutputData,
-#         InputForExtractionWithSuggestedThesauri,
-#         InputForExtractionWithSuggestedThesauriRowSchema,
-#         None,
-#         # ComuneFeatSchema,
-#     ]
-# ):
-    """Dspy-LLM-based extractor of the comune data."""
+    """Dspy-LLM-based extractor that produces a free-form summary (mapped to university__Descrizione)."""
+    _model = SentenceTransformer("all-MiniLM-L6-v2", device="cuda:4")
 
     def __init__(
         self,
@@ -137,7 +168,7 @@ class RiassuntoExtractor(
         llm_model_id: str,
         llm_temperature: float,
     ) -> None:
-        """Initialize the extractor with providing it the llm which will be used."""
+        """Initialize the extractor with the LLM info."""
         example = (
             RiassuntoInputData(
                 fragmenti_relazione=""""Relazione_scavo.pdf, Pagina 1 :
@@ -169,39 +200,30 @@ class RiassuntoExtractor(
                                 )
         )
         # TODO: load this more lazily
-        # self._thesaurus = load_comune_with_provincie()
         super().__init__(
             llm_model_provider,
             llm_model_id,
             llm_temperature,
-            WriteSummary(),
+            WriteSummary(),  # WriteSummary handles chunking internally
             example,
             RiassuntoOutputData,
         )
 
-    @override
     @staticmethod
-    def field_to_be_extracted():
-        # Return the exact field name you want to extract
-        return "university__Eseguito_da"
-        
-    @override
-    @override
-    @staticmethod
-    def field_to_be_extracted():
-        # We only produce a summary; no ground-truth comparison will be performed.
-        return "riassunto"
+    def field_to_be_extracted() -> str:
+        return "university__Descrizione"
 
     @override
-    def _transform_dspy_output(self, dspy_output):
+    def _transform_dspy_output(self, dspy_output: Any) -> RiassuntoOutputData:
         """
         Map the DSPy output to the RiassuntoOutputData schema.
         Accept common keys like 'riassunto' or 'summary' and fall back to an empty string.
         """
         summary = (
-            dspy_output.get("riassunto")
-            or dspy_output.get("summary")
-            or dspy_output.get("text")
+            dspy_output.get("descrizione")
+            or dspy_output.get("pred_descrizione")
+            or dspy_output.get("riassunto")
+            or dspy_output.get("pred_riassunto")
             or ""
         )
 
@@ -210,21 +232,98 @@ class RiassuntoExtractor(
         )
 
     @override
-    def _to_dspy_input(self, x) -> RiassuntoInputData:
-        """Build the dspy input for a single intervention id dict `x`.
-
-        Expects x to be like {'id': <intervention id>}. It will read the dataset's
-        `merged_chunks` column (if present) and pass it as `fragmenti_relazione`.
+    def _to_dspy_input(self, x: Any) -> RiassuntoInputData:
         """
-        intervention_id = x.get("id")
-        if intervention_id is None:
-            return RiassuntoInputData(fragmenti_relazione="")
+        Build the dspy input for a single preprocessed-row `x`.
+        Accept dicts, pandas namedtuples/Series.
+        """
+        merged = ""
+        intervention_id = None
 
-        full_row = self.dataset.intervention_data[
-            self.dataset.intervention_data["id"] == intervention_id
-        ]
-        if full_row.empty:
-            return RiassuntoInputData(fragmenti_relazione="")
+        # dict-like
+        if isinstance(x, dict):
+            intervention_id = x.get("id", None)
+            merged = x.get("merged_chunks", "") or ""
+        else:
+            # namedtuple / Series-like
+            intervention_id = getattr(x, "id", None) or getattr(x, "Index", None)
+            merged = getattr(x, "merged_chunks", None)
+            if merged is None:
+                try:
+                    merged = x.get("merged_chunks", "")
+                except Exception:
+                    merged = ""
 
-        row = full_row.iloc[0]
-        return RiassuntoInputData(fragmenti_relazione=getattr(row, "merged_chunks", ""))
+        # fallback: dataset lookup
+        if (merged is None or merged == "") and intervention_id is not None:
+            try:
+                full_row = self.dataset.intervention_data[self.dataset.intervention_data["id"] == intervention_id]
+                if not full_row.empty:
+                    row = full_row.iloc[0]
+                    merged = getattr(row, "merged_chunks", "") or ""
+            except Exception:
+                merged = merged or ""
+
+        return RiassuntoInputData(fragmenti_relazione=merged)
+
+    @override
+    @classmethod
+    def _compare_values(cls, predicted, expected):
+        TRESHOLD = 0.95
+        
+        # # Compute similarity ratio for each field (between 0 and 1)
+        
+        # # with DIFFLIB
+        # riassunto_sim = difflib.SequenceMatcher(None, str(predicted.riassunto), str(expected.riassunto)).ratio()
+       
+        # # with rapidfuzz - token_sort_ratio
+        # riassunto_sim = fuzz.token_sort_ratio(str(predicted.riassunto), str(expected.riassunto)) /100
+        
+        # # with rapidfuzz - token_set_ratio
+        # riassunto_sim = fuzz.token_set_ratio(str(predicted.riassunto), str(expected.riassunto)) /100
+
+        # # with sentence-transformers
+        riassunto_sim = cls._similarity(str(predicted.riassunto), str(expected.riassunto))
+       
+        # Weighted average as before
+        score = float(riassunto_sim)        
+        
+        # score=1.0
+        score = max(0.0, min(1.0, score))
+        return score, TRESHOLD
+
+    @override
+    @classmethod
+    def filter_training_dataset(
+        cls, y: MagohDataset, ids: set[InterventionId]
+    ) -> set[InterventionId]:
+        return y.filter_good_records_for_training(
+            ids,
+            lambda df: cast(Series[bool], df["university__Descrizione"].notnull()),
+        )
+
+    @override
+    @classmethod
+    def _select_answers(
+        cls, y: MagohDataset, ids: set[InterventionId]
+    ) -> dict[InterventionId, RiassuntoOutputData]:
+        result = {}
+        for t in y.get_answers(ids):
+            if t.university__Descrizione is not None:  # Skip if no ground truth
+                descrizione = t.university__Descrizione
+                result[InterventionId(t.id)] = RiassuntoOutputData(
+                    riassunto=descrizione,
+                )
+        return result
+
+    ##############################################################################
+    @classmethod
+    def _similarity(cls, a: str, b: str) -> float:
+        """Compute semantic cosine similarity between two strings."""
+        if not a or not b:
+            return 0.0
+
+        emb1 = cls._model.encode(a, convert_to_tensor=True)
+        emb2 = cls._model.encode(b, convert_to_tensor=True)
+
+        return util.cos_sim(emb1, emb2).item()
