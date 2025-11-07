@@ -14,3 +14,6 @@ class ResultSchema(pa.DataFrameModel):
         pa.Field()
     )  # TODO: convert it into categories
     metric_value: Series[float] = pa.Field()
+    confidence: Series[float] = pa.Field(nullable=True)
+    # # per-field confidences (dict mapping sub-field -> float), nullable
+    # field_confidences: Series[pa.Object] = pa.Field(nullable=True)

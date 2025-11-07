@@ -142,6 +142,20 @@ class MagohDataExtractor(
                                         "id": ex.get("id"),
                                         "field_name": field,
                                         "predicted_value": pred.get(field),
+                                        "confidence": (
+                                            pred.get("_confidence")
+                                            if isinstance(pred, (dict,))
+                                            else pred.get("_confidence")
+                                            if hasattr(pred, "get")
+                                            else None
+                                        ),
+                                        # "field_confidences": (
+                                        #     pred.get("_field_confidences")
+                                        #     if isinstance(pred, (dict,))
+                                        #     else pred.get("_field_confidences")
+                                        #     if hasattr(pred, "get")
+                                        #     else None
+                                        # ),
                                         "expected_value": ex.get(field),
                                         "evaluation_method": "not specified yet",  # TODO:
                                         "metric_value": float(metric_value),

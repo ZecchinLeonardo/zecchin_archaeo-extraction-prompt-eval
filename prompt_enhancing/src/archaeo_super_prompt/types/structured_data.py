@@ -34,6 +34,7 @@ structuredDataSchema = pa.DataFrameSchema(
         "university.OGD": pa.Column(str, nullable=True),
         "university.OGM": pa.Column(str, nullable=True),
         "university.Profondità falda": _negativeFloatColumn(),
+        "university.Descrizione": pa.Column(str, nullable=True),
         "check.Preistoria": pa.Column(bool),
         "check.Età Protostorica": pa.Column(bool),
         "check.Età Etrusca": pa.Column(bool),
@@ -74,6 +75,7 @@ class OutputStructuredDataSchema(pa.DataFrameModel):
     university__OGD: Optional[Series[str]] = pa.Field(nullable=True)  # noqa: UP045
     university__OGM: Optional[Series[str]] = pa.Field(nullable=True)  # noqa: UP045
     university__Profondità_falda: Optional[Series[pd.Float64Dtype]] = pa.Field(nullable=True)  # noqa: UP045
+    university__Descrizione: Optional[Series[str]] = pa.Field(nullable=True)  # noqa: UP045
     building__Istituzione: Optional[Series[str]] = pa.Field(nullable=True)  # noqa: UP045
     building__Funzionario_competente: Optional[Series[str]] = pa.Field(nullable=True)  # noqa: UP045
     building__Tipo_di_documento: Optional[Series[str]] = pa.Field(nullable=True)  # noqa: UP045
@@ -111,6 +113,7 @@ class DatasetAnswerSchema(NamedTuple):
     university__OGD: str | None
     university__OGM: str | None
     university__Profondità_falda: float | None
+    university__Descrizione: str | None
     building__Istituzione: str | None
     building__Funzionario_competente: str | None
     building__Tipo_di_documento: str | None

@@ -25,6 +25,76 @@ from . import types as extract_input_type
 from ..types.detailed_evaluator import DetailedEvaluatorMixin
 
 from . import language_model as lm_provider_mod
+from .lm_vllm_client import call_vllm_generate, compute_field_confidences
+
+
+def _wrap_model_with_confidence(model):
+    """Return a callable wrapper around a dspy model that attaches
+    `_confidence` and `_field_confidences` to the prediction (best-effort).
+
+    The wrapper calls the underlying model, inspects the returned
+    prediction (expected to be dict-like or dspy.Prediction), and tries to
+    compute token-logprob-based confidences by calling vllm on a simple
+    prompt built from the input kwargs. Failures are swallowed so behavior
+    remains robust when vllm is unavailable.
+    """
+
+    class Wrapper:
+        def __init__(self, inner):
+            # store inner without triggering __setattr__ delegation
+            object.__setattr__(self, "_inner", inner)
+
+        def __call__(self, *args, **kwargs):
+            pred = self._inner(*args, **kwargs)
+            # compute a best-effort prompt from kwargs and args
+            try:
+                prompt_text = ""
+                if kwargs:
+                    prompt_text = " ".join([str(v) for v in kwargs.values() if v is not None])
+                elif args:
+                    prompt_text = " ".join([str(a) for a in args if a is not None])
+
+                # normalize prediction to dict
+                pred_dict = pred.toDict() if hasattr(pred, "toDict") else dict(pred)
+
+                parsed_fields = {
+                    k: "" if v is None else str(v)
+                    for k, v in pred_dict.items()
+                    if not str(k).startswith("_")
+                }
+
+                resp = call_vllm_generate(prompt_text, max_tokens=256, temperature=0.0, logprobs=True)
+                overall_conf, per_field_conf = compute_field_confidences(
+                    full_text=resp.get("text", ""),
+                    tokens=resp.get("tokens", []),
+                    token_logprobs=resp.get("token_logprobs", []),
+                    parsed_fields=parsed_fields,
+                    fallback_to_global=True,
+                )
+                try:
+                    pred["_confidence"] = float(overall_conf)
+                    pred["_field_confidences"] = {k: float(v) for k, v in per_field_conf.items()}
+                except Exception:
+                    pass
+            except Exception:
+                try:
+                    pred["_confidence"] = None
+                except Exception:
+                    pass
+            return pred
+
+        def __getattr__(self, name):
+            # Delegate attribute access to the inner model
+            return getattr(self._inner, name)
+
+        def __setattr__(self, name, value):
+            # Keep _inner on the wrapper; delegate all other attributes
+            if name == "_inner":
+                object.__setattr__(self, name, value)
+            else:
+                setattr(self._inner, name, value)
+
+    return Wrapper(model)
 
 
 EvalDetailedResult = list[tuple[dspy.Example, dspy.Prediction, float]]
@@ -203,31 +273,75 @@ generically from dictionnary expansion
         """
         kwargs = kwargs  # unused
         if skip_optimization:
-            self.prompt_model_ = self._base_dspy_module
+            self.prompt_model_ = _wrap_model_with_confidence(self._base_dspy_module)
             return self
         if compiled_dspy_model_path is not None:
             self._base_dspy_module.load(compiled_dspy_model_path)
-            self.prompt_model_ = self._base_dspy_module
+            self.prompt_model_ = _wrap_model_with_confidence(self._base_dspy_module)
             return self
         with dspy.settings.context(lm=self._infer_language_model()):
             tp = dspy.MIPROv2(
                 metric=self._dspy_metric, auto="medium", num_threads=24
             )
-            self.prompt_model_ = tp.compile(
+            self.prompt_model_ = _wrap_model_with_confidence(
+                tp.compile(
                 self._base_dspy_module,
                 trainset=list(self._compute_devset(X, y)[1]),
                 max_bootstrapped_demos=2,
                 max_labeled_demos=2,
                 requires_permission_to_run=False,
             )
+            )
             return self
 
     def _typed_forward(self, inpt: DSPyInput) -> DSPyOutput:
         """Carry out a type safe forward on the dspy module."""
-        return prediction_to_output(
-            self._output_constructor,
-            cast(dspy.Prediction, self.prompt_model_(**inpt.model_dump())),
-        )
+        # Call the dspy model and keep the raw prediction so we can attach
+        # best-effort confidence metadata computed from vllm token logprobs.
+        raw_pred = cast(dspy.Prediction, self.prompt_model_(**inpt.model_dump()))
+
+        # Best-effort: compute confidence from vllm token logprobs if the
+        # prediction does not already contain `_confidence` (the prompt model
+        # may itself be wrapped to provide this metadata).
+        try:
+            # build a prompt-ish text from the input model fields
+            inp_map = inpt.model_dump()
+            prompt_text = " ".join([str(v) for v in inp_map.values() if v is not None])
+            pred_dict = raw_pred.toDict() if hasattr(raw_pred, "toDict") else dict(raw_pred)
+            if "_confidence" not in pred_dict or pred_dict.get("_confidence") is None:
+                resp = call_vllm_generate(prompt_text, max_tokens=256, temperature=0.0, logprobs=True)
+
+                # Prepare parsed_fields mapping from prediction keys to string values,
+                # excluding private/metadata keys that start with '_'
+                parsed_fields = {
+                    k: "" if v is None else str(v)
+                    for k, v in pred_dict.items()
+                    if not str(k).startswith("_")
+                }
+
+                overall_conf, per_field_conf = compute_field_confidences(
+                    full_text=resp.get("text", ""),
+                    tokens=resp.get("tokens", []),
+                    token_logprobs=resp.get("token_logprobs", []),
+                    parsed_fields=parsed_fields,
+                    fallback_to_global=True,
+                )
+
+                # Attach metadata if possible
+                try:
+                    raw_pred["_confidence"] = float(overall_conf)
+                    raw_pred["_field_confidences"] = {k: float(v) for k, v in per_field_conf.items()}
+                except Exception:
+                    # ignore assignment errors
+                    pass
+        except Exception:
+            # If vllm not reachable or any error occurs, do not break the forward
+            try:
+                raw_pred["_confidence"] = None
+            except Exception:
+                pass
+
+        return prediction_to_output(self._output_constructor, raw_pred)
 
     @override
     def predict(
@@ -385,10 +499,19 @@ generically from dictionnary expansion
                             "metric_value": score,
                             # TODO: specify the evaluation method
                             "evaluation_method": "not specified yet",
+                            # Filter out metadata keys (private keys starting with '_') from
+                            # predicted values so we don't try to lookup them in the example
+                            # dict (which causes KeyError).
                             "expected_value": {
-                                k: ex_dict[k] for k in pred_dict
+                                k: ex_dict.get(k) for k in pred_dict.keys() if not str(k).startswith("_")
                             },
-                            "predicted_value": pred_dict,
+                            "predicted_value": {
+                                k: pred_dict[k] for k in pred_dict.keys() if not str(k).startswith("_")
+                            },
+                            # Best-effort: expose overall confidence and per-field confidences
+                            # if available in the prediction under the reserved keys.
+                            "confidence": pred_dict.get("_confidence") if "_confidence" in pred_dict else None,
+                            # "field_confidences": pred_dict.get("_field_confidences") if "_field_confidences" in pred_dict else None,
                         }
                         for id_, (ex_dict, pred_dict, score) in zip(
                             kept_ids,
