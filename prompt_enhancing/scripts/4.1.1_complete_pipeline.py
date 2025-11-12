@@ -338,6 +338,28 @@ def _to_dspy_input_patched(self, x):
 
 
 class LoadScans(BaseEstimator, TransformerMixin):
+    # def __init__(self, cache_csv: str | Path):
+    #     self.cache_csv = Path(cache_csv)
+    #     self._df = None
+    # def fit(self, X, y=None):
+    #     df = pd.read_csv(self.cache_csv)
+    #     if "id" in df.columns:
+    #         df["id"] = df["id"].astype("int64").astype(int)
+    #     if "chunk_type" in df.columns:
+    #         df["chunk_type"] = df["chunk_type"].apply(_as_str_list)
+    #     if "chunk_page_position" in df.columns:
+    #         df["chunk_page_position"] = df["chunk_page_position"].apply(_as_int_list)
+    #     if "identified_thesaurus" in df.columns:
+    #         df["identified_thesaurus"] = df["identified_thesaurus"].apply(_as_int_list)
+    #     if "named_entities" in df.columns:
+    #         df["named_entities"] = df["named_entities"].apply(_as_list)
+    #     self._df = df
+    #     return self
+    # def transform(self, X):
+    #     X = X.copy()
+    #     if "id" in X.columns:
+    #         X["id"] = X["id"].astype(int)
+    #     return X.merge(self._df, on="id", how="inner")
     def __init__(self, cache_csv: str | Path):
         self.cache_csv = Path(cache_csv)
         self._df = None
@@ -353,6 +375,12 @@ class LoadScans(BaseEstimator, TransformerMixin):
             df["identified_thesaurus"] = df["identified_thesaurus"].apply(_as_int_list)
         if "named_entities" in df.columns:
             df["named_entities"] = df["named_entities"].apply(_as_list)
+
+        # Ensure embedding and text columns are non-null strings to satisfy schema checks
+        for col in ("chunk_embedding_content", "chunk_content", "filename"):
+            if col in df.columns:
+                df[col] = df[col].fillna("").astype(str)
+
         self._df = df
         return self
     def transform(self, X):
@@ -363,6 +391,16 @@ class LoadScans(BaseEstimator, TransformerMixin):
     
 # load scans CSV with a robust loader (if you don't already have one)
 def load_scans_safe(path):
+    # df = pd.read_csv(path, encoding='utf-8-sig')
+    # # drop leading saved index column if it looks numeric
+    # if df.columns[0].startswith("Unnamed") or df.columns[0] == "":
+    #     sample = df.iloc[:,0].dropna().astype(str).head(20).tolist()
+    #     if sample and all(s.strip().lstrip("-").isdigit() for s in sample):
+    #         df = df.iloc[:,1:].copy()
+    # df.columns = df.columns.str.strip()
+    # if "id" in df.columns:
+    #     df["id"] = pd.to_numeric(df["id"].astype(str).str.strip(), errors="coerce").astype("Int64")
+    # return df
     df = pd.read_csv(path, encoding='utf-8-sig')
     # drop leading saved index column if it looks numeric
     if df.columns[0].startswith("Unnamed") or df.columns[0] == "":
@@ -372,6 +410,18 @@ def load_scans_safe(path):
     df.columns = df.columns.str.strip()
     if "id" in df.columns:
         df["id"] = pd.to_numeric(df["id"].astype(str).str.strip(), errors="coerce").astype("Int64")
+
+    # sanitize text/embedding columns so they are not NaN
+    for col in ("chunk_embedding_content", "chunk_content", "filename"):
+        if col in df.columns:
+            df[col] = df[col].fillna("").astype(str)
+
+    # also ensure chunk_type / chunk_page_position columns are sane
+    if "chunk_type" in df.columns:
+        df["chunk_type"] = df["chunk_type"].apply(_as_str_list)
+    if "chunk_page_position" in df.columns:
+        df["chunk_page_position"] = df["chunk_page_position"].apply(_as_int_list)
+
     return df
 
 

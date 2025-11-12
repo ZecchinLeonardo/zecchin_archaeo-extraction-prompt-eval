@@ -5,18 +5,49 @@ from typing import cast
 
 import requests
 from tqdm import tqdm
+import math
 
 from ...config.env import getenv_or_throw
 from .types import CompleteEntity, NerOutput, NerXXLEntities
 
 
-def _fetch_entities(ner_model_hosturl: str, chunks: list[str]) -> list[list[NerOutput]]:
-    if not chunks:
-        return []
+def _fetch_entities(ner_model_hosturl: str, chunks: list[str]):# -> list[list[NerOutput]]:
+    # if not chunks:
+    #     return []
+    # print("Fetching the transformers model")
+    # payload = {"chunks": chunks}
+    # response = requests.post(f"{ner_model_hosturl}/ner", json=payload,
+    #                          timeout=60)
+    # response.raise_for_status()
+    # entities = list(
+    #     map(
+    #         lambda lst: list(map(lambda dct: NerOutput(**dct), lst)),
+    #         cast(list[list[dict]], response.json()),
+    #     )
+    # )
+    # return entities
     print("Fetching the transformers model")
-    payload = {"chunks": chunks}
-    response = requests.post(f"{ner_model_hosturl}/ner", json=payload,
-                             timeout=60)
+
+    def _clean_value(v):
+        if v is None:
+            return ""
+        try:
+            if isinstance(v, float) and math.isnan(v):
+                return ""
+        except Exception:
+            pass
+        # fallback: convert non-str to str (handles pd.NA, lists, dicts, etc.)
+        if not isinstance(v, str):
+            try:
+                return str(v)
+            except Exception:
+                return ""
+        return v
+
+    sanitized_chunks = [_clean_value(c) for c in chunks]
+    payload = {"chunks": sanitized_chunks}
+
+    response = requests.post(f"{ner_model_hosturl}/ner", json=payload, timeout=60)
     response.raise_for_status()
     entities = list(
         map(

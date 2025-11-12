@@ -4,6 +4,7 @@ from collections.abc import Iterator
 
 from fuzzysearch import find_near_matches, Match
 from thefuzz import fuzz
+import math
 
 from .types import CompleteEntity, ThesaurusProvider
 
@@ -78,9 +79,24 @@ def extract_from_content(
     )
 
 
-def normalize_text(txt: str) -> str:
-    """Apply simple normalization to make the comparison easier."""
-    return txt.lower()
+def normalize_text(txt: str):# -> str:
+    # """Apply simple normalization to make the comparison easier."""
+    # return txt.lower()
+    """Normalize text for fuzzy matching; robust to NaN/None and non-string inputs."""
+    if txt is None:
+        return ""
+    # numpy.nan and float('nan') are floats that satisfy math.isnan
+    try:
+        if isinstance(txt, float) and math.isnan(txt):
+            return ""
+    except Exception:
+        pass
+    if not isinstance(txt, str):
+        try:
+            txt = str(txt)
+        except Exception:
+            return ""
+    return txt.strip().lower()
 
 
 def extract_wanted_entities(
