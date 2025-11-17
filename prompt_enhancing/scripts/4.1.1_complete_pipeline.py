@@ -50,6 +50,7 @@ import re
 import datetime
 import calendar
 from pathlib import Path
+import traceback
 
 from sklearn import set_config
 from sklearn.base import BaseEstimator, TransformerMixin
@@ -96,6 +97,11 @@ from archaeo_super_prompt.modeling.struct_extract.extractors.luogo import LuogoE
 from archaeo_super_prompt.modeling.struct_extract.extractors.year import YearExtractor, DataInterventoInputData  # AnnoInterventoInputData #, Luogo
 
 from archaeo_super_prompt.modeling.struct_extract.extractors.direzione_funzionario import DirezioneFunzionarioExtractor, DirezioneFunzionarioInputData
+
+# RITROVAMENTI Libraries from extractors
+from archaeo_super_prompt.modeling.struct_extract.extractors.ritrovamenti import RitrovamentoExtractor, RitrovamentiInputData, Ritrovamenti
+# from archaeo_super_prompt.dataset.thesauri import ritrovamenti  as rtr
+from archaeo_super_prompt.dataset.thesauri import load_ritrovamento
 
 # change working directory similar to the notebook
 os.chdir(os.path.join(os.getcwd(),  '..', 'src'))
@@ -453,16 +459,27 @@ shutil.rmtree(get_model_store_dir(), ignore_errors=True)
 
 # wipe joblib / skdag caches inside project cache dirs
 # from archaeo_super_prompt.utils.cache import get_cache_dir_for
-for scope in ["external","internal","interim","miscel","thesaurus","raw"]:
-    try:
-        base = get_cache_dir_for(scope)
-    except Exception:
-        continue
-    if not base.exists():
-        continue
-    for p in base.rglob("*"):
-        if p.is_dir() and any(k in p.name for k in ("joblib","skdag","__joblib_cache__")):
-            shutil.rmtree(p, ignore_errors=True)
+for scope in ["external", "internal", "interim", "miscel", "thesaurus", "raw"]:
+    # candidate subparts to probe; empty string requests the scope root if supported
+    for subpart in ["", "pdfs", "miscel", "joblib", "__joblib_cache__", "skdag"]:
+        try:
+            base = get_cache_dir_for(scope, subpart)
+        except Exception as e:
+            # continue trying other subparts (log first failure for scope root)
+            # print(f"get_cache_dir_for({scope!r}, {subpart!r}) raised: {e}")
+            continue
+        base = Path(base)
+        if not base.exists():
+            continue
+        for p in base.rglob("*"):
+            try:
+                if p.is_dir() and any(k in str(p).lower() for k in ("joblib", "skdag", "__joblib_cache__")):
+                    print("Removing cache dir:", p)
+                    shutil.rmtree(p, ignore_errors=False)
+            except PermissionError:
+                print("Permission denied removing", p)
+            except Exception as e:
+                print(f"Failed removing {p}: {e}")
 
 fresh_dir = pathlib.Path.cwd() / f"mlruns_fresh_{uuid.uuid4().hex[:6]}"
 fresh_dir.mkdir(parents=True, exist_ok=True)
@@ -611,6 +628,90 @@ def _direzione_funzionario_to_dspy_input(self, x):
         fragmenti_relazione=getattr(x, "merged_chunks", ""),
     )
 DirezioneFunzionarioExtractor._to_dspy_input = _direzione_funzionario_to_dspy_input
+
+# RITROVAMENTI functions
+
+def _ritrovamenti_to_dspy_input(self, x):
+    # Gather candidate positions (may come from identified_thesaurus or
+    # possibly_ritrovamenti depending on pipeline wiring).
+    pos_list = getattr(x, "identified_thesaurus", None) or getattr(
+        x, "possibili_ritrovamenti", None
+    ) or []
+    if not isinstance(pos_list, list):
+        pos_list = [pos_list]
+
+    # Normalize to integer positions where possible, ignore non-numeric entries
+    normalized_positions: list[int] = []
+    for v in pos_list:
+        try:
+            normalized_positions.append(int(v))
+        except Exception:
+            # skip values that are not convertible to int
+            continue
+
+    # Try to find a thesaurus attached to the extractor instance; fallback to
+    # loading the ritrovamenti thesaurus if not present.
+    thes = getattr(self, "_thesaurus", None)
+    if thes is None:
+        try:
+            
+
+            thes = load_ritrovamento()
+        except Exception:
+            thes = []
+
+    # Build candidate Ritrovamenti objects by indexing into the thesaurus.
+    candidates: list = []
+    if hasattr(thes, "iloc"):
+        # pandas DataFrame/Series-like
+        for p in normalized_positions:
+            if 0 <= p < len(thes):
+                row = thes.iloc[p]
+                # prefer possible column names for the label
+                label = None
+                for col in ("iii_livello", "iii_lev", "label", "name"):
+                    try:
+                        if col in row.index:
+                            label = row[col]
+                            break
+                    except Exception:
+                        # row may be a scalar/Series without index
+                        pass
+                if label is None:
+                    # try first element
+                    try:
+                        label = row.iloc[0]
+                    except Exception:
+                        label = str(row)
+                candidates.append(Ritrovamenti(iii_livello=str(label)))
+    else:
+        # assume list/iterable of tuples or strings
+        for p in normalized_positions:
+            try:
+                item = thes[p]
+            except Exception:
+                continue
+            label = None
+            # if tuple-like, take first element as label
+            if isinstance(item, (list, tuple)) and len(item) > 0:
+                label = item[0]
+            elif isinstance(item, dict):
+                # try common keys
+                for key in ("iii_livello", "iii_lev", "label", "name"):
+                    if key in item:
+                        label = item[key]
+                        break
+            else:
+                label = item
+            candidates.append(Ritrovamenti(iii_livello=str(label)))
+
+    return RitrovamentiInputData(
+        fragmenti_relazione=getattr(x, "merged_chunks", ""),
+        possibili_ritrovamenti=candidates,
+    )
+
+
+RitrovamentoExtractor._to_dspy_input = _ritrovamenti_to_dspy_input
 
 
 with mlflow.start_run():
