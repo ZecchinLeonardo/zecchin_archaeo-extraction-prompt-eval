@@ -485,45 +485,72 @@ generically from dictionnary expansion
                 tuple[float, EvalDetailedResult],
                 evaluator(self.prompt_model_),
             )
-            return score, ResultSchema.validate(
-                pd.DataFrame(
-                    [
-                        {
-                            "id": id_,
-                            # "field_name": self.field_to_be_extracted(),
-                            "field_name": (
-                                ",".join(self.field_to_be_extracted())
-                                if isinstance(self.field_to_be_extracted(), tuple)
-                                else self.field_to_be_extracted()
-                            ),
-                            "metric_value": score,
-                            # TODO: specify the evaluation method
-                            "evaluation_method": "not specified yet",
-                            # Filter out metadata keys (private keys starting with '_') from
-                            # predicted values so we don't try to lookup them in the example
-                            # dict (which causes KeyError).
-                            "expected_value": {
-                                k: ex_dict.get(k) for k in pred_dict.keys() if not str(k).startswith("_")
-                            },
-                            "predicted_value": {
-                                k: pred_dict[k] for k in pred_dict.keys() if not str(k).startswith("_")
-                            },
-                            # Best-effort: expose overall confidence and per-field confidences
-                            # if available in the prediction under the reserved keys.
-                            "confidence": pred_dict.get("_confidence") if "_confidence" in pred_dict else None,
-                            # "field_confidences": pred_dict.get("_field_confidences") if "_field_confidences" in pred_dict else None,
-                        }
-                        for id_, (ex_dict, pred_dict, score) in zip(
-                            kept_ids,
-                            (
-                                (ex.toDict(), pred.toDict(), score)
-                                for ex, pred, score in score_table
-                            ),
-                        )
-                    ]
-                ),
-                lazy=True,
-            )
+            # return score, ResultSchema.validate(
+            #     pd.DataFrame(
+            #         [
+            #             {
+            #                 "id": id_,
+            #                 # "field_name": self.field_to_be_extracted(),
+            #                 "field_name": (
+            #                     ",".join(self.field_to_be_extracted())
+            #                     if isinstance(self.field_to_be_extracted(), tuple)
+            #                     else self.field_to_be_extracted()
+            #                 ),
+            #                 "metric_value": score,
+            #                 # TODO: specify the evaluation method
+            #                 "evaluation_method": "not specified yet",
+            #                 # Filter out metadata keys (private keys starting with '_') from
+            #                 # predicted values so we don't try to lookup them in the example
+            #                 # dict (which causes KeyError).
+            #                 "expected_value": {
+            #                     k: ex_dict.get(k) for k in pred_dict.keys() if not str(k).startswith("_")
+            #                 },
+            #                 "predicted_value": {
+            #                     k: pred_dict[k] for k in pred_dict.keys() if not str(k).startswith("_")
+            #                 },
+            #                 # Best-effort: expose overall confidence and per-field confidences
+            #                 # if available in the prediction under the reserved keys.
+            #                 "confidence": pred_dict.get("_confidence") if "_confidence" in pred_dict else None,
+            #                 # "field_confidences": pred_dict.get("_field_confidences") if "_field_confidences" in pred_dict else None,
+            #             }
+            #             for id_, (ex_dict, pred_dict, score) in zip(
+            #                 kept_ids,
+            #                 (
+            #                     (ex.toDict(), pred.toDict(), score)
+            #                     for ex, pred, score in score_table
+            #                 ),
+            #             )
+            #         ]
+            #     ),
+            #     lazy=True,
+            # )
+            rows = [
+                {
+                    "id": id_,
+                    "field_name": (
+                        ",".join(self.field_to_be_extracted())
+                        if isinstance(self.field_to_be_extracted(), tuple)
+                        else self.field_to_be_extracted()
+                    ),
+                    "metric_value": score_value,
+                    "evaluation_method": "not specified yet",
+                    "expected_value": {
+                        k: ex_dict.get(k) for k in pred_dict.keys() if not str(k).startswith("_")
+                    },
+                    "predicted_value": {
+                        k: pred_dict[k] for k in pred_dict.keys() if not str(k).startswith("_")
+                    },
+                    "confidence": pred_dict.get("_confidence") if "_confidence" in pred_dict else None,
+                }
+                for id_, (ex_dict, pred_dict, score_value) in zip(
+                    kept_ids,
+                    ((ex.toDict(), pred.toDict(), score_) for ex, pred, score_ in score_table),
+                )
+            ]
+            df_results = pd.DataFrame(rows)
+            if "metric_value" in df_results.columns:
+                df_results["metric_value"] = df_results["metric_value"].astype("float64")
+            return score, ResultSchema.validate(df_results, lazy=True)
 
     @staticmethod
     @abstractmethod
