@@ -225,18 +225,22 @@ class TipoExtractor(
  
         result = {}
         for t in y.get_answers(ids):
-            if t.building__Tipo_di_documento is not None:  # Skip if no ground truth
-                tipo_documento = t.building__Tipo_di_documento
+            # if t.building__Tipo_di_documento is not None:  # Skip if no ground truth
+            tipo_documento = t.building__Tipo_di_documento
 
-            if t.university__Tipo_di_intervento is not None:  # Skip if no ground truth
-                tipo_intervento = t.university__Tipo_di_intervento
+            # if t.university__Tipo_di_intervento is not None:  # Skip if no ground truth
+            tipo_intervento = t.university__Tipo_di_intervento
+
+            if tipo_documento is None or tipo_intervento is None:
+                # skip records without full ground truth
+                continue
 
                 # print(f"Nome: {nome_base}, Cognome: {cognome_base}, Iniziale: {iniziale_base}")  # Print nome, cognome, and iniziale
 
-                result[InterventionId(t.id)] = TipoOutputData(
-                    TipoDocumento=tipo_documento,
-                    TipoIntervento=tipo_intervento,
-                )
+            result[InterventionId(t.id)] = TipoOutputData(
+                TipoDocumento=tipo_documento,
+                TipoIntervento=tipo_intervento,
+            )
         return result
     
 ##############################################################################

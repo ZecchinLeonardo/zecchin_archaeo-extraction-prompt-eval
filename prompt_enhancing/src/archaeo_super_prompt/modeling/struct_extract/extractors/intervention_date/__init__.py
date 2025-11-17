@@ -40,7 +40,9 @@ from .type_models import ITALIAN_MONTHS, Data, Precision, Precisione
 
 
 class StimareDataDellIntervento(dspy.Signature):
-    """Degli framenti datti di relazione archeologiche, stima il momento di partenza dell'indagine in una finestra de due date, con un precisione al giorno, al mese o all'anno più vicino. Se non ci sono molte informazione, ritorna almeno una finestra prima di la data di archiviazone datta. La data minima può essere lasciata sconosciuta.
+    """Dai framenti di relazione archeologiche, stima il momento di partenza dell'indagine in una finestra de due date, con un precisione al giorno, al mese o all'anno più vicino. 
+    Se non ci sono informazioni, restituisci almeno una finestra precedente alla data di archiviazone fornita. 
+    La data minima può essere lasciata sconosciuta.
 
     1. Innanzitutto, determina se c'è una data minima e la precisione con cui puoi approssimare la finestra.
     2. Quindi, determina la finestra, inserendo valori predefiniti (ma ben tipizzati) nei campi non coperti dalla precisione.

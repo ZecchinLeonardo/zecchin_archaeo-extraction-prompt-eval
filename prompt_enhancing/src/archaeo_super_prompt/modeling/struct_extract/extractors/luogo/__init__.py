@@ -166,18 +166,23 @@ class LuogoExtractor(
         TRESHOLD = 0.95
 
         # # Compute similarity ratio for each field (between 0 and 1)
+        
+        # # with DIFFLIB
         # indirizzo_sim = difflib.SequenceMatcher(None, str(predicted.indirizzo), str(expected.indirizzo)).ratio()
         # localita_sim = difflib.SequenceMatcher(None, str(predicted.localita), str(expected.localita)).ratio()
         # ubicazione_sim = difflib.SequenceMatcher(None, str(predicted.ubicazione), str(expected.ubicazione)).ratio()
 
+        # # with rapidfuzz - token_sort_ratio
         # indirizzo_sim = fuzz.token_sort_ratio(str(predicted.indirizzo), str(expected.indirizzo)) /100
         # localita_sim = fuzz.token_sort_ratio(str(predicted.localita), str(expected.localita)) / 100
         # ubicazione_sim = fuzz.token_sort_ratio(str(predicted.ubicazione), str(expected.ubicazione)) / 100
 
+        # # with rapidfuzz - token_set_ratio
         indirizzo_sim = fuzz.token_set_ratio(str(predicted.indirizzo), str(expected.indirizzo)) /100
         localita_sim = fuzz.token_set_ratio(str(predicted.localita), str(expected.localita)) / 100
         ubicazione_sim = fuzz.token_set_ratio(str(predicted.ubicazione), str(expected.ubicazione)) / 100
 
+        # # with sentence-transformers
         # indirizzo_sim = cls._similarity(str(predicted.indirizzo), str(expected.indirizzo))
         # localita_sim  = cls._similarity(str(predicted.localita), str(expected.localita))
         # ubicazione_sim = cls._similarity(str(predicted.ubicazione), str(expected.ubicazione))

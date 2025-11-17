@@ -118,15 +118,64 @@ same group of entity types
     The empty set means that the chunk contains entities that match the group
     of entities of interests but these entities does not match the thesaurus.
     """
-    load_and_normalized_thesauri = [
-        (thesaurus_id, normalize_text(thesaurus_value))
-        for thesaurus_id, thesaurus_value in thesauri_factory()
-    ]
+    # Robustly handle different shapes returned by thesauri_factory():
+    # - iterable of (id, value)
+    # - iterable of dicts
+    # - pandas DataFrame/Series rows (which may be tuples, Series, or dict-like)
+    raw_thesauri = list(thesauri_factory())
+    load_and_normalized_thesauri: list[tuple[int | str, str]] = []
+    for item in raw_thesauri:
+        th_id = None
+        th_val = None
+        # Common: tuple/list with at least two elements
+        if isinstance(item, (tuple, list)):
+            if len(item) >= 2:
+                th_id, th_val = item[0], item[1]
+            else:
+                # malformed entry, skip
+                continue
+        elif isinstance(item, dict):
+            # try to pick a sensible id and value from the dict
+            # prefer ('id','value') or ('comune_id','nome') patterns
+            for key in ("id", "thesaurus_id", "comune_id"):  # possible id keys
+                if key in item:
+                    th_id = item[key]
+                    break
+            for key in ("value", "nome", "name", "iii_livello", "iii_lev"):
+                if key in item:
+                    th_val = item[key]
+                    break
+            # if still not found, fall back to first item
+            if th_id is None or th_val is None:
+                it = list(item.items())
+                if it:
+                    th_id = it[0][0] if th_id is None else th_id
+                    th_val = it[0][1] if th_val is None else th_val
+        else:
+            # pandas Series/row-like or other object: try sequence then attributes
+            try:
+                # often a pandas row is indexable
+                th_id, th_val = item[0], item[1]
+            except Exception:
+                # try attribute names
+                th_id = getattr(item, "id", getattr(item, "comune_id", None))
+                th_val = getattr(item, "nome", getattr(item, "name", None))
+
+        if th_id is None or th_val is None:
+            # skip malformed entries
+            continue
+
+        # normalize id to int when possible
+        try:
+            norm_id = int(th_id) if (isinstance(th_id, (int, str)) and str(th_id).isdigit()) else th_id
+        except Exception:
+            norm_id = th_id
+
+        load_and_normalized_thesauri.append((norm_id, normalize_text(str(th_val))))
+
     return (
         extract_from_content(
             normalize_text(content), entity_set, load_and_normalized_thesauri
         )
-        for content, entity_set in zip(
-            chunk_contents, complete_entity_sets, strict=True
-        )
+        for content, entity_set in zip(chunk_contents, complete_entity_sets, strict=True)
     )

@@ -85,6 +85,7 @@ class EstimateData(
         self, fragmenti_relazione: str
     ) -> dspy.Prediction:
         """Simple date parsing."""
+        # First run the dspy ChainOfThought to obtain the structured prediction
         predicted_output = cast(
             dspy.Prediction,
             self._estrattore_data(
@@ -94,14 +95,16 @@ class EstimateData(
 
         DATA_UNIDENTIFIED = Data(giorno=1, mese="Gennaio", anno=0)
         pred_data = cast(Data, predicted_output.get("data_intervento", DATA_UNIDENTIFIED))
-        # print(f"Predicted data: {pred_data}, type: {type(pred_data)}")
 
-        return to_prediction(
+        # Build the typed prediction object
+        pred = to_prediction(
             DataInterventoOutputData(
                 data=pred_data,
-                year = pred_data.anno,
+                year=pred_data.anno,
             )
         )
+
+        return pred
 
 
 # -- SKlearn part

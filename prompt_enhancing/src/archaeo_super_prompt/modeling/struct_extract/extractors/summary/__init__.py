@@ -160,7 +160,7 @@ class RiassuntoExtractor(
     ]
 ):
     """Dspy-LLM-based extractor that produces a free-form summary (mapped to university__Descrizione)."""
-    _model = SentenceTransformer("all-MiniLM-L6-v2", device="cuda:4")
+    _model = SentenceTransformer("all-MiniLM-L6-v2")#, device="cuda:4")
 
     def __init__(
         self,

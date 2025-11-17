@@ -17,6 +17,11 @@ from archaeo_super_prompt.types.intervention_id import InterventionId
 from .....types.per_intervention_feature import (
     BasePerInterventionFeatureSchema,
 )
+
+import difflib
+from rapidfuzz import fuzz
+from sentence_transformers import SentenceTransformer, util
+
 from ...field_extractor import FieldExtractor, LLMProvider, to_prediction
 
 
@@ -190,7 +195,12 @@ L'intervento è stato eseguito dal dott. Mario Rossi in data 12/05/2023.""",
     @classmethod
     def _compare_values(cls, predicted, expected):
         TRESHOLD = 0.95
-        score = 0.8 * int(predicted.cognome == expected.cognome) + 0.2 * int(predicted.iniziale == expected.iniziale)
+        # score = 0.8 * int(predicted.cognome == expected.cognome) + 0.2 * int(predicted.iniziale == expected.iniziale)
+        # score = fuzz.token_sort_ratio(predicted.nome_cognome, expected.nome_cognome) / 100
+        score = 0.8 *(fuzz.token_sort_ratio(predicted.cognome, expected.cognome) / 100) + 0.2 * (fuzz.token_sort_ratio(predicted.iniziale, expected.iniziale) / 100)
+
+
+
         return score, TRESHOLD
 
     @override
