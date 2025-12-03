@@ -503,6 +503,7 @@ selected_ids = set(map(int, SCANS_DF["id"].dropna().tolist()))
 ds = MagohDataset(selected_ids)
 print(dir(ds))
 print(ds.intervention_data.columns)
+print(ds.findings.columns)
 
 inputs = ds.files.merge(SCANS_DF[["id"]].drop_duplicates(), on="id", how="inner")
 train_inputs, eval_inputs = inputs.iloc[:10], inputs.iloc[10:]
