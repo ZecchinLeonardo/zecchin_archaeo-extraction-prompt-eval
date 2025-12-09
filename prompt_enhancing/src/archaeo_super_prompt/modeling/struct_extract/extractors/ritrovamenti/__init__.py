@@ -9,7 +9,7 @@ from pandera.typing.pandas import Series
 
 
 from archaeo_super_prompt.dataset.load import MagohDataset
-from archaeo_super_prompt.dataset.thesauri import load_ritrovamento
+from archaeo_super_prompt.dataset.thesauri import load_ritrovamento, load_cronologia
 from archaeo_super_prompt.modeling.struct_extract.types import (
     InputForExtractionWithSuggestedThesauri,
     InputForExtractionWithSuggestedThesauriRowSchema,
@@ -171,10 +171,42 @@ class FindRitrovamento(dspy.Module):
 
         mapped_findings = [_map_to_thesaurus_label(f) for f in findings_list]
 
+        def _map_chronology(text: str) -> str:
+            """Normalize chronology and map to `thesaurus_crono.csv` when possible."""
+            if not text:
+                return ""
+            raw = str(text)
+            n = _norm(raw)
+            try:
+                cr = load_cronologia()
+                # pick a reasonable label column if present
+                col_candidates = [
+                    "name_full",
+                    "name",
+                    "cronologia",
+                    "label",
+                ]
+                col = next((c for c in col_candidates if c in cr.columns), cr.columns[0])
+                cr = cr.assign(_norm=cr[col].fillna("").apply(_norm))
+                mask = cr["_norm"] == n
+                if mask.any():
+                    return str(cr.loc[mask, col].iloc[0])
+                if _rf_process is not None:
+                    choices = cr["_norm"].tolist()
+                    best = _rf_process.extractOne(n, choices, score_cutoff=80)
+                    if best:
+                        matched_norm = best[0]
+                        return str(cr[cr["_norm"] == matched_norm][col].iloc[0])
+            except Exception:
+                pass
+            return raw
+
+        mapped_chronos = [_map_chronology(c) for c in chrono_list]
+
         return to_prediction(
             RitrovamentiOutputData(
                 finding=[cast(str, m) for m in mapped_findings],
-                chronology=[cast(str, c) for c in chrono_list],
+                chronology=[cast(str, c) for c in mapped_chronos],
             )
         )
 
