@@ -280,19 +280,36 @@ generically from dictionnary expansion
             self.prompt_model_ = _wrap_model_with_confidence(self._base_dspy_module)
             return self
         with dspy.settings.context(lm=self._infer_language_model()):
-            tp = dspy.MIPROv2(
-                metric=self._dspy_metric, auto="medium", num_threads=24
-            )
+            # tp = dspy.MIPROv2(
+            #     metric=self._dspy_metric, auto="medium", num_threads=24
+            # )
+            # self.prompt_model_ = _wrap_model_with_confidence(
+            #     tp.compile(
+            #     self._base_dspy_module,
+            #     trainset=list(self._compute_devset(X, y)[1]),
+            #     max_bootstrapped_demos=2,
+            #     max_labeled_demos=2,
+            #     requires_permission_to_run=False,
+            # )
+            # )
+            tp = dspy.MIPROv2(metric=self._dspy_metric, auto="medium", num_threads=24)
+            # compute trainset once and guard against too-small trainset (dspy requires >=2 examples)
+            trainset = list(self._compute_devset(X, y)[1])
+            if len(trainset) < 2:
+                # Not enough examples to optimize: fallback to base module without optimization.
+                warning(
+                    "Not enough examples to optimize DSPy program (need >=2). "
+                    "Falling back to base dspy module (no compile)."
+                )
+                self.prompt_model_ = _wrap_model_with_confidence(self._base_dspy_module)
+                return self
             self.prompt_model_ = _wrap_model_with_confidence(
                 tp.compile(
-                self._base_dspy_module,
-                trainset=list(self._compute_devset(X, y)[1]),
-                max_bootstrapped_demos=2,
-                max_labeled_demos=2,
-                requires_permission_to_run=False,
+                    self._base_dspy_module,
+                    trainset=trainset,
+                )
             )
-            )
-            return self
+        return self
 
     def _typed_forward(self, inpt: DSPyInput) -> DSPyOutput:
         """Carry out a type safe forward on the dspy module."""
