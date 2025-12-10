@@ -10,7 +10,7 @@ from sklearn import set_config
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.pipeline import Pipeline
 
-from pipeline_func import _as_list, _as_int_list, _as_str_list
+from .pipeline_func import _as_list, _as_int_list, _as_str_list
 
 
 class LoadScans(BaseEstimator, TransformerMixin):

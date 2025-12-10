@@ -34,7 +34,7 @@ import ast
 import importlib
 
 from archaeo_super_prompt.dataset import MagohDataset
-from archaeo_super_prompt.utils.pipeline_func import *
+from archaeo_super_prompt.utils.pipeline_func import _comune_to_dspy_input, _esecutore_to_dspy_input, _protocollo_to_dspy_input, _tipo_to_dspy_input, _ogd_to_dspy_input, _luogo_to_dspy_input, _year_to_dspy_input, _direzione_funzionario_to_dspy_input, _ritrovamenti_to_dspy_input
 
 
 app = FastAPI(title="PDF OCR+Extract pipeline")
@@ -66,6 +66,40 @@ from archaeo_super_prompt.utils.load_scans import LoadScans
 from archaeo_super_prompt.utils.pipeline_func import *
 
 
+
+from archaeo_super_prompt.modeling.struct_extract import language_model as lm_provider_mod
+from archaeo_super_prompt.modeling.struct_extract import field_extractor as fe
+
+# INTERVENTION_DATE Libraries from extractors
+from archaeo_super_prompt.modeling.struct_extract.extractors.archiving_date import ArchivingDateProvider, ArchivingDateOutputSchema
+import archaeo_super_prompt.modeling.struct_extract.extractors.intervention_date as ide
+from archaeo_super_prompt.modeling.struct_extract.extractors.intervention_date import InterventionStartExtractor, ITALIAN_MONTHS, Data, DataInterventoInputData
+
+# COMUNE Libraries from extractors
+from archaeo_super_prompt.modeling.struct_extract.extractors.comune import ComuneExtractor, ComuneInputData, Comune
+from archaeo_super_prompt.dataset.thesauri import comune_province as cp
+
+# EXECUTOR Libraries from extractors
+from archaeo_super_prompt.modeling.struct_extract.extractors.esecuzione import EsecutoreExtractor, EsecutoreInputData, Esecuzione
+
+from archaeo_super_prompt.modeling.struct_extract.extractors.protocollo import ProtocolloExtractor, ProtocolloInputData, Protocollo
+
+from archaeo_super_prompt.modeling.struct_extract.extractors.tipo import TipoExtractor, TipoInputData, Tipo
+
+from archaeo_super_prompt.modeling.struct_extract.extractors.ogd import OGDExtractor, OGDInputData, OGD
+
+from archaeo_super_prompt.modeling.struct_extract.extractors.luogo import LuogoExtractor, LuogoInputData, Luogo
+
+from archaeo_super_prompt.modeling.struct_extract.extractors.year import YearExtractor, DataInterventoInputData  # AnnoInterventoInputData #, Luogo
+
+from archaeo_super_prompt.modeling.struct_extract.extractors.direzione_funzionario import DirezioneFunzionarioExtractor, DirezioneFunzionarioInputData
+
+# RITROVAMENTI Libraries from extractors
+from archaeo_super_prompt.modeling.struct_extract.extractors.ritrovamenti import RitrovamentoExtractor, RitrovamentiInputData, Ritrovamenti
+# from archaeo_super_prompt.dataset.thesauri import ritrovamenti  as rtr
+from archaeo_super_prompt.dataset.thesauri import load_ritrovamento
+
+
 # instantiate a discriminator if available (we don't call fit here because
 # we will work with per-request DataFrames; discriminator's _is_italian_score
 # is useful standalone and VLLMItalianDiscriminator will call the vllm server
@@ -80,7 +114,7 @@ vllm_url = os.getenv("VLLM_SERVER_BASE_URL", os.getenv("VLLM_URL", "http://127.0
 _DISC = VLLMItalianDiscriminator(
     cache_csv=Path(tempfile.gettempdir()) / "_dummy_scans_cache.csv",
     italian_threshold=float(os.getenv("ITALIAN_THRESHOLD", "0.7")),
-    max_chunks_check=int(os.getenv("MAX_CHUNKS_CHECK", "3")),
+    # max_chunks_check=int(os.getenv("MAX_CHUNKS_CHECK", "3")),
     vllm_url=vllm_url,
     model=os.getenv("VLLM_MODEL", None),
     timeout=int(os.getenv("VLLM_TIMEOUT", "20")),
@@ -89,7 +123,6 @@ _DISC = VLLMItalianDiscriminator(
 # Job directory for async extraction
 JOB_DIR = Path(tempfile.gettempdir()) / "pdf_pipeline_jobs"
 JOB_DIR.mkdir(parents=True, exist_ok=True)
-
 
 def _clean_value(v):
     # convert pandas/NaN to None and try to parse list-like strings
@@ -399,7 +432,6 @@ async def extract_pdf(file: UploadFile = File(...), run_extraction_script: bool 
 
                         # compute cache CSV full path
                         cache_csv = get_cache_dir_for("interim", "miscel") / cache_csv_name
-
                         # load scans CSV and dataset
                         try:
                             SCANS_DF = pd.read_csv(cache_csv)
@@ -431,9 +463,54 @@ async def extract_pdf(file: UploadFile = File(...), run_extraction_script: bool 
                             scans = load_scans_safe(cache_csv)
                             ds.files["id"] = pd.to_numeric(ds.files["id"].astype(str).str.strip(), errors="coerce").astype("Int64")
                             eval_inputs = ds.files.merge(scans[["id"]].drop_duplicates(), on="id", how="inner")
+
+                            # delete openai in env if present, we have a local model
+                            for k in ("OPENAI_BASE_URL", "OPENAI_API_BASE"):
+                                os.environ.pop(k, None)
+
+                            # should be moved to env
+                            os.environ["VLLM_SERVER_BASE_URL"] = "http://127.0.0.1:8001/v1"
+                            # dspy seems to fall back to openai in case of errors, this is a dummy key
+                            os.environ["OPENAI_API_KEY"] = "sk-local"
+
+                            # lm_provider_mod = importlib.reload(lm_provider_mod)
+                            # fe = importlib.reload(fe)
+
+                            # # replace vision lm with preprocessed scans
+                            # pdf_to_text.VLLM_Preprocessing = lambda **kw: LoadScans(CACHE_CSV)
+
+                            training = importlib.reload(training)
+
+
+                            _base_parts = training.get_training_dag()
+
+                            expected_final_pipeline = infering.build_complete_inference_dag(_base_parts)
+                            expected_final_pipeline
+
+
+                            ComuneExtractor._to_dspy_input = _comune_to_dspy_input
+                            EsecutoreExtractor._to_dspy_input = _esecutore_to_dspy_input
+                            ProtocolloExtractor._to_dspy_input = _protocollo_to_dspy_input
+                            TipoExtractor._to_dspy_input = _tipo_to_dspy_input
+                            OGDExtractor._to_dspy_input = _ogd_to_dspy_input
+                            LuogoExtractor._to_dspy_input = _luogo_to_dspy_input
+                            YearExtractor._to_dspy_input = _year_to_dspy_input
+                            DirezioneFunzionarioExtractor._to_dspy_input = _direzione_funzionario_to_dspy_input
+                            RitrovamentoExtractor._to_dspy_input = _ritrovamenti_to_dspy_input
+
+
+
+
+                            trained_dag_parts = training.train_from_scratch(train_inputs, ds)
+                            per_field_scores, detailed_results = infering.score_dag(trained_dag_parts, eval_inputs, ds)
+    
+                            # Save as CSV
+                            detailed_results.to_csv("detailed_results.csv", index=False)
+
                         except Exception:
                             # fall back to previously computed eval_inputs
-                            pass
+                            raise
+                            # pass
 
                         # run training -> inference similar to the notebook
                         try:

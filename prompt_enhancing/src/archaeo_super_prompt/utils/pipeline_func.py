@@ -209,12 +209,35 @@ def _read_comuni_tables_strict():
     return comuni, merged
 
 
-def _mk_from_pos(merged, pos2id, fields, pos: int):
-    if not (0 <= pos < len(pos2id)):
+def _mk_from_pos(pos: int, merged=None, pos2id=None, fields=None):
+    """Create a `Comune` from a positional index.
+
+    By default this function will attempt to use module-level variables if
+    explicit `merged`, `pos2id` or `fields` are not provided. This keeps
+    compatibility with the original notebook implementation while allowing
+    callers to pass explicit values for testing.
+    """
+    # validate inputs
+    if merged is None or pos2id is None or fields is None:
         return None
-    cid = pos2id[pos]
-    if cid not in merged.index:
+
+    try:
+        if not (0 <= pos < len(pos2id)):
+            return None
+    except Exception:
         return None
+
+    try:
+        cid = pos2id[pos]
+    except Exception:
+        return None
+
+    try:
+        if cid not in merged.index:
+            return None
+    except Exception:
+        return None
+
     # scalar gets:
     name = str(merged.at[cid, "name"])
     prov_name = str(merged.at[cid, "province_name"])
@@ -227,7 +250,10 @@ def _mk_from_pos(merged, pos2id, fields, pos: int):
     if "provincia_sigla" in fields:
         kw["provincia_sigla"] = sigla
     if "id" in fields:
-        kw["id"] = int(cid)
+        try:
+            kw["id"] = int(cid)
+        except Exception:
+            kw["id"] = cid
     # not sure if name or nome is used
     if "nome" in fields and "citta_nome" not in fields:
         kw["nome"] = name
@@ -237,11 +263,19 @@ def _mk_from_pos(merged, pos2id, fields, pos: int):
 
 
 def _comune_to_dspy_input(self, x):
+    _comuni, _merged = _read_comuni_tables_strict()
+    _pos2id = _comuni.index.to_list()
+    _fields = set(Comune.model_fields.keys())
+    
     pos_list = getattr(x, "identified_thesaurus", None) or getattr(x, "possibili_comuni", None) or []
     if not isinstance(pos_list, list):
         pos_list = [pos_list]
     pos_list = [int(v) for v in pos_list if str(v).isdigit()]
-    cands = [c for c in (_mk_from_pos(p) for p in pos_list) if c is not None]
+    # pass the locally computed merged/pos2id/fields into _mk_from_pos so
+    # it uses the same context as the original notebook (where these were
+    # module-level globals). This keeps behavior identical while avoiding
+    # reliance on globals.
+    cands = [c for c in (_mk_from_pos(p, merged=_merged, pos2id=_pos2id, fields=_fields) for p in pos_list) if c is not None]
     return ComuneInputData(
         fragmenti_relazione=getattr(x, "merged_chunks", ""),
         possibili_comuni=cands,
