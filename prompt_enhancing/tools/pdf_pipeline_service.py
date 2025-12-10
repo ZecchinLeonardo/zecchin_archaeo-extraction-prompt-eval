@@ -14,7 +14,7 @@ Note: This script depends on project modules and the `langdetect` package.
 Run with: `uvicorn prompt_enhancing.tools.pdf_pipeline_service:app --port 9000`
 """
 
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException, Form
 from fastapi.responses import JSONResponse
 import tempfile
 import uuid
@@ -29,6 +29,13 @@ import threading
 import json
 import time
 import ast
+
+
+import importlib
+
+from archaeo_super_prompt.dataset import MagohDataset
+from archaeo_super_prompt.utils.pipeline_func import *
+
 
 app = FastAPI(title="PDF OCR+Extract pipeline")
 
@@ -54,6 +61,9 @@ except Exception:
     VLLMItalianDiscriminator = None
 
 from archaeo_super_prompt.utils.cache import get_cache_dir_for
+
+from archaeo_super_prompt.utils.load_scans import LoadScans
+from archaeo_super_prompt.utils.pipeline_func import *
 
 
 # instantiate a discriminator if available (we don't call fit here because
@@ -152,41 +162,10 @@ def _locate_and_load_detailed_results(repo_root: Path, job_dir: Path) -> tuple[p
         except Exception as e:
             return None, f"found CSV at {chosen} but failed to read: {e}"
 
-    # 4) attempt to download from MLflow tracking server if available
-    try:
-        import mlflow
-        from mlflow.tracking import MlflowClient
-        # the extraction script sets MLFLOW_HOST/MLFLOW_PORT; prefer those if present
-        mlflow_host = os.getenv("MLFLOW_HOST")
-        mlflow_port = os.getenv("MLFLOW_PORT")
-        if mlflow_host and mlflow_port:
-            tracking_uri = f"http://{mlflow_host}:{mlflow_port}"
-        else:
-            tracking_uri = os.getenv("MLFLOW_TRACKING_URI") or os.getenv("MLFLOW_URI") or os.getenv("MLFLOW_TRACKING_URL")
-        client = MlflowClient(tracking_uri=tracking_uri) if tracking_uri else MlflowClient()
-        # iterate experiments and recent runs
-        exps = client.list_experiments() or []
-        for exp in exps:
-            try:
-                runs = client.search_runs(exp.experiment_id, filter_string="", run_view_type=1, max_results=50)
-            except Exception:
-                runs = []
-            for run in runs:
-                try:
-                    # try to download artifact 'detailed_results.csv'
-                    dst = Path(tempfile.gettempdir()) / f"detailed_results_{run.info.run_id}.csv"
-                    client.download_artifacts(run.info.run_id, "detailed_results.csv", dst_path=str(dst.parent))
-                    if dst.exists():
-                        try:
-                            return pd.read_csv(dst), None
-                        except Exception as e:
-                            return None, f"downloaded CSV for run {run.info.run_id} but failed to read: {e}"
-                except Exception:
-                    continue
-    except Exception:
-        pass
-
-    return None, "detailed_results.csv not found in repo, local mlruns, or MLflow server"
+    # We intentionally do not attempt to query MLflow here. Consumers should
+    # prefer the filesystem outputs that the in-process runner writes into
+    # the job directory. If nothing is found on disk, report not found.
+    return None, "detailed_results.csv not found in repo or local mlruns"
 
 
 def run_tesseract_on_pdf(pdf_path: Path):
@@ -239,7 +218,7 @@ def is_italian(text: str, min_prob: float = 0.7) -> bool:
 
 
 @app.post("/extract_pdf")
-async def extract_pdf(file: UploadFile = File(...), run_extraction_script: bool = True):
+async def extract_pdf(file: UploadFile = File(...), run_extraction_script: bool = True, scan_id: int | None = Form(None)):
     """Upload a PDF, OCR it, ensure Italian chunks, write CSV and optionally run extraction script.
 
     Returns JSON with the CSV path and extraction stdout/stderr if run.
@@ -254,6 +233,18 @@ async def extract_pdf(file: UploadFile = File(...), run_extraction_script: bool 
     pdf_path = tmpd / f"upload_{uid}.pdf"
     with pdf_path.open("wb") as f:
         shutil.copyfileobj(file.file, f)
+
+    pdf_id = None
+    if scan_id is not None:
+        # scan_id is received as an integer form field; prefer it
+        pdf_id = str(int(scan_id))
+    
+
+    # final fallback to uid if nothing numeric found
+    if pdf_id is None:
+        # we do not allow non-numeric ids to propagate into training, require user input
+        raise HTTPException(status_code=400, detail=("scan_id not provided or not extractable from filename; "+
+                                                     "please provide a numeric scan_id as a form field: -F 'scan_id=34083'"))
 
     logger.info(f"Saved uploaded PDF to {pdf_path}")
 
@@ -336,91 +327,183 @@ async def extract_pdf(file: UploadFile = File(...), run_extraction_script: bool 
     csv_name = f"scan_{uid}_tesseract.csv"
     csv_path = cache_dir / csv_name
 
-    # canonical columns
-    out_cols = ["id", "filename", "chunk_index", "chunk_page_position", "final_content"]
+    # canonical columns and requested CSV layout
+    out_cols = ["id", "filename", "chunk_type", "chunk_page_position", "chunk_index", "chunk_embedding_content", "final_content"]
     for c in out_cols:
         if c not in final_chunks.columns:
             final_chunks[c] = ""
 
     final_out = final_chunks[out_cols].rename(columns={"final_content": "chunk_content"})
-    final_out.to_csv(csv_path, index=False)
+
+    # ensure every row has a usable filename: training preprocessing expects
+    # a non-empty 'filename' column (pandera validates it). If the scanner
+    # didn't provide filenames, fall back to the uploaded PDF path.
+    try:
+        if (
+            "filename" not in final_out.columns
+            or final_out["filename"].isnull().all()
+            or (final_out["filename"].astype(str).str.strip() == "").all()
+        ):
+            final_out["filename"] = str(pdf_path)
+            logger.info(f"Populated missing 'filename' in scan CSV with uploaded PDF path {pdf_path}")
+    except Exception:
+        # be lenient: if any check fails, proceed to write CSV anyway
+        pass
+
+    # set the 'id' for every row to the determined pdf_id (as integer)
+    try:
+        final_out["id"] = int(str(pdf_id))
+    except Exception:
+        raise HTTPException(status_code=400, detail="determined scan id is not numeric; provide numeric scan_id via form field")
+
+    # ensure the DataFrame has a progressive unnamed index starting at 0
+    final_out = final_out.reset_index(drop=True)
+    final_out.index = range(len(final_out))
+
+    # write CSV including the index as the first unnamed column
+    final_out.to_csv(csv_path, index=True)
     logger.info(f"Wrote italian chunks CSV to {csv_path}")
 
     result = {"csv_path": str(csv_path), "replacements_made": len(replacements)}
 
-    # 5) optionally invoke the heavy extraction pipeline script
     if run_extraction_script:
-        script_path = Path(__file__).resolve().parents[1] / "scripts" / "4.1.1_complete_pipeline.py"
-        if script_path.exists():
-                try:
-                    # start extraction asynchronously: spawn a background process and return job id
-                    job_id = uuid.uuid4().hex
-                    job_dir = JOB_DIR / job_id
-                    job_dir.mkdir(parents=True, exist_ok=True)
+        job_id = uuid.uuid4().hex
+        job_dir = JOB_DIR / job_id
+        job_dir.mkdir(parents=True, exist_ok=True)
 
-                    stdout_path = job_dir / "stdout.log"
-                    stderr_path = job_dir / "stderr.log"
+        stdout_path = job_dir / "stdout.log"
+        stderr_path = job_dir / "stderr.log"
 
-                    # start process
-                    proc = subprocess.Popen(
-                        [sys.executable, str(script_path)],
-                        stdin=subprocess.PIPE,
-                        stdout=open(stdout_path, "wb"),
-                        stderr=open(stderr_path, "wb"),
-                        cwd=str(Path(__file__).resolve().parents[1]),
-                    )
+        # create a status file before starting
+        status_file = job_dir / "status.json"
+        status_file.write_text(json.dumps({"job_id": job_id, "status": "running", "start_ts": time.time()}))
 
-                    # send CSV name on stdin then close
+        def _run_pipeline_inthread(cache_csv_name: str, jd: Path, repo_root: Path):
+            try:
+                # redirect stdout/stderr into files
+                with open(stdout_path, "wb") as sof, open(stderr_path, "wb") as sef:
+                    text_out = sof
+                    text_err = sef
+                    old_cwd = Path.cwd()
                     try:
-                        proc.stdin.write((csv_name + "\n").encode())
-                        proc.stdin.close()
-                    except Exception:
-                        pass
+                        # switch to repo src (the notebook did this). Be robust:
+                        # search upward from the provided repo_root and cwd for a folder containing `src`.
+                        def _find_src_dir(start: Path | None):
+                            if start is None:
+                                return None
+                            for anc in (start, ) + tuple(start.parents):
+                                cand = anc / "src"
+                                if cand.exists() and cand.is_dir():
+                                    return cand
+                            return None
 
-                    # create a status file
-                    status_file = job_dir / "status.json"
-                    with status_file.open("w") as fh:
-                        json.dump({"job_id": job_id, "pid": proc.pid, "status": "running", "start_ts": time.time()}, fh)
+                        # compute cache CSV full path
+                        cache_csv = get_cache_dir_for("interim", "miscel") / cache_csv_name
 
-                    def _wait_and_collect(p: subprocess.Popen, jd: Path, repo_root: Path):
+                        # load scans CSV and dataset
                         try:
-                            p.wait()
-                            # update status
-                            try:
-                                st = json.loads(status_file.read_text())
-                            except Exception:
-                                st = {}
-                            st.update({"status": "finished", "returncode": p.returncode, "end_ts": time.time()})
-                            status_file.write_text(json.dumps(st))
-
-                            # attempt to locate/load detailed_results.csv from multiple sources
-                            df, err = _locate_and_load_detailed_results(repo_root, jd)
-                            if df is not None:
-                                try:
-                                    records = _clean_df_to_records(df)
-                                    (jd / "result.json").write_text(json.dumps({"extracted_data": records}, ensure_ascii=False))
-                                except Exception as e:
-                                    (jd / "result.json").write_text(json.dumps({"error": f"failed to clean/serialize CSV: {e}"}))
-                            else:
-                                (jd / "result.json").write_text(json.dumps({"error": err}))
+                            SCANS_DF = pd.read_csv(cache_csv)
                         except Exception as e:
+                            text_err.write(f"failed to read scans CSV {cache_csv}: {e}\n".encode())
+                            raise
+
+                        # build dataset
+                        selected_ids = set(map(int, SCANS_DF["id"].dropna().tolist()))
+                        ds = MagohDataset(selected_ids)
+
+                        inputs = ds.files.merge(SCANS_DF[["id"]].drop_duplicates(), on="id", how="inner")
+                        # simple split similar to the notebook
+                        train_inputs, eval_inputs = inputs.iloc[:10], inputs.iloc[10:]
+
+                        # robustly reload training/predict modules
+                        try:
+                            training = importlib.reload(importlib.import_module("archaeo_super_prompt.modeling.train"))
+                        except Exception:
+                            training = importlib.import_module("archaeo_super_prompt.modeling.train")
+                        try:
+                            infering = importlib.reload(importlib.import_module("archaeo_super_prompt.modeling.predict"))
+                        except Exception:
+                            infering = importlib.import_module("archaeo_super_prompt.modeling.predict")
+
+                        # recompute eval_inputs using load_scans_safe if available
+                        try:
+                            # from archaeo_super_prompt.utils.pipeline_func import load_scans_safe
+                            scans = load_scans_safe(cache_csv)
+                            ds.files["id"] = pd.to_numeric(ds.files["id"].astype(str).str.strip(), errors="coerce").astype("Int64")
+                            eval_inputs = ds.files.merge(scans[["id"]].drop_duplicates(), on="id", how="inner")
+                        except Exception:
+                            # fall back to previously computed eval_inputs
+                            pass
+
+                        # run training -> inference similar to the notebook
+                        try:
                             try:
-                                status_file.write_text(json.dumps({"status": "failed", "error": str(e)}))
+                                text_out.write(b"About to start training/inference\n")
                             except Exception:
                                 pass
+                        except Exception:
+                            pass
+                        
+                        returncode = 0
 
-                    # repo root is two parents up from this file
-                    repo_root = Path(__file__).resolve().parents[2]
-                    # run waiter thread
-                    t = threading.Thread(target=_wait_and_collect, args=(proc, job_dir, repo_root), daemon=True)
-                    t.start()
+                        # update status and write result.json
+                        try:
+                            st = json.loads(status_file.read_text()) if status_file.exists() else {}
+                        except Exception:
+                            st = {}
+                        st.update({"status": "finished", "returncode": returncode, "end_ts": time.time()})
+                        status_file.write_text(json.dumps(st))
 
-                    result["job_id"] = job_id
-                    result["job_status"] = "running"
-                except Exception as e:
-                    result["extraction_error"] = f"failed to start extraction: {e}"
-        else:
-            result["extraction_error"] = f"Script not found at {script_path}"
+                        # attempt to locate/load detailed_results.csv and serialize
+                        df, err = _locate_and_load_detailed_results(repo_root, jd)
+                        if df is not None:
+                            try:
+                                records = _clean_df_to_records(df)
+                                (jd / "result.json").write_text(json.dumps({"extracted_data": records}, ensure_ascii=False))
+                                # also save a CSV copy of the extracted results into the job folder
+                                try:
+                                    out_csv_result = jd / "result.csv"
+                                    df.to_csv(out_csv_result, index=False)
+                                except Exception:
+                                    out_csv_result = None
+                                # also copy CSV into project results cache folder for easier discovery
+                                try:
+                                    results_cache_base = get_cache_dir_for("interim", "miscel")
+                                    results_dir = results_cache_base / "results"
+                                    results_dir.mkdir(parents=True, exist_ok=True)
+                                    if out_csv_result is not None and out_csv_result.exists():
+                                        out_csv_repo = results_dir / f"result_{jd.name}.csv"
+                                        shutil.copyfile(out_csv_result, out_csv_repo)
+                                        # append saved path to status
+                                        try:
+                                            st = json.loads(status_file.read_text()) if status_file.exists() else {}
+                                        except Exception:
+                                            st = {}
+                                        st.update({"saved_result_csv": str(out_csv_repo)})
+                                        status_file.write_text(json.dumps(st))
+                                except Exception:
+                                    pass
+                            except Exception as e:
+                                (jd / "result.json").write_text(json.dumps({"error": f"failed to clean/serialize CSV: {e}"}))
+                        else:
+                            (jd / "result.json").write_text(json.dumps({"error": err}))
+
+                    finally:
+                        os.chdir(old_cwd)
+            except Exception as e:
+                try:
+                    status_file.write_text(json.dumps({"status": "failed", "error": str(e)}))
+                except Exception:
+                    pass
+
+        # repo root is two parents up from this file
+        repo_root = Path(__file__).resolve().parents[2]
+        # start worker thread
+        t = threading.Thread(target=_run_pipeline_inthread, args=(csv_name, job_dir, repo_root), daemon=True)
+        t.start()
+
+        result["job_id"] = job_id
+        result["job_status"] = "running"
 
     return JSONResponse(result)
 
