@@ -68,7 +68,7 @@ class DataInterventoOutputData(pydantic.BaseModel):
     """A predicted year."""
 
     # data: Data  # Use the Data type from type_models.py
-    year: int | 0
+    year: int | None
 
 class EstimateData(
     dspy.Module
