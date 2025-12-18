@@ -67,8 +67,8 @@ class DataInterventoInputData(pydantic.BaseModel):
 class DataInterventoOutputData(pydantic.BaseModel):
     """A predicted year."""
 
-    data: Data  # Use the Data type from type_models.py
-    year: int | None
+    # data: Data  # Use the Data type from type_models.py
+    year: int | 0
 
 class EstimateData(
     dspy.Module
@@ -99,7 +99,7 @@ class EstimateData(
         # Build the typed prediction object
         pred = to_prediction(
             DataInterventoOutputData(
-                data=pred_data,
+                # data=pred_data,
                 year=pred_data.anno,
             )
         )
@@ -147,7 +147,7 @@ class YearExtractor(
 Lo scavo è iniziato il 18 marzo 1985 ed è terminato il 20 marzo.""",
             ),
             DataInterventoOutputData(
-                data=Data(giorno=18, mese="Marzo", anno=1985),
+                # data=Data(giorno=18, mese="Marzo", anno=1985),
                 year=1985,
             ),
         )
@@ -178,8 +178,8 @@ Lo scavo è iniziato il 18 marzo 1985 ed è terminato il 20 marzo.""",
 
 
         return DataInterventoOutputData(
-            data=data_pred,
-            year = data_pred.anno if data_pred else None,
+            # data=data_pred,
+            year = data_pred.anno if data_pred else 0,
             method=method  # Only include this if your schema expects it!
         )
 
@@ -227,8 +227,8 @@ Lo scavo è iniziato il 18 marzo 1985 ed è terminato il 20 marzo.""",
                 # exp_year = cls.extract_year(str(data_intervento))
 
                 result[InterventionId(t.id)] = DataInterventoOutputData(
-                    data=data_obj,
-                    year=data_obj.anno if data_obj else None,
+                    # data=data_obj,
+                    year=data_obj.anno if data_obj else 0,
                 )
     
         return result
