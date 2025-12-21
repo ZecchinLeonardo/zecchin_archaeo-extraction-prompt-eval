@@ -30,7 +30,7 @@ run-notebooks:
 # suppose this shell is in the environment of your jupyter stack
 [group("notebook")]
 run-lab:
-  jupyter lab --no-browser notebooks/
+  jupyter lab --port 8889 --no-browser notebooks/
 
 # suppose the dev deps has been installed
 [group("dev")]

@@ -16,6 +16,7 @@ Run with: `uvicorn prompt_enhancing.tools.pdf_pipeline_service:app --port 9000`
 
 from fastapi import FastAPI, UploadFile, File, HTTPException, Form
 from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 import tempfile
 import uuid
 import os
@@ -39,6 +40,14 @@ from archaeo_super_prompt.utils.pipeline_func import _comune_to_dspy_input, _ese
 
 app = FastAPI(title="PDF OCR+Extract pipeline")
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 logger = logging.getLogger("pdf_pipeline")
 logging.basicConfig(level=logging.INFO)
 
@@ -52,6 +61,11 @@ try:
     from archaeo_super_prompt.modeling.pdf_to_text import VLLM_Preprocessing
 except Exception:
     VLLM_Preprocessing = None
+
+try:
+    from archaeo_super_prompt.modeling import pdf_to_text
+except Exception:
+    pdf_to_text = None
 
 
 # Require the project's VLLM-based discriminator for language detection
@@ -461,6 +475,14 @@ async def extract_pdf(file: UploadFile = File(...), run_extraction_script: bool 
                         try:
                             # from archaeo_super_prompt.utils.pipeline_func import load_scans_safe
                             scans = load_scans_safe(cache_csv)
+                            
+
+
+                            # ensure the pipeline uses the cached/sanitized scans loader
+                            # (same workaround as in `4.1.1_complete_pipeline.py`)
+                            if pdf_to_text is not None:
+                                pdf_to_text.VLLM_Preprocessing = lambda **kw: LoadScans(cache_csv)
+
                             ds.files["id"] = pd.to_numeric(ds.files["id"].astype(str).str.strip(), errors="coerce").astype("Int64")
                             eval_inputs = ds.files.merge(scans[["id"]].drop_duplicates(), on="id", how="inner")
 
