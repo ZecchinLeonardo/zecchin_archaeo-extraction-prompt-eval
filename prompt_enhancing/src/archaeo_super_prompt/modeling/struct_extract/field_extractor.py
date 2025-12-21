@@ -14,6 +14,15 @@ import pandas as pd
 import dspy
 import tqdm
 
+import math
+from typing import List, Dict, Any
+
+# try to import tiktoken for accurate token counting, else fallback
+try:
+    import tiktoken
+except Exception:
+    tiktoken = None
+
 from archaeo_super_prompt.dataset.load import MagohDataset
 from archaeo_super_prompt.types.intervention_id import InterventionId
 from archaeo_super_prompt.types.per_intervention_feature import (
@@ -27,6 +36,116 @@ from ..types.detailed_evaluator import DetailedEvaluatorMixin
 from . import language_model as lm_provider_mod
 from .lm_vllm_client import call_vllm_generate, compute_field_confidences
 
+
+# max tokens for model context (example for a 131072 token model)
+DEFAULT_MODEL_CONTEXT_TOKENS = 131072
+# reserve tokens for the completion result
+DEFAULT_COMPLETION_TOKENS = 512
+
+def _count_message_tokens(messages: List[Dict[str, Any]], model: str) -> int:
+    """
+    Estimate tokens used by a list of chat messages.
+    Uses tiktoken when available for model-specific encoding; otherwise uses
+    a conservative char-based heuristic.
+    """
+    if tiktoken is not None:
+        try:
+            enc = tiktoken.encoding_for_model(model)
+        except Exception:
+            enc = tiktoken.get_encoding("cl100k_base")
+        total = 0
+        for m in messages:
+            # very small message framing overhead + encoded tokens
+            total += 4
+            for v in m.values():
+                if isinstance(v, str):
+                    total += len(enc.encode(v))
+        return total
+    # fallback heuristic: 1 token ~= 4 chars
+    total_chars = sum(len(m.get("content", "")) for m in messages)
+    return math.ceil(total_chars / 4)
+
+def _trim_messages_to_fit(messages: List[Dict[str, Any]], model: str,
+                           max_completion_tokens: int = DEFAULT_COMPLETION_TOKENS,
+                           max_context_tokens: int = DEFAULT_MODEL_CONTEXT_TOKENS) -> List[Dict[str, Any]]:
+    """
+    Trim or summarize the longest user/system messages to fit the model context.
+    This implementation truncates long 'content' strings from the earliest user messages
+    (you can change strategy: e.g. summarize instead of pure truncation).
+    """
+    available = max_context_tokens - max_completion_tokens
+    tokens = _count_message_tokens(messages, model)
+    if tokens <= available:
+        return messages
+
+    # Work on a copy
+    msgs = [dict(m) for m in messages]
+    # sort candidate messages to trim (prefer trimming large user messages)
+    candidates = [(i, len(msgs[i].get("content", ""))) for i in range(len(msgs))]
+    candidates.sort(key=lambda x: x[1], reverse=True)
+
+    # Trim repeatedly until fit
+    idx = 0
+    while _count_message_tokens(msgs, model) > available and idx < len(candidates):
+        i, length = candidates[idx]
+        content = msgs[i].get("content", "")
+        if not content:
+            idx += 1
+            continue
+        # reduce content by half (safer than full drop)
+        new_len = max(256, length // 2)
+        msgs[i]["content"] = content[:new_len] + "\n\n[TRUNCATED]"
+        idx += 1
+
+    # If still too large, remove oldest non-system messages
+    while _count_message_tokens(msgs, model) > available:
+        # remove the earliest message that is not system (keeps system prompt if present)
+        for j, m in enumerate(msgs):
+            if m.get("role") != "system":
+                msgs.pop(j)
+                break
+        else:
+            break
+
+    return msgs
+
+# def safe_lm_call(lm_callable, *, messages: List[Dict[str, Any]], model: str, max_completion_tokens: int = DEFAULT_COMPLETION_TOKENS, **kwargs):
+#     """
+#     Call the LM in a safe way so the total tokens don't exceed the model's context window.
+#     - trims messages to fit or
+#     - if the input contains very long single documents, you may want to chunk them externally
+#       and call the LM per chunk and aggregate results (not implemented here).
+#     """
+#     # First, try a conservative approach: reduce requested completion size if too large
+#     if max_completion_tokens > 1024:
+#         max_completion_tokens = 1024
+
+#     safe_msgs = _trim_messages_to_fit(messages, model, max_completion_tokens=max_completion_tokens)
+#     # attach max_tokens for completion request
+#     kwargs = dict(kwargs)
+#     kwargs.setdefault("max_tokens", max_completion_tokens)
+#     return lm_callable(messages=safe_msgs, model=model, **kwargs)
+
+def _safe_call_vllm_generate(
+    prompt_text: str,
+    model_id: str | None = None,
+    max_tokens: int = 256,
+    temperature: float = 0.0,
+    logprobs: bool = True,
+):
+    """Call vllm with trimming guard. model_id is optional for backward compatibility.
+
+    This function will trim long inputs to fit the model context window and then
+    call the underlying `call_vllm_generate`. It intentionally accepts a missing
+    `model_id` so existing callers that don't pass it don't raise a TypeError.
+    """
+    # Build chat-like messages for trimming logic
+    messages = [{"role": "user", "content": prompt_text}]
+    # allow model_id to be None - pass empty string to trimming heuristics in that case
+    safe_messages = _trim_messages_to_fit(messages, model=(model_id or ""), max_completion_tokens=max_tokens)
+    safe_prompt = " ".join(m.get("content", "") for m in safe_messages)
+    # call the underlying wrapper; keep signature compatible with call_vllm_generate
+    return call_vllm_generate(safe_prompt, max_tokens=max_tokens, temperature=temperature, logprobs=logprobs)
 
 def _wrap_model_with_confidence(model):
     """Return a callable wrapper around a dspy model that attaches
@@ -63,22 +182,44 @@ def _wrap_model_with_confidence(model):
                     if not str(k).startswith("_")
                 }
 
-                resp = call_vllm_generate(prompt_text, max_tokens=256, temperature=0.0, logprobs=True)
-                overall_conf, per_field_conf = compute_field_confidences(
-                    full_text=resp.get("text", ""),
-                    tokens=resp.get("tokens", []),
-                    token_logprobs=resp.get("token_logprobs", []),
-                    parsed_fields=parsed_fields,
-                    fallback_to_global=True,
-                )
+                # call safe wrapper (backwards-compatible: model_id optional)
+                resp = None
                 try:
-                    pred["_confidence"] = float(overall_conf)
-                    pred["_field_confidences"] = {k: float(v) for k, v in per_field_conf.items()}
-                except Exception:
-                    pass
+                    resp = _safe_call_vllm_generate(prompt_text, max_tokens=256, temperature=0.0, logprobs=True)
+                except Exception as e:
+                    # keep behavior non-fatal for the extraction pipeline but log a warning
+                    warning(f"_safe_call_vllm_generate failed: {e}")
+
+                # Validate the response contains token-level logprobs before attempting
+                # to compute per-field confidences. If missing, fallback to NaN.
+                if not resp:
+                    warning("vllm returned empty response while computing confidences; skipping confidence computation")
+                else:
+                    token_logprobs = resp.get("token_logprobs")
+                    tokens = resp.get("tokens")
+                    if not token_logprobs or not tokens:
+                        warning("vllm returned no token_logprobs/tokens; skipping compute_field_confidences")
+                        try:
+                            pred["_confidence"] = float("nan")
+                        except Exception:
+                            pass
+                    else:
+                        overall_conf, per_field_conf = compute_field_confidences(
+                            full_text=resp.get("text", ""),
+                            tokens=tokens,
+                            token_logprobs=token_logprobs,
+                            parsed_fields=parsed_fields,
+                            fallback_to_global=True,
+                        )
+                        try:
+                            pred["_confidence"] = float(overall_conf)
+                            pred["_field_confidences"] = {k: float(v) for k, v in per_field_conf.items()}
+                        except Exception:
+                            pass
             except Exception:
                 try:
-                    pred["_confidence"] = None
+                    # prefer numeric NaN so pandas keeps float dtype for confidence
+                    pred["_confidence"] = float("nan")
                 except Exception:
                     pass
             return pred
@@ -326,35 +467,52 @@ generically from dictionnary expansion
             prompt_text = " ".join([str(v) for v in inp_map.values() if v is not None])
             pred_dict = raw_pred.toDict() if hasattr(raw_pred, "toDict") else dict(raw_pred)
             if "_confidence" not in pred_dict or pred_dict.get("_confidence") is None:
-                resp = call_vllm_generate(prompt_text, max_tokens=256, temperature=0.0, logprobs=True)
+                # call safe wrapper passing model id when available
+                resp = None
+                try:
+                    resp = _safe_call_vllm_generate(prompt_text, model_id=self.llm_model_id, max_tokens=256, temperature=0.0, logprobs=True)
+                except Exception as e:
+                    warning(f"_safe_call_vllm_generate failed in _typed_forward: {e}")
 
-                # Prepare parsed_fields mapping from prediction keys to string values,
-                # excluding private/metadata keys that start with '_'
                 parsed_fields = {
                     k: "" if v is None else str(v)
                     for k, v in pred_dict.items()
                     if not str(k).startswith("_")
                 }
 
-                overall_conf, per_field_conf = compute_field_confidences(
-                    full_text=resp.get("text", ""),
-                    tokens=resp.get("tokens", []),
-                    token_logprobs=resp.get("token_logprobs", []),
-                    parsed_fields=parsed_fields,
-                    fallback_to_global=True,
-                )
-
-                # Attach metadata if possible
-                try:
-                    raw_pred["_confidence"] = float(overall_conf)
-                    raw_pred["_field_confidences"] = {k: float(v) for k, v in per_field_conf.items()}
-                except Exception:
-                    # ignore assignment errors
-                    pass
+                if not resp:
+                    # no response: fallback to NaN
+                    try:
+                        raw_pred["_confidence"] = float("nan")
+                    except Exception:
+                        pass
+                else:
+                    tokens = resp.get("tokens")
+                    token_logprobs = resp.get("token_logprobs")
+                    if not tokens or not token_logprobs:
+                        warning("vllm returned no token_logprobs/tokens in _typed_forward; skipping compute_field_confidences")
+                        try:
+                            raw_pred["_confidence"] = float("nan")
+                        except Exception:
+                            pass
+                    else:
+                        overall_conf, per_field_conf = compute_field_confidences(
+                            full_text=resp.get("text", ""),
+                            tokens=tokens,
+                            token_logprobs=token_logprobs,
+                            parsed_fields=parsed_fields,
+                            fallback_to_global=True,
+                        )
+                        try:
+                            raw_pred["_confidence"] = float(overall_conf)
+                            raw_pred["_field_confidences"] = {k: float(v) for k, v in per_field_conf.items()}
+                        except Exception:
+                            pass
         except Exception:
             # If vllm not reachable or any error occurs, do not break the forward
             try:
-                raw_pred["_confidence"] = None
+                # use numeric NaN so pandas will treat column as float
+                raw_pred["_confidence"] = float("nan")
             except Exception:
                 pass
 
@@ -565,8 +723,12 @@ generically from dictionnary expansion
                 )
             ]
             df_results = pd.DataFrame(rows)
+            # ensure numeric columns have the expected dtype for pandera validation
             if "metric_value" in df_results.columns:
                 df_results["metric_value"] = df_results["metric_value"].astype("float64")
+            if "confidence" in df_results.columns:
+                # coerce None/objects to NaN and cast to float64
+                df_results["confidence"] = pd.to_numeric(df_results["confidence"], errors="coerce").astype("float64")
             return score, ResultSchema.validate(df_results, lazy=True)
 
     @staticmethod
