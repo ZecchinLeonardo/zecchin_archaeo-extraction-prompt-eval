@@ -1,7 +1,7 @@
 """Comune LLM extractor."""
 
 import re
-from typing import cast, override
+from typing import cast, override, Optional
 
 import dspy
 import pydantic
@@ -23,6 +23,9 @@ from .....types.per_intervention_feature import (
 )
 from ...field_extractor import FieldExtractor, LLMProvider, to_prediction
 
+from archaeo_super_prompt.utils.chunk_extractor import (
+    _choose_best_chunk_and_page
+)
 
 # -- DSPy part
 
@@ -71,6 +74,8 @@ class TipoOutputData(pydantic.BaseModel):
 
     TipoDocumento: str
     TipoIntervento: str
+    chunk: str = ""
+    page_number: Optional[int] = None
 
 
 class FindTipo(dspy.Module):
@@ -97,11 +102,16 @@ class FindTipo(dspy.Module):
         document = cast(str, predicted_output.get("TipoDocumento", DOCUMENT_UNIDENTIFIED))
         intervention = cast(str, predicted_output.get("TipoIntervento", INTERVENTION_UNIDENTIFIED))
 
+        chunk, page = _choose_best_chunk_and_page(fragmenti_relazione, document)
+   
+
         # Return the prediction
         return to_prediction(
             TipoOutputData(
                 TipoDocumento=document,
                 TipoIntervento=intervention,
+                chunk=chunk,
+                page_number=page,
             )
         )
 
@@ -133,7 +143,9 @@ class TipoExtractor(
             ),
             TipoOutputData(
                 TipoDocumento="Relazione di scavo",
-                TipoIntervento="Scavo preventivo"
+                TipoIntervento="Scavo preventivo",
+                chunk="Tipologia di documento: Relazione di scavo",
+                page_number=1,
             ),
         )
         # TODO: load this more lazily
@@ -181,10 +193,20 @@ class TipoExtractor(
         intervento = dspy_output.get("tipo_intervento") or dspy_output.get("pred_tipo_intervento") or ""
         method = dspy_output.get("method", "LLM")  # You can set this to whatever method name you want
 
+        chunk = (
+            dspy_output.get("chunk")
+            or dspy_output.get("esecutore_chunk")
+            or dspy_output.get("fragment")
+            or ""
+        )
+        page = dspy_output.get("page") or dspy_output.get("page_number") or None
+
 
         return TipoOutputData(
             TipoDocumento=documento,
             TipoIntervento=intervento,
+            chunk=chunk,
+            page_number=page,
             method=method  # Only include this if your schema expects it!
         )
 

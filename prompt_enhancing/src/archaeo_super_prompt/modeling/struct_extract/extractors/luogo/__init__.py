@@ -1,7 +1,7 @@
 """Comune LLM extractor."""
 
 import re
-from typing import cast, override
+from typing import cast, override, Optional
 
 import dspy
 import pydantic
@@ -25,6 +25,10 @@ from .....types.per_intervention_feature import (
 )
 from ...field_extractor import FieldExtractor, LLMProvider, to_prediction
 
+
+from archaeo_super_prompt.utils.chunk_extractor import (
+    _choose_best_chunk_and_page
+)
 
 # -- DSPy part
 
@@ -75,6 +79,8 @@ class LuogoOutputData(pydantic.BaseModel):
     indirizzo: str  
     localita: str
     ubicazione: str
+    chunk: str = ""
+    page_number: Optional[int] = None
 
 class FindLuogo(dspy.Module):
     """DSPy model for the extraction of  Protocollo."""
@@ -102,12 +108,17 @@ class FindLuogo(dspy.Module):
         loc = cast(str, predicted_output.get("localita", LOCALITA_UNIDENTIFIED))
         ubi = cast(str, predicted_output.get("ubicazione", UBICAZIONE_UNIDENTIFIED))
 
+        chunk, page = _choose_best_chunk_and_page(fragmenti_relazione, ind + " " + loc + " " + ubi)
+   
+
         # Return the prediction
         return to_prediction(
             LuogoOutputData(
                 indirizzo=ind,
                 localita=loc,
-                ubicazione=ubi
+                ubicazione=ubi, 
+                chunk=chunk,
+                page_number=page,
             )
         )
 
@@ -140,7 +151,9 @@ class LuogoExtractor(
             LuogoOutputData(
                 indirizzo="via Aurelia Nord 23",
                 localita="Barbaricina",
-                ubicazione="fosso delle Corti"
+                ubicazione="fosso delle Corti",
+                chunk="Nel comune di Pisa, in via Aurelia Nord 23, in località Barbaricina, presso il fosso delle Corti, è stato rinvenuto un insediamento protostorico.",
+                page_number=1,
             ),
         )
         # TODO: load this more lazily
@@ -208,12 +221,21 @@ class LuogoExtractor(
         ubicazione_desc = dspy_output.get("ubicazione") or dspy_output.get("pred_ubicazione") or ""
         method = dspy_output.get("method", "LLM")  # You can set this to whatever method name you want
 
+        chunk = (
+            dspy_output.get("chunk")
+            or dspy_output.get("esecutore_chunk")
+            or dspy_output.get("fragment")
+            or ""
+        )
+        page = dspy_output.get("page") or dspy_output.get("page_number") or None
 
         return LuogoOutputData(
             indirizzo=indirizzo_desc,
             localita=localita_desc,
             ubicazione=ubicazione_desc,
-            method=method  # Only include this if your schema expects it!
+            method=method,  # Only include this if your schema expects it!
+            chunk=chunk,
+            page_number=page,
         )
 
     @override

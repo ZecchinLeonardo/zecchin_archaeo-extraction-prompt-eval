@@ -1,7 +1,7 @@
 """Comune LLM extractor."""
 
 import re
-from typing import cast, override
+from typing import cast, override, Optional
 
 import dspy
 import pydantic
@@ -23,6 +23,10 @@ from rapidfuzz import fuzz
 from sentence_transformers import SentenceTransformer, util
 
 from ...field_extractor import FieldExtractor, LLMProvider, to_prediction
+
+from archaeo_super_prompt.utils.chunk_extractor import (
+    _choose_best_chunk_and_page
+)
 
 
 # @override
@@ -53,8 +57,6 @@ class Esecuzione(pydantic.BaseModel):
 
     esecutore: str
     
-
-
 class IdentificaEsecutore(dspy.Signature):
     """Identifica la persona che ha eseguito i lavori archeologici descritti in questi frammenti di relazione.
     
@@ -92,6 +94,7 @@ class EsecutoreInputData(pydantic.BaseModel):
 
     fragmenti_relazione: str
     # possibili_esecutori: list[Esecuzione]
+    # esecutore_raw: Optional[str] = None
 
 
 class EsecutoreOutputData(pydantic.BaseModel):
@@ -101,6 +104,8 @@ class EsecutoreOutputData(pydantic.BaseModel):
     nome: str
     cognome: str
     iniziale: str
+    chunk: str = ""
+    page_number: Optional[int] = None
 
 
 class FindEsecutore(dspy.Module):
@@ -111,7 +116,9 @@ class FindEsecutore(dspy.Module):
         self._estrattore_esecuzione = dspy.ChainOfThought(IdentificaEsecutore)
 
     def forward(
-        self, fragmenti_relazione: str#, possibili_esecutori: list[Esecuzione]
+        self, fragmenti_relazione: str,#, possibili_esecutori: list[Esecuzione]
+        # esecutore_raw: Optional[str] = None,
+        # **kwargs,
     ) -> dspy.Prediction:
         """Direct forward."""
         predicted_output = cast(
@@ -127,6 +134,8 @@ class FindEsecutore(dspy.Module):
         nome_cognome = cast(str, predicted_output.get("esecutore", UNIDENTIFIED))
         nome, cognome, iniziale = split_nome_cognome_initial(nome_cognome)
 
+        chunk, page = _choose_best_chunk_and_page(fragmenti_relazione, nome_cognome)
+
         # Return the prediction
         return to_prediction(
             EsecutoreOutputData(
@@ -134,6 +143,8 @@ class FindEsecutore(dspy.Module):
                 nome=nome,
                 cognome=cognome,
                 iniziale=iniziale,
+                chunk=chunk,
+                page_number=page,
             )
         )
 
@@ -172,7 +183,8 @@ L'intervento è stato eseguito dal dott. Mario Rossi in data 12/05/2023.""",
             EsecutoreOutputData(nome_cognome="Mario Rossi",
                                 nome="Mario",
                                 cognome="Rossi",
-                                iniziale="M"),
+                                iniziale="M",
+                                chunk="L'intervento è stato eseguito dal dott. Mario Rossi"),
         )
         # TODO: load this more lazily
         # self._thesaurus = load_comune_with_provincie()
@@ -199,8 +211,6 @@ L'intervento è stato eseguito dal dott. Mario Rossi in data 12/05/2023.""",
         # score = fuzz.token_sort_ratio(predicted.nome_cognome, expected.nome_cognome) / 100
         score = 0.8 *(fuzz.token_sort_ratio(predicted.cognome, expected.cognome) / 100) + 0.2 * (fuzz.token_sort_ratio(predicted.iniziale, expected.iniziale) / 100)
 
-
-
         return score, TRESHOLD
 
     @override
@@ -215,11 +225,22 @@ L'intervento è stato eseguito dal dott. Mario Rossi in data 12/05/2023.""",
 
         nome, cognome, iniziale = split_nome_cognome_initial(nome_cognome)
 
+        chunk = (
+            dspy_output.get("chunk")
+            or dspy_output.get("esecutore_chunk")
+            or dspy_output.get("fragment")
+            or ""
+        )
+        page = dspy_output.get("page") or dspy_output.get("page_number") or None
+
+        
         return EsecutoreOutputData(
             nome_cognome=nome_cognome,
             nome=nome,
             cognome=cognome,
             iniziale=iniziale,
+            chunk=chunk,
+            page_number=page,
             method=method  # Only include this if your schema expects it!
         )
 
@@ -235,7 +256,7 @@ L'intervento è stato eseguito dal dott. Mario Rossi in data 12/05/2023.""",
         row = full_row.iloc[0]
         return EsecutoreInputData(
             fragmenti_relazione=getattr(row, "merged_chunks", ""),
-            esecutore_raw=getattr(row, "university__Eseguito_da", None),
+            # esecutore_raw=getattr(row, "university__Eseguito_da", None),
         )
     
 ##############################################################################
@@ -267,6 +288,7 @@ L'intervento è stato eseguito dal dott. Mario Rossi in data 12/05/2023.""",
                     nome=nome_base,
                     cognome=cognome_base,
                     iniziale=iniziale_base,
+                    # chunk="",
                 )
         return result
     

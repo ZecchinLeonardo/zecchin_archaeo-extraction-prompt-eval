@@ -38,6 +38,9 @@ from .....types.per_intervention_feature import (
 from ...field_extractor import FieldExtractor, LLMProvider, to_prediction
 from .type_models import ITALIAN_MONTHS, Data, Precision, Precisione
 
+from archaeo_super_prompt.utils.chunk_extractor import (
+    _choose_best_chunk_and_page
+)
 
 # -- DSPy part
 
@@ -69,6 +72,8 @@ class DataInterventoOutputData(pydantic.BaseModel):
 
     # data: Data  # Use the Data type from type_models.py
     year: int | None
+    chunk: str = ""
+    page_number: Optional[int] = None
 
 class EstimateData(
     dspy.Module
@@ -96,11 +101,28 @@ class EstimateData(
         DATA_UNIDENTIFIED = Data(giorno=1, mese="Gennaio", anno=0)
         pred_data = cast(Data, predicted_output.get("data_intervento", DATA_UNIDENTIFIED))
 
+        # Build a search key from the Data object (day, month, year)
+        if isinstance(pred_data, Data):
+            parts: list[str] = []
+            if getattr(pred_data, "giorno", None):
+                parts.append(str(pred_data.giorno))
+            if getattr(pred_data, "mese", None):
+                parts.append(str(pred_data.mese))
+            if getattr(pred_data, "anno", None) and pred_data.anno != 0:
+                parts.append(str(pred_data.anno))
+            search_key = " ".join(parts).strip()
+        else:
+            search_key = str(pred_data)
+        
+        chunk, page = _choose_best_chunk_and_page(fragmenti_relazione, search_key)
+
         # Build the typed prediction object
         pred = to_prediction(
             DataInterventoOutputData(
                 # data=pred_data,
                 year=pred_data.anno,
+                chunk=chunk,
+                page_number=page,
             )
         )
 
@@ -149,6 +171,8 @@ Lo scavo è iniziato il 18 marzo 1985 ed è terminato il 20 marzo.""",
             DataInterventoOutputData(
                 # data=Data(giorno=18, mese="Marzo", anno=1985),
                 year=1985,
+                chunk="Lo scavo è iniziato il 18 marzo 1985 ed è terminato il 20 marzo.",
+                page_number=1,
             ),
         )
         super().__init__(
@@ -176,10 +200,19 @@ Lo scavo è iniziato il 18 marzo 1985 ed è terminato il 20 marzo.""",
         data_pred = dspy_output.get("data_intervento") or dspy_output.get("pred_data_intervento") or None
         method = dspy_output.get("method", "LLM")  # You can set this to whatever method name you want
 
+        chunk = (
+            dspy_output.get("chunk")
+            or dspy_output.get("esecutore_chunk")
+            or dspy_output.get("fragment")
+            or ""
+        )
+        page = dspy_output.get("page") or dspy_output.get("page_number") or None
 
         return DataInterventoOutputData(
             # data=data_pred,
             year = data_pred.anno if data_pred else 0,
+            chunk=chunk,
+            page_number=page,
             method=method  # Only include this if your schema expects it!
         )
 

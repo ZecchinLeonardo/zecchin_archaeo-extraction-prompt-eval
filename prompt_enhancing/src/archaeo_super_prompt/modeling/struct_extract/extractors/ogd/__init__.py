@@ -1,7 +1,7 @@
 """Comune LLM extractor."""
 
 import re
-from typing import cast, override
+from typing import cast, override, Optional
 
 import dspy
 import pydantic
@@ -21,6 +21,9 @@ from .....types.per_intervention_feature import (
 )
 from ...field_extractor import FieldExtractor, LLMProvider, to_prediction
 
+from archaeo_super_prompt.utils.chunk_extractor import (
+    _choose_best_chunk_and_page
+)
 
 # -- DSPy part
 
@@ -56,7 +59,9 @@ class OGDInputData(pydantic.BaseModel):
 class OGDOutputData(pydantic.BaseModel):
     """A predicted description of what was found during the survey."""
 
-    OGD: str  
+    OGD: str
+    chunk: str = ""
+    page_number: Optional[int] = None
 
 class FindOGD(dspy.Module):
     """DSPy model for the extraction of  Protocollo."""
@@ -92,10 +97,14 @@ class FindOGD(dspy.Module):
         else:
             descrizione = "sito pluristratificato"
 
+        chunk, page = _choose_best_chunk_and_page(fragmenti_relazione, descrizione)
+
         # Return the prediction
         return to_prediction(
             OGDOutputData(
-                OGD=descrizione
+                OGD=descrizione,
+                chunk=chunk,
+                page_number=page,
             )
         )
 
@@ -124,7 +133,9 @@ class OGDExtractor(
                             Nel sito non sono stati rinvenuti reperti archeologici.""",
             ),
             OGDOutputData(
-                OGD="area priva di tracce archeologiche"
+                OGD="area priva di tracce archeologiche",
+                chunk="Nel sito non sono stati rinvenuti reperti archeologici.",
+                page_number=1,
             ),
         )
         # TODO: load this more lazily
@@ -169,9 +180,19 @@ class OGDExtractor(
         OGD_desc= dspy_output.get("OGD") or dspy_output.get("pred_OGD") or ""
         method = dspy_output.get("method", "LLM")  # You can set this to whatever method name you want
 
+        chunk = (
+            dspy_output.get("chunk")
+            or dspy_output.get("esecutore_chunk")
+            or dspy_output.get("fragment")
+            or ""
+        )
+        page = dspy_output.get("page") or dspy_output.get("page_number") or None
+
 
         return OGDOutputData(
             OGD=OGD_desc,
+            chunk=chunk,
+            page_number=page,
             method=method  # Only include this if your schema expects it!
         )
 

@@ -1,7 +1,7 @@
 """Comune LLM extractor."""
 
 import re
-from typing import cast, override
+from typing import cast, override, Optional
 
 import dspy
 import pydantic
@@ -21,27 +21,14 @@ from .....types.per_intervention_feature import (
 )
 from ...field_extractor import FieldExtractor, LLMProvider, to_prediction
 
+from archaeo_super_prompt.utils.chunk_extractor import (
+    _choose_best_chunk_and_page
+)
+
 
 # @override
 # @staticmethod
-def split_nome_cognome_initial(nome_cognome: str) -> tuple[str, str, str]:
-    """
-    Splits a full name string into nome and cognome, and returns initial of nome.
-    """
-    if not nome_cognome:
-        return "", "", ""
-    
-    parts = nome_cognome.strip().split()
-    if len(parts) == 1:
-        nome = parts[0]
-        cognome = ""
-    else:
-        nome = parts[0]
-        cognome = " ".join(parts[1:])
-    
-    initial = nome[0] if nome else ""
-    
-    return nome, cognome, initial
+
 # -- DSPy part
 
 
@@ -91,9 +78,8 @@ class DirezioneFunzionarioOutputData(pydantic.BaseModel):
 
     direzione: str
     funzionario: str
-    # nome: str
-    # cognome: str
-    # iniziale: str
+    chunk: str = ""
+    page_number: Optional[int] = None
 
 
 class FindDirezioneFunzionario(dspy.Module):
@@ -119,11 +105,16 @@ class FindDirezioneFunzionario(dspy.Module):
         direzione = cast(str, predicted_output.get("direzione", UNIDENTIFIED))
         funzionario = cast(str, predicted_output.get("funzionario", UNIDENTIFIED))
 
+        chunk, page = _choose_best_chunk_and_page(fragmenti_relazione, direzione)
+
+
         # Return the prediction
         return to_prediction(
             DirezioneFunzionarioOutputData(
                 direzione=direzione,
                 funzionario=funzionario,
+                chunk=chunk,
+                page_number=page,
             )
         )
 
@@ -154,6 +145,8 @@ L'intervento è stato diretto dal dott. Francesco Bianchi, il funzionario compet
             DirezioneFunzionarioOutputData(
                                 direzione="Francesco Bianchi",
                                 funzionario="Giovanni Verdi",
+                                chunk="L'intervento è stato diretto dal dott. Francesco Bianchi, il funzionario competente dell'area della Valdarno inferiore era Giovanni Verdi.",
+                                page_number=1,
                                 ),
         )
         # TODO: load this more lazily
@@ -192,12 +185,22 @@ L'intervento è stato diretto dal dott. Francesco Bianchi, il funzionario compet
         pred_funzionario = dspy_output.get("funzionario") or dspy_output.get("pred_funzionario") or ""
         method = dspy_output.get("method", "LLM")  # You can set this to whatever method name you want
 
-        # nome, cognome, iniziale = split_nome_cognome_initial(nome_cognome)
+        chunk = (
+            dspy_output.get("chunk")
+            or dspy_output.get("esecutore_chunk")
+            or dspy_output.get("fragment")
+            or ""
+        )
+        page = dspy_output.get("page") or dspy_output.get("page_number") or None
+
+        
 
         return DirezioneFunzionarioOutputData(
             direzione=pred_direzione,
             funzionario=pred_funzionario,
-            method=method  # Only include this if your schema expects it!
+            method=method,  # Only include this if your schema expects it!
+            chunk=chunk,
+            page_number=page,
         )
 
     @override
@@ -237,8 +240,6 @@ L'intervento è stato diretto dal dott. Francesco Bianchi, il funzionario compet
         for t in y.get_answers(ids):
             if t.building__Funzionario_competente is not None:  # Skip if no ground truth
                 funzionario_truth = t.building__Funzionario_competente
-                # nome_base, cognome_base, iniziale_base = split_nome_cognome_initial(nome_cognome_base)
-                # print(f"Nome: {nome_base}, Cognome: {cognome_base}, Iniziale: {iniziale_base}")  # Print nome, cognome, and iniziale
             else:
                 funzionario_truth = ""
             if t.university__Direzione_scientifica is not None:

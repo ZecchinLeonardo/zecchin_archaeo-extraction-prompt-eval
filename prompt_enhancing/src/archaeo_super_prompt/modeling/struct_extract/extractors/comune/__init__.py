@@ -1,7 +1,7 @@
 """Comune LLM extractor."""
 
 import re
-from typing import cast, override
+from typing import cast, override, Optional
 
 import dspy
 import pydantic
@@ -20,6 +20,10 @@ from .....types.per_intervention_feature import (
 )
 from ...field_extractor import FieldExtractor, LLMProvider, to_prediction
 
+from archaeo_super_prompt.utils.chunk_extractor import (
+    _choose_best_chunk_for_name,
+    _choose_best_chunk_and_page
+)
 # -- DSPy part
 
 
@@ -59,6 +63,9 @@ class ComuneOutputData(pydantic.BaseModel):
 
     comune: str
     provincia: str
+    chunk: str = ""
+    page_number: Optional[int] = None
+
 
 
 class FindComune(dspy.Module):
@@ -81,12 +88,20 @@ class FindComune(dspy.Module):
         )
         WRONG_COMUNE = "%ERROR_COMUNE%"
         WRONG_PROVINCIA = "%ERROR_PROVINCIA%"
+
+        comune=cast(str, predicted_output.get("comune", WRONG_COMUNE))
+        provincia=cast(
+            str, predicted_output.get("provincia", WRONG_PROVINCIA)
+        )
+
+        chunk, page = _choose_best_chunk_and_page(fragmenti_relazione, comune)
+
         return to_prediction(
             ComuneOutputData(
-                comune=cast(str, predicted_output.get("comune", WRONG_COMUNE)),
-                provincia=cast(
-                    str, predicted_output.get("provincia", WRONG_PROVINCIA)
-                ),
+                comune=comune,
+                provincia=provincia,
+                chunk=chunk,
+                page_number=page,
             )
         )
 
@@ -99,6 +114,8 @@ class ComuneFeatSchema(BasePerInterventionFeatureSchema):
 
     comune_id: int
     provincia_id: int
+    chunk: str = ""
+    page: Optional[int] = None
 
 
 class ComuneExtractor(
@@ -131,7 +148,7 @@ L'evento si è svolto a Lucca.""",
                     )
                 ],
             ),
-            ComuneOutputData(comune="Lucca", provincia="Lucca"),
+            ComuneOutputData(comune="Lucca", provincia="Lucca", chunk = "L'evento si è svolto a Lucca."),
         )
         # TODO: load this more lazily
         self._thesaurus = load_comune_with_provincie()
@@ -163,26 +180,50 @@ L'evento si è svolto a Lucca.""",
         )
 
     @override
-    def _transform_dspy_output(self, y):
+    def _transform_dspy_output(self, y, dspy_output) -> ComuneFeatSchema:
         comuni, province = self._thesaurus
-        return ComuneFeatSchema.validate(
-            self._identity_output_set_transform_to_df(y)
+        
+        out_df = self._identity_output_set_transform_to_df(y)
+        if "chunk" not in out_df.columns:
+            out_df["chunk"] = ""
+
+        # perform the same merges but keep 'chunk'
+        result_df = (
+            out_df
             .assign(schedaid=lambda df: df.index)
             .merge(
                 province[["name"]].assign(provincia_id=province.index),
                 left_on="provincia",
                 right_on="name",
-            )[["schedaid", "comune", "provincia_id"]]
+            )[[ "schedaid", "comune", "provincia_id", "chunk" ]]
             .merge(
                 comuni.assign(comune_id=comuni.index),
                 left_on=["comune", "provincia_id"],
                 right_on=["name", "province_id"],
-            )[["schedaid", "comune_id", "provincia_id"]]
+            )[[ "schedaid", "comune_id", "provincia_id", "chunk", "page" ]]
             .rename(columns={"schedaid": "id"})
-            .set_index("id"),
-            # TODO: add this after tests
-            # lazy=True
+            .set_index("id")
         )
+
+        return ComuneFeatSchema.validate(result_df)
+        # return ComuneFeatSchema.validate(
+        #     self._identity_output_set_transform_to_df(y)
+        #     .assign(schedaid=lambda df: df.index)
+        #     .merge(
+        #         province[["name"]].assign(provincia_id=province.index),
+        #         left_on="provincia",
+        #         right_on="name",
+        #     )[["schedaid", "comune", "provincia_id"]]
+        #     .merge(
+        #         comuni.assign(comune_id=comuni.index),
+        #         left_on=["comune", "provincia_id"],
+        #         right_on=["name", "province_id"],
+        #     )[["schedaid", "comune_id", "provincia_id"]]
+        #     .rename(columns={"schedaid": "id"})
+        #     .set_index("id"),
+        #     # TODO: add this after tests
+        #     # lazy=True
+        # )
 
     @override
     @classmethod
@@ -208,7 +249,7 @@ L'evento si è svolto a Lucca.""",
         cls, y: MagohDataset, ids: set[InterventionId]
     ) -> dict[InterventionId, ComuneOutputData]:
         def to_comune_data(comune_string: str | None) -> ComuneOutputData:
-            default_output = ComuneOutputData(comune="", provincia="")
+            default_output = ComuneOutputData(comune="", provincia="", chunk="")
             if comune_string is None:
                 return default_output
             pattern = r"^(.*?) \((.*?)\)$"
